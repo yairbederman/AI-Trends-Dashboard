@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, Check, X, RefreshCw, Moon, Sun, AlertCircle, Star, Sparkles, Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import Link from 'next/link';
 import { SourceCategory, CATEGORY_LABELS } from '@/types';
@@ -45,6 +45,32 @@ export default function SettingsPage() {
     const [loading, setLoading] = useState(true);
     const [newKeyword, setNewKeyword] = useState('');
     const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+
+    // Smart header state
+    const [isHeaderVisible, setIsHeaderVisible] = useState(true);
+    const lastScrollY = useRef(0);
+
+    useEffect(() => {
+        const handleScroll = () => {
+            const currentScrollY = window.scrollY;
+
+            // Show if scrolling up or at top
+            if (currentScrollY < 10) {
+                setIsHeaderVisible(true);
+            } else if (currentScrollY > lastScrollY.current && currentScrollY > 100) {
+                // Scrolling down & passed threshold -> Hide
+                setIsHeaderVisible(false);
+            } else if (currentScrollY < lastScrollY.current) {
+                // Scrolling up -> Show
+                setIsHeaderVisible(true);
+            }
+
+            lastScrollY.current = currentScrollY;
+        };
+
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
 
     // Use shared context
     const {
@@ -137,7 +163,7 @@ export default function SettingsPage() {
 
     return (
         <div className="settings-page">
-            <header className="settings-header" role="banner">
+            <header className={`settings-header ${!isHeaderVisible ? 'header-hidden' : ''}`} role="banner">
                 <Link href="/" className="back-link" aria-label="Go back to dashboard">
                     <ArrowLeft size={20} aria-hidden="true" />
                     Back to Dashboard

@@ -108,81 +108,88 @@ export function ContentCard({ item }: ContentCardProps) {
                 </div>
             )}
 
-            <div className="content-card-header">
-                <div className="content-card-meta">
-                    <span className="content-source">{formatSourceName(item.sourceId)}</span>
-                    {isMustRead && (
-                        <span className="must-read-badge" title="Matches your boost keywords">
-                            <Zap size={12} />
-                            Must Read
-                        </span>
-                    )}
-                    {item.trendingScore !== undefined && (
-                        <span className={`score-badge ${scoreInfo?.className || 'score-default'}`} title="Trending score">
-                            {scoreInfo?.label === 'Hot' ? <Flame size={12} /> : <TrendingUp size={12} />}
-                            {item.trendingScore}
-                        </span>
-                    )}
+            {/* Main Content Area */}
+            <div className="content-main">
+                <div className="content-card-header">
+                    <div className="content-card-meta">
+                        <span className="content-source">{formatSourceName(item.sourceId)}</span>
+                        {isMustRead && (
+                            <span className="must-read-badge" title="Matches your boost keywords">
+                                <Zap size={12} />
+                                Must Read
+                            </span>
+                        )}
+                        {item.trendingScore !== undefined && (
+                            <span className={`score-badge ${scoreInfo?.className || 'score-default'}`} title="Trending score">
+                                {scoreInfo?.label === 'Hot' ? <Flame size={12} /> : <TrendingUp size={12} />}
+                                {item.trendingScore}
+                            </span>
+                        )}
+                    </div>
+                    <time
+                        className="content-time"
+                        dateTime={publishedDate.toISOString()}
+                        title={publishedDate.toLocaleString()}
+                    >
+                        {timeAgo}
+                    </time>
                 </div>
-                <time
-                    className="content-time"
-                    dateTime={publishedDate.toISOString()}
-                    title={publishedDate.toLocaleString()}
-                >
-                    {timeAgo}
-                </time>
+
+                <h3 id={`title-${item.id}`} className="content-title">
+                    <a
+                        href={item.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={`${item.title} (opens in new tab)`}
+                    >
+                        {item.title}
+                        <ExternalLink size={14} className="external-icon" aria-hidden="true" />
+                    </a>
+                </h3>
+
+                {item.description && (
+                    <p className="content-description">{item.description}</p>
+                )}
             </div>
 
-            <h3 id={`title-${item.id}`} className="content-title">
-                <a
-                    href={item.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={`${item.title} (opens in new tab)`}
-                >
-                    {item.title}
-                    <ExternalLink size={14} className="external-icon" aria-hidden="true" />
-                </a>
-            </h3>
-
-            {item.description && (
-                <p className="content-description">{item.description}</p>
-            )}
-
+            {/* Footer / Data Terminal */}
             <div className="content-footer">
-                {item.author && (
-                    <span className="content-author">by {item.author}</span>
-                )}
+                <div className="footer-left">
+                    {item.author && (
+                        <span className="content-author">by {item.author}</span>
+                    )}
+
+                    <div className="content-tags-row">
+                        {item.matchedKeywords && item.matchedKeywords.length > 0 && (
+                            <div className="matched-keywords" aria-label="Matched keywords">
+                                {item.matchedKeywords.map((kw, i) => (
+                                    <span key={i} className="keyword-tag">{kw}</span>
+                                ))}
+                            </div>
+                        )}
+
+                        {item.tags && item.tags.length > 0 && (
+                            <div className="content-tags" aria-label="Tags">
+                                {item.tags.slice(0, 2).map((tag, i) => (
+                                    <span key={i} className="tag">{tag}</span>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
 
                 {hasEngagement && (
                     <div className="content-engagement">
                         {engagementMetrics.map((metric, i) => {
                             const Icon = metric.icon;
+                            // Add specific class for the metric type (e.g. 'metric-views')
                             return (
-                                <span key={i} className="engagement-item" title={metric.label}>
+                                <span key={i} className={`engagement-item metric-${metric.label}`} title={metric.label}>
                                     <Icon size={12} />
                                     {formatNumber(metric.value)}
                                 </span>
                             );
                         })}
-                    </div>
-                )}
-            </div>
-
-            <div className="content-tags-row">
-                {item.matchedKeywords && item.matchedKeywords.length > 0 && (
-                    <div className="matched-keywords" aria-label="Matched keywords">
-                        {item.matchedKeywords.map((kw, i) => (
-                            <span key={i} className="keyword-tag">{kw}</span>
-                        ))}
-                    </div>
-                )}
-
-                {item.tags && item.tags.length > 0 && (
-                    <div className="content-tags" aria-label="Tags">
-                        {item.tags.slice(0, 3).map((tag, i) => (
-                            <span key={i} className="tag">{tag}</span>
-                        ))}
                     </div>
                 )}
             </div>

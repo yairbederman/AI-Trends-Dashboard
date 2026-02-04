@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import useSWR from 'swr';
 import { ContentItem, SourceCategory, TimeRange, FeedMode } from '@/types';
 import { ContentCard } from '@/components/dashboard/ContentCard';
-import { SourceTabs } from '@/components/dashboard/SourceTabs';
+import { CollapsibleSourceTabs } from '@/components/dashboard/CollapsibleSourceTabs';
 import { TrendCharts } from '@/components/dashboard/TrendCharts';
-import { TimeRangeSelector } from './TimeRangeSelector';
+import { TimeRangeDropdown } from './TimeRangeDropdown';
 import { FeedModeSelector } from './FeedModeSelector';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useSettings } from '@/lib/contexts/SettingsContext';
@@ -44,6 +44,30 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
     const [timeRange, setTimeRange] = useState<TimeRange>('24h');
     const [feedMode, setFeedMode] = useState<FeedMode>('hot');
     const { isSourceEnabled } = useSettings();
+    const [isHeaderVisible, setIsHeaderVisible] = useState(true);
+    const lastScrollY = useRef(0);
+
+    useEffect(() => {
+        const handleScroll = () => {
+            const currentScrollY = window.scrollY;
+
+            // Show if scrolling up or at top
+            if (currentScrollY < 10) {
+                setIsHeaderVisible(true);
+            } else if (currentScrollY > lastScrollY.current && currentScrollY > 100) {
+                // Scrolling down & passed threshold -> Hide
+                setIsHeaderVisible(false);
+            } else if (currentScrollY < lastScrollY.current) {
+                // Scrolling up -> Show
+                setIsHeaderVisible(true);
+            }
+
+            lastScrollY.current = currentScrollY;
+        };
+
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
 
     // Build API URL with time range, category, and feed mode
     const apiUrl = useMemo(() => {
@@ -82,7 +106,7 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
 
     return (
         <div className="dashboard">
-            <header className="dashboard-header" role="banner">
+            <header className={`dashboard-header ${!isHeaderVisible ? 'header-hidden' : ''}`} role="banner">
                 <div className="header-content">
                     <div className="logo">
                         <Sparkles className="logo-icon" aria-hidden="true" />
@@ -91,14 +115,14 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
 
                     <div className="header-actions">
                         <FeedModeSelector activeMode={feedMode} onModeChange={setFeedMode} />
-                        <TimeRangeSelector activeRange={timeRange} onRangeChange={setTimeRange} />
+                        <TimeRangeDropdown activeRange={timeRange} onRangeChange={setTimeRange} />
                         <Link href="/settings" className="settings-btn" aria-label="Open settings">
                             <Settings size={20} aria-hidden="true" />
                         </Link>
                     </div>
                 </div>
 
-                <SourceTabs
+                <CollapsibleSourceTabs
                     categories={CATEGORIES}
                     activeCategory={activeCategory}
                     onCategoryChange={setActiveCategory}
