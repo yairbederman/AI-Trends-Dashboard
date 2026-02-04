@@ -3,6 +3,7 @@ import { settings, sources, contentItems } from './schema';
 import { eq, inArray, gte, and, desc, sql } from 'drizzle-orm';
 import { SOURCES } from '@/lib/config/sources';
 import { ContentItem, TimeRange } from '@/types';
+import { recordEngagementSnapshot } from './engagement-tracker';
 
 // === Settings Actions ===
 
@@ -201,6 +202,7 @@ export async function getCachedContent(
                 tags: item.tags ? JSON.parse(item.tags) : undefined,
                 sentiment: item.sentiment as ContentItem['sentiment'],
                 sentimentScore: item.sentimentScore ?? undefined,
+                engagement: item.engagement ? JSON.parse(item.engagement) : undefined,
             })),
             fetchedAt,
             isStale,
@@ -240,6 +242,7 @@ export async function cacheContent(
                 tags: item.tags ? JSON.stringify(item.tags) : null,
                 sentiment: item.sentiment ?? null,
                 sentimentScore: item.sentimentScore ?? null,
+                engagement: item.engagement ? JSON.stringify(item.engagement) : null,
             };
 
             if (existing) {
@@ -250,6 +253,13 @@ export async function cacheContent(
                     .run();
             } else {
                 await db.insert(contentItems).values(dbItem).run();
+            }
+        }
+
+        // Record engagement snapshots for velocity tracking
+        for (const item of items) {
+            if (item.engagement) {
+                await recordEngagementSnapshot(item.id, item.engagement);
             }
         }
 

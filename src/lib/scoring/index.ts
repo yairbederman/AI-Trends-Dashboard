@@ -1,4 +1,9 @@
 import { ContentItem, EngagementMetrics } from '@/types';
+import {
+    getEngagementConfig,
+    getSourceQualityBaseline,
+    QualityRatioConfig,
+} from './engagement-config';
 
 export interface ScoringConfig {
     // Source priorities (sourceId -> priority 1-5)
@@ -15,51 +20,100 @@ export interface ScoringConfig {
 }
 
 const DEFAULT_WEIGHTS = {
-    priority: 0.25,      // 25% - source importance
-    engagement: 0.35,    // 35% - community validation
+    priority: 0.15,      // 15% - source importance
+    engagement: 0.50,    // 50% - community validation (primary signal)
     recency: 0.25,       // 25% - freshness
-    keywordBoost: 0.15,  // 15% - personal relevance
+    keywordBoost: 0.10,  // 10% - personal relevance
 };
 
 /**
- * Calculate a normalized engagement score (0-1) from various metrics
+ * Calculate quality ratio bonus (0-1) based on engagement ratio
+ * Higher ratio compared to ideal = better quality indicator
  */
-function calculateEngagementScore(engagement?: EngagementMetrics): number {
-    if (!engagement) return 0;
+function calculateQualityRatio(
+    engagement: EngagementMetrics,
+    config: QualityRatioConfig
+): number {
+    const numeratorValue = (engagement as Record<string, number | undefined>)[config.numerator] || 0;
+    const denominatorValue = (engagement as Record<string, number | undefined>)[config.denominator] || 1;
 
-    // Different sources have different scales, so we use log normalization
-    // This compresses large values while still differentiating them
-    const scores: number[] = [];
+    if (denominatorValue === 0) return 0;
 
-    if (engagement.upvotes !== undefined) {
-        // Reddit/HN: 1 upvote = baseline, 100 = good, 1000+ = viral
-        scores.push(Math.min(1, Math.log10(Math.max(1, engagement.upvotes)) / 4));
+    const actualRatio = numeratorValue / denominatorValue;
+
+    // Score how close to ideal ratio (0-1 scale)
+    // If actual >= ideal, return 1; otherwise return actual/ideal
+    return Math.min(actualRatio / config.idealRatio, 1);
+}
+
+/**
+ * Calculate a normalized engagement score (0-1) using source-specific configuration
+ *
+ * @param sourceId - The source identifier (e.g., 'youtube', 'github-trending', 'reddit-ml')
+ * @param engagement - The engagement metrics from the content item
+ * @returns A normalized score between 0 and 1
+ */
+function calculateEngagementScore(sourceId: string, engagement?: EngagementMetrics): number {
+    const config = getEngagementConfig(sourceId);
+
+    // Get source-specific quality baseline (used when no metrics available)
+    // This differentiates official AI labs (0.55) from newsletters (0.35) from unimplemented (0.25)
+    const qualityBaseline = getSourceQualityBaseline(sourceId);
+
+    // If source has no configured metrics (e.g., RSS), return quality-based baseline
+    if (config.metrics.length === 0) {
+        return qualityBaseline;
     }
 
-    if (engagement.comments !== undefined) {
-        // Comments indicate discussion/interest
-        scores.push(Math.min(1, Math.log10(Math.max(1, engagement.comments)) / 3));
+    // If no engagement data, return quality baseline or type-specific fallback
+    if (!engagement) {
+        return config.noEngagementBaseline || qualityBaseline;
     }
 
-    if (engagement.stars !== undefined) {
-        // GitHub stars: 10 = notable, 100 = popular, 1000+ = viral
-        scores.push(Math.min(1, Math.log10(Math.max(1, engagement.stars)) / 4));
+    // Calculate weighted metric score
+    let metricScore = 0;
+    let hasAnyMetric = false;
+
+    for (const metric of config.metrics) {
+        const value = (engagement as Record<string, number | undefined>)[metric.name];
+        if (value !== undefined && value > 0) {
+            hasAnyMetric = true;
+            // Two-tier scaling: linear up to baseline, sqrt scaling above
+            // This spreads out values more evenly across the range
+            let normalized: number;
+            if (value <= metric.baseline) {
+                // Linear scale from 0 to 0.4 for values up to baseline
+                normalized = (value / metric.baseline) * 0.4;
+            } else if (value <= metric.viral) {
+                // Linear scale from 0.4 to 0.8 for baseline to viral
+                const range = metric.viral - metric.baseline;
+                const progress = (value - metric.baseline) / range;
+                normalized = 0.4 + progress * 0.4;
+            } else {
+                // Sqrt scale from 0.8 to 1.0 for values above viral
+                // This still differentiates mega-viral content
+                const overViral = value / metric.viral;
+                normalized = 0.8 + Math.min(0.2, Math.sqrt(overViral - 1) * 0.1);
+            }
+            metricScore += normalized * metric.weight;
+        }
     }
 
-    if (engagement.forks !== undefined) {
-        // Forks indicate actual usage
-        scores.push(Math.min(1, Math.log10(Math.max(1, engagement.forks)) / 3));
+    // If no metrics were available, return quality baseline or type-specific fallback
+    if (!hasAnyMetric) {
+        return config.noEngagementBaseline || qualityBaseline;
     }
 
-    if (engagement.views !== undefined) {
-        // Views: 1000 = baseline, 100k = popular, 1M+ = viral
-        scores.push(Math.min(1, Math.log10(Math.max(1, engagement.views)) / 6));
+    // Apply quality ratio bonus if configured
+    if (config.qualityRatio) {
+        const ratioScore = calculateQualityRatio(engagement, config.qualityRatio);
+        // Ratio acts as a multiplier: score * (1 + ratioScore * weight)
+        // e.g., with weight 0.2 and perfect ratio: score * 1.2
+        metricScore *= (1 + ratioScore * config.qualityRatio.weight);
     }
 
-    if (scores.length === 0) return 0;
-
-    // Average all available engagement signals
-    return scores.reduce((a, b) => a + b, 0) / scores.length;
+    // Cap at 1.0
+    return Math.min(metricScore, 1);
 }
 
 /**
@@ -109,10 +163,14 @@ function calculateKeywordBoost(
 /**
  * Calculate the trending score for a content item
  * Returns a score from 0-100 where higher = more important/trending
+ * @param percentileRank - Optional percentile rank (0-1) within source type for better spread
+ * @param preCalculatedEngagement - Optional pre-calculated engagement score (avoids recalculation)
  */
 export function calculateTrendingScore(
     item: ContentItem,
-    config: ScoringConfig
+    config: ScoringConfig,
+    percentileRank?: number,
+    preCalculatedEngagement?: number
 ): { score: number; matchedKeywords: string[] } {
     const weights = config.weights || DEFAULT_WEIGHTS;
 
@@ -120,8 +178,14 @@ export function calculateTrendingScore(
     const priority = config.priorities.get(item.sourceId) ?? 3;
     const priorityScore = (priority - 1) / 4; // Convert 1-5 to 0-1
 
-    // 2. Engagement score
-    const engagementScore = calculateEngagementScore(item.engagement);
+    // 2. Engagement score - blend absolute and percentile
+    // Absolute score includes quality ratios (likes/views, forks/stars, etc.)
+    const absoluteEngagement = preCalculatedEngagement ?? calculateEngagementScore(item.sourceId, item.engagement);
+    // Use percentile rank if available, blended with absolute score
+    // This ensures items compete within their source type
+    const engagementScore = percentileRank !== undefined
+        ? absoluteEngagement * 0.3 + percentileRank * 0.7  // 70% relative, 30% absolute
+        : absoluteEngagement;
 
     // 3. Recency score
     const recencyScore = calculateRecencyScore(item.publishedAt);
@@ -139,8 +203,8 @@ export function calculateTrendingScore(
         recencyScore * weights.recency +
         keywordScore * weights.keywordBoost;
 
-    // Scale to 0-100
-    const finalScore = Math.round(combinedScore * 100);
+    // Scale to 0-100 with 1 decimal place for better differentiation
+    const finalScore = Math.round(combinedScore * 1000) / 10;
 
     return {
         score: Math.max(0, Math.min(100, finalScore)),
@@ -149,15 +213,64 @@ export function calculateTrendingScore(
 }
 
 /**
+ * Get primary engagement value for tiebreaking
+ */
+function getPrimaryEngagement(item: ContentItem): number {
+    const e = item.engagement;
+    if (!e) return 0;
+    // Return the most significant metric available
+    return e.views || e.stars || e.upvotes || e.downloads || e.claps || e.likes || e.comments || 0;
+}
+
+/**
  * Score and sort an array of content items
+ * Uses percentile-based engagement scoring within each source type for better spread
  */
 export function scoreAndSortItems(
     items: ContentItem[],
     config: ScoringConfig
 ): ContentItem[] {
-    // Calculate scores for all items
+    // First pass: calculate raw engagement scores for each item
+    // This includes quality ratios (like/view, fork/star, etc.)
+    const engagementScores = new Map<string, number>();
+    for (const item of items) {
+        const score = calculateEngagementScore(item.sourceId, item.engagement);
+        engagementScores.set(item.id, score);
+    }
+
+    // Group items by source type for percentile calculation
+    const bySource = new Map<string, ContentItem[]>();
+    for (const item of items) {
+        const sourceType = getSourceTypeForScoring(item.sourceId);
+        if (!bySource.has(sourceType)) bySource.set(sourceType, []);
+        bySource.get(sourceType)!.push(item);
+    }
+
+    // Calculate percentile ranks within each source type
+    // Rank by CALCULATED engagement score (includes quality ratios like likes/views)
+    const percentileRanks = new Map<string, number>();
+    for (const [, sourceItems] of bySource) {
+        // Sort by calculated engagement score (not raw metric)
+        const sorted = [...sourceItems].sort((a, b) =>
+            (engagementScores.get(b.id) || 0) - (engagementScores.get(a.id) || 0)
+        );
+        // Assign percentile (0 = worst, 1 = best)
+        sorted.forEach((item, idx) => {
+            const percentile = sorted.length > 1
+                ? 1 - (idx / (sorted.length - 1))
+                : 0.5;
+            percentileRanks.set(item.id, percentile);
+        });
+    }
+
+    // Calculate final scores using percentile-adjusted engagement
     const scoredItems = items.map(item => {
-        const { score, matchedKeywords } = calculateTrendingScore(item, config);
+        const { score, matchedKeywords } = calculateTrendingScore(
+            item,
+            config,
+            percentileRanks.get(item.id),
+            engagementScores.get(item.id)
+        );
         return {
             ...item,
             trendingScore: score,
@@ -165,8 +278,18 @@ export function scoreAndSortItems(
         };
     });
 
-    // Sort by trending score (descending)
-    return scoredItems.sort((a, b) => (b.trendingScore || 0) - (a.trendingScore || 0));
+    // Sort by trending score (descending), with engagement as tiebreaker
+    return scoredItems.sort((a, b) => {
+        const scoreDiff = (b.trendingScore || 0) - (a.trendingScore || 0);
+        if (Math.abs(scoreDiff) > 0.01) return scoreDiff;
+        return (engagementScores.get(b.id) || 0) - (engagementScores.get(a.id) || 0);
+    });
+}
+
+function getSourceTypeForScoring(sourceId: string): string {
+    if (sourceId.startsWith('reddit-')) return 'reddit';
+    if (sourceId.startsWith('arxiv-')) return 'arxiv';
+    return sourceId;
 }
 
 /**
@@ -189,3 +312,6 @@ export function getScoreColor(score: number): string {
     if (score >= 40) return 'score-notable';
     return 'score-normal';
 }
+
+export { scoreItemsByFeedMode, calculateHotScore, calculateRisingScore, calculateTopScore } from './feed-modes';
+export type { FeedMode } from './feed-modes';

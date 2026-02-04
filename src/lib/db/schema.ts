@@ -30,32 +30,30 @@ export const contentItems = sqliteTable('content_items', {
     index('idx_content_source_published').on(table.sourceId, table.publishedAt),
 ]);
 
-// Historical metrics for trend charts
-export const metrics = sqliteTable('metrics', {
-    id: integer('id').primaryKey({ autoIncrement: true }),
-    sourceId: text('source_id').notNull(),
-    metricName: text('metric_name').notNull(),
-    value: real('value').notNull(),
-    recordedAt: integer('recorded_at', { mode: 'timestamp' }).notNull(),
-}, (table) => [
-    index('idx_metrics_source').on(table.sourceId),
-    index('idx_metrics_recorded').on(table.recordedAt),
-    index('idx_metrics_source_recorded').on(table.sourceId, table.recordedAt),
-]);
-
 // User settings
 export const settings = sqliteTable('settings', {
     key: text('key').primaryKey(),
     value: text('value').notNull(),
 });
 
-// Daily highlights
-export const dailyHighlights = sqliteTable('daily_highlights', {
+// Engagement snapshots for velocity tracking
+export const engagementSnapshots = sqliteTable('engagement_snapshots', {
     id: integer('id').primaryKey({ autoIncrement: true }),
-    date: text('date').notNull(), // YYYY-MM-DD format
-    itemIds: text('item_ids').notNull(), // JSON array of content item IDs
-    summary: text('summary'),
-    createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+    contentId: text('content_id').notNull(),
+    snapshotAt: integer('snapshot_at', { mode: 'timestamp' }).notNull(),
+    // Individual metrics for efficient queries
+    upvotes: integer('upvotes'),
+    comments: integer('comments'),
+    views: integer('views'),
+    likes: integer('likes'),
+    stars: integer('stars'),
+    forks: integer('forks'),
+    downloads: integer('downloads'),
+    claps: integer('claps'),
+    // Pre-calculated velocity
+    velocityScore: real('velocity_score'),
 }, (table) => [
-    index('idx_highlights_date').on(table.date),
+    index('idx_snapshot_content').on(table.contentId),
+    index('idx_snapshot_time').on(table.snapshotAt),
+    index('idx_snapshot_content_time').on(table.contentId, table.snapshotAt),
 ]);

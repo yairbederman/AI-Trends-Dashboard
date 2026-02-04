@@ -28,13 +28,22 @@ export interface SourceConfig {
 }
 
 export interface EngagementMetrics {
+  // Reddit, Hacker News
   upvotes?: number;
   downvotes?: number;
   comments?: number;
   shares?: number;
+  // YouTube
   views?: number;
+  likes?: number;
+  // GitHub
   stars?: number;
   forks?: number;
+  // Hugging Face
+  downloads?: number;
+  // Medium
+  claps?: number;
+  responses?: number;
 }
 
 export interface ContentItem {
@@ -54,6 +63,8 @@ export interface ContentItem {
   engagement?: EngagementMetrics;
   // Calculated trending score (0-100)
   trendingScore?: number;
+  // Engagement change per hour
+  velocityScore?: number;
   // Keywords that matched for boosting
   matchedKeywords?: string[];
 }
@@ -66,6 +77,20 @@ export interface MetricPoint {
 }
 
 export type TimeRange = '1h' | '12h' | '24h' | '48h' | '7d';
+
+export type FeedMode = 'hot' | 'rising' | 'top';
+
+export const FEED_MODE_LABELS: Record<FeedMode, string> = {
+  hot: 'Hot',
+  rising: 'Rising',
+  top: 'Top',
+};
+
+export const FEED_MODE_DESCRIPTIONS: Record<FeedMode, string> = {
+  hot: 'High engagement + recent',
+  rising: 'Gaining momentum fast',
+  top: 'Highest engagement',
+};
 
 export interface UserSettings {
   timeRange: TimeRange;
