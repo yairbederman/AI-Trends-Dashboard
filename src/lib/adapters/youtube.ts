@@ -20,6 +20,22 @@ interface YouTubeResponse {
     error?: { message: string };
 }
 
+interface YouTubeVideoStatistics {
+    viewCount?: string;
+    likeCount?: string;
+    commentCount?: string;
+}
+
+interface YouTubeVideoItem {
+    id: string;
+    statistics?: YouTubeVideoStatistics;
+}
+
+interface YouTubeVideosResponse {
+    items: YouTubeVideoItem[];
+    error?: { message: string };
+}
+
 
 
 /**
@@ -78,20 +94,38 @@ export class YouTubeAdapter extends BaseAdapter {
                 return [];
             }
 
+            // Extract video IDs for statistics fetch
+            const videoIds = data.items
+                .filter((item) => item.id.videoId)
+                .map((item) => item.id.videoId as string);
+
+            // Fetch engagement statistics for all videos (batched)
+            const statsMap = await this.fetchVideoStatistics(videoIds);
+
             const items = data.items
                 .filter((item) => item.id.videoId)
-                .map((item) => ({
-                    id: createContentId(this.source.id, `https://youtube.com/watch?v=${item.id.videoId}`),
-                    sourceId: this.source.id,
-                    title: this.decodeHtmlEntities(item.snippet.title),
-                    description: this.truncate(item.snippet.description, 200),
-                    url: `https://www.youtube.com/watch?v=${item.id.videoId}`,
-                    imageUrl: item.snippet.thumbnails.medium?.url || item.snippet.thumbnails.high?.url,
-                    publishedAt: new Date(item.snippet.publishedAt),
-                    fetchedAt: new Date(),
-                    author: item.snippet.channelTitle,
-                    tags: ['youtube', 'video'],
-                }));
+                .map((item) => {
+                    const videoId = item.id.videoId as string;
+                    const stats = statsMap.get(videoId);
+
+                    return {
+                        id: createContentId(this.source.id, `https://youtube.com/watch?v=${videoId}`),
+                        sourceId: this.source.id,
+                        title: this.decodeHtmlEntities(item.snippet.title),
+                        description: this.truncate(item.snippet.description, 200),
+                        url: `https://www.youtube.com/watch?v=${videoId}`,
+                        imageUrl: item.snippet.thumbnails.medium?.url || item.snippet.thumbnails.high?.url,
+                        publishedAt: new Date(item.snippet.publishedAt),
+                        fetchedAt: new Date(),
+                        author: item.snippet.channelTitle,
+                        tags: ['youtube', 'video'],
+                        engagement: stats ? {
+                            views: stats.views,
+                            likes: stats.likes,
+                            comments: stats.comments,
+                        } : undefined,
+                    };
+                });
 
             // Double check filtering (API should handle it but good to be safe for consistency)
             return this.filterByTimeRange(items, options?.timeRange);
@@ -99,6 +133,53 @@ export class YouTubeAdapter extends BaseAdapter {
             console.error('Failed to fetch YouTube:', error);
             return [];
         }
+    }
+
+    /**
+     * Fetch video statistics (views, likes, comments) for a batch of video IDs
+     * YouTube API allows up to 50 video IDs per request
+     */
+    private async fetchVideoStatistics(
+        videoIds: string[]
+    ): Promise<Map<string, { views: number; likes: number; comments: number }>> {
+        const statsMap = new Map<string, { views: number; likes: number; comments: number }>();
+
+        if (videoIds.length === 0) {
+            return statsMap;
+        }
+
+        try {
+            // Batch video IDs (max 50 per request)
+            const batchSize = 50;
+            for (let i = 0; i < videoIds.length; i += batchSize) {
+                const batch = videoIds.slice(i, i + batchSize);
+                const idsParam = batch.join(',');
+
+                const url = `${this.baseUrl}/videos?part=statistics&id=${idsParam}&key=${this.apiKey}`;
+                const response = await fetch(url);
+                const data: YouTubeVideosResponse = await response.json();
+
+                if (data.error) {
+                    console.error('YouTube statistics API error:', data.error.message);
+                    continue;
+                }
+
+                for (const video of data.items) {
+                    if (video.statistics) {
+                        statsMap.set(video.id, {
+                            views: parseInt(video.statistics.viewCount || '0', 10),
+                            likes: parseInt(video.statistics.likeCount || '0', 10),
+                            comments: parseInt(video.statistics.commentCount || '0', 10),
+                        });
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Failed to fetch YouTube statistics:', error);
+            // Return empty map on error - videos will still be returned without stats
+        }
+
+        return statsMap;
     }
 
     private truncate(text: string, maxLength: number): string {
