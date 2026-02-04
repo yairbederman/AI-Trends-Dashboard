@@ -1,13 +1,15 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import useSWR from 'swr';
-import { ContentItem, SourceCategory } from '@/types';
+import { ContentItem, SourceCategory, TimeRange, FeedMode } from '@/types';
 import { ContentCard } from '@/components/dashboard/ContentCard';
 import { SourceTabs } from '@/components/dashboard/SourceTabs';
 import { TrendCharts } from '@/components/dashboard/TrendCharts';
+import { TimeRangeChips } from './TimeRangeChips';
+import { FeedModeSelector } from './FeedModeSelector';
 import { useSettings } from '@/lib/contexts/SettingsContext';
-import { RefreshCw, Settings, Sparkles, TrendingUp, AlertTriangle, Flame, Clock } from 'lucide-react';
+import { Settings, Sparkles, TrendingUp, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 
 interface DashboardClientProps {
@@ -36,28 +38,24 @@ const CATEGORIES: SourceCategory[] = [
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
-type SortMode = 'trending' | 'newest';
-
 export function DashboardClient({ initialItems }: DashboardClientProps) {
     const [activeCategory, setActiveCategory] = useState<SourceCategory | 'all'>('all');
-    const [manualRefresh, setManualRefresh] = useState(false);
-    const [sortMode, setSortMode] = useState<SortMode>('trending');
-    const { enabledSources, isSourceEnabled, timeRange } = useSettings();
+    const [timeRange, setTimeRange] = useState<TimeRange>('24h');
+    const [feedMode, setFeedMode] = useState<FeedMode>('hot');
+    const { isSourceEnabled } = useSettings();
 
-    // Build API URL with timeRange and category
+    // Build API URL with time range, category, and feed mode
     const apiUrl = useMemo(() => {
         const params = new URLSearchParams();
+        params.set('timeRange', timeRange);
+        params.set('mode', feedMode);
         if (activeCategory !== 'all') {
             params.set('category', activeCategory);
         }
-        params.set('timeRange', timeRange);
-        if (manualRefresh) {
-            params.set('refresh', 'true');
-        }
         return `/api/feed?${params.toString()}`;
-    }, [activeCategory, timeRange, manualRefresh]);
+    }, [timeRange, feedMode, activeCategory]);
 
-    const { data, error, isValidating, mutate: refreshData } = useSWR<FeedResponse>(
+    const { data, error, mutate: refreshData } = useSWR<FeedResponse>(
         apiUrl,
         fetcher,
         {
@@ -68,36 +66,18 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
                 fetchedAt: new Date().toISOString(),
             },
             revalidateOnFocus: false,
-            revalidateOnMount: false, // Don't immediately refetch - use server data
+            refreshInterval: 5 * 60 * 1000, // Auto-refresh every 5 minutes
             dedupingInterval: 60000, // 1 minute
         }
     );
 
-    // Filter items based on enabled sources and apply sorting
+    // Filter items based on enabled sources (sorting is done by API based on feedMode)
     const allItems = data?.items || [];
     const items = useMemo(() => {
-        const filtered = allItems.filter((item) => isSourceEnabled(item.sourceId));
+        return allItems.filter((item) => isSourceEnabled(item.sourceId));
+    }, [allItems, isSourceEnabled]);
 
-        if (sortMode === 'newest') {
-            // Sort by publish date (newest first)
-            return [...filtered].sort((a, b) =>
-                new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
-            );
-        }
-
-        // Default: sort by trending score (already sorted from API, but ensure consistency)
-        return [...filtered].sort((a, b) =>
-            (b.trendingScore || 0) - (a.trendingScore || 0)
-        );
-    }, [allItems, isSourceEnabled, sortMode]);
-
-    const lastUpdated = data?.fetchedAt ? new Date(data.fetchedAt) : null;
     const hasFailures = data?.failures && data.failures.length > 0;
-
-    const handleRefresh = useCallback(() => {
-        setManualRefresh(true);
-        refreshData().finally(() => setManualRefresh(false));
-    }, [refreshData]);
 
     return (
         <div className="dashboard">
@@ -108,38 +88,8 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
                         <h1>AI Trends</h1>
                     </div>
                     <div className="header-actions">
-                        <div className="sort-toggle" role="group" aria-label="Sort order">
-                            <button
-                                className={`sort-btn ${sortMode === 'trending' ? 'active' : ''}`}
-                                onClick={() => setSortMode('trending')}
-                                aria-pressed={sortMode === 'trending'}
-                            >
-                                <Flame size={14} aria-hidden="true" />
-                                Trending
-                            </button>
-                            <button
-                                className={`sort-btn ${sortMode === 'newest' ? 'active' : ''}`}
-                                onClick={() => setSortMode('newest')}
-                                aria-pressed={sortMode === 'newest'}
-                            >
-                                <Clock size={14} aria-hidden="true" />
-                                Newest
-                            </button>
-                        </div>
-                        {lastUpdated && (
-                            <span className="last-updated" aria-live="polite">
-                                Updated {lastUpdated.toLocaleTimeString()}
-                            </span>
-                        )}
-                        <button
-                            className="refresh-btn"
-                            onClick={handleRefresh}
-                            disabled={isValidating}
-                            aria-label={isValidating ? 'Refreshing feed...' : 'Refresh feed'}
-                            aria-busy={isValidating}
-                        >
-                            <RefreshCw className={isValidating ? 'spinning' : ''} size={20} aria-hidden="true" />
-                        </button>
+                        <FeedModeSelector activeMode={feedMode} onModeChange={setFeedMode} />
+                        <TimeRangeChips activeRange={timeRange} onRangeChange={setTimeRange} />
                         <Link href="/settings" className="settings-btn" aria-label="Open settings">
                             <Settings size={20} aria-hidden="true" />
                         </Link>
@@ -165,7 +115,7 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
                 {error ? (
                     <div className="error-message" role="alert">
                         <p>Failed to load content</p>
-                        <button onClick={handleRefresh} aria-label="Retry loading content">
+                        <button onClick={() => refreshData()} aria-label="Retry loading content">
                             Try Again
                         </button>
                     </div>
@@ -173,7 +123,7 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
                     <div className="empty-state" role="status">
                         <TrendingUp size={48} aria-hidden="true" />
                         <h2>No items found</h2>
-                        <p>Try selecting a different category or refresh the feed.</p>
+                        <p>Try selecting a different category or feed mode.</p>
                     </div>
                 ) : (
                     <>

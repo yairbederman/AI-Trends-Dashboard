@@ -27,7 +27,11 @@ async function fetchAllContent(): Promise<ContentItem[]> {
   // Check cache first
   const cached = await getCachedContent(sourceIds, timeRange);
   if (cached && !cached.isStale) {
-    return cached.items;
+    // Re-score cached items (scores depend on recency which changes over time)
+    const priorities = await getAllSourcePriorities();
+    const boostKeywords = await getBoostKeywords();
+    const scoringConfig: ScoringConfig = { priorities, boostKeywords };
+    return scoreAndSortItems(cached.items, scoringConfig);
   }
 
   // Fetch fresh content

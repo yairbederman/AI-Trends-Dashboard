@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { ArrowLeft, Check, X, RefreshCw, Moon, Sun, AlertCircle, Star, Sparkles, Plus, Trash2 } from 'lucide-react';
 import Link from 'next/link';
-import { SourceCategory, CATEGORY_LABELS, TimeRange, TIME_RANGES } from '@/types';
+import { SourceCategory, CATEGORY_LABELS } from '@/types';
 import { useSettings } from '@/lib/contexts/SettingsContext';
 
 interface SourceInfo {
@@ -13,6 +13,12 @@ interface SourceInfo {
     enabled: boolean;
     requiresKey: boolean;
     method: string;
+    // Quality tier info
+    qualityTier: number;
+    qualityTierLabel: string;
+    qualityBaseline: number;
+    engagementType: string;
+    hasEngagementMetrics: boolean;
 }
 
 interface CategoryData {
@@ -43,8 +49,6 @@ export default function SettingsPage() {
     const {
         theme,
         setTheme,
-        timeRange,
-        setTimeRange,
         enabledSources,
         toggleSource,
         enableCategory,
@@ -147,24 +151,6 @@ export default function SettingsPage() {
                 {/* Global Settings */}
                 <section className="settings-section">
                     <h2>Global Settings</h2>
-
-                    <div className="setting-row">
-                        <div className="setting-label">
-                            <span>Time Range</span>
-                            <span className="setting-hint">Filter content by historical depth</span>
-                        </div>
-                        <select
-                            value={timeRange}
-                            onChange={(e) => setTimeRange(e.target.value as TimeRange)}
-                            className="setting-select"
-                        >
-                            {Object.entries(TIME_RANGES).map(([value, label]) => (
-                                <option key={value} value={value}>
-                                    {label}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
 
                     <div className="setting-row">
                         <div className="setting-label">
@@ -306,6 +292,13 @@ export default function SettingsPage() {
                                                 {source.enabled ? 'API Key ✓' : 'Needs API Key'}
                                             </span>
                                         )}
+                                        <span className={`tier-badge tier-${source.qualityTier}`} title={`Quality Tier ${source.qualityTier}: ${source.qualityTierLabel} (baseline: ${(source.qualityBaseline * 100).toFixed(0)}%)`}>
+                                            {source.hasEngagementMetrics ? (
+                                                <>T{source.qualityTier} + {source.engagementType}</>
+                                            ) : (
+                                                <>Tier {source.qualityTier}</>
+                                            )}
+                                        </span>
                                         <span className="method-badge">{source.method.toUpperCase()}</span>
                                     </div>
                                     <div className="source-actions">

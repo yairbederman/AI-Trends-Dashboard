@@ -1,8 +1,11 @@
 'use client';
 
-import { ContentItem } from '@/types';
+import { ContentItem, EngagementMetrics } from '@/types';
 import { formatDistanceToNow } from 'date-fns';
-import { ExternalLink, TrendingUp, Flame, MessageCircle, Star, ArrowUp, Zap } from 'lucide-react';
+import {
+    ExternalLink, TrendingUp, Flame, MessageCircle, Star, ArrowUp, Zap,
+    Eye, ThumbsUp, GitFork, Download, Hand, Reply
+} from 'lucide-react';
 
 interface ContentCardProps {
     item: ContentItem;
@@ -22,21 +25,13 @@ function getScoreInfo(score: number): { label: string; className: string } {
     return { label: '', className: '' };
 }
 
-function formatEngagement(engagement: ContentItem['engagement']): string[] {
-    if (!engagement) return [];
-    const parts: string[] = [];
-
-    if (engagement.upvotes !== undefined) {
-        parts.push(`${formatNumber(engagement.upvotes)} pts`);
-    }
-    if (engagement.stars !== undefined) {
-        parts.push(`${formatNumber(engagement.stars)} stars`);
-    }
-    if (engagement.comments !== undefined) {
-        parts.push(`${engagement.comments} comments`);
-    }
-
-    return parts;
+function getPerformanceLevel(score: number | undefined): { level: string; className: string } {
+    if (!score) return { level: '', className: '' };
+    if (score >= 80) return { level: 'exceptional', className: 'perf-exceptional' };
+    if (score >= 60) return { level: 'high', className: 'perf-high' };
+    if (score >= 40) return { level: 'good', className: 'perf-good' };
+    if (score >= 20) return { level: 'moderate', className: 'perf-moderate' };
+    return { level: 'low', className: 'perf-low' };
 }
 
 function formatNumber(num: number): string {
@@ -45,15 +40,74 @@ function formatNumber(num: number): string {
     return num.toString();
 }
 
+interface MetricDisplay {
+    icon: typeof Eye;
+    value: number;
+    label: string;
+    priority: number; // For sorting - lower = more important
+}
+
+function getEngagementMetrics(engagement: EngagementMetrics | undefined): MetricDisplay[] {
+    if (!engagement) return [];
+
+    const metrics: MetricDisplay[] = [];
+
+    // Primary metrics (higher priority)
+    if (engagement.views !== undefined && engagement.views > 0) {
+        metrics.push({ icon: Eye, value: engagement.views, label: 'views', priority: 1 });
+    }
+    if (engagement.upvotes !== undefined && engagement.upvotes > 0) {
+        metrics.push({ icon: ArrowUp, value: engagement.upvotes, label: 'points', priority: 2 });
+    }
+    if (engagement.stars !== undefined && engagement.stars > 0) {
+        metrics.push({ icon: Star, value: engagement.stars, label: 'stars', priority: 2 });
+    }
+    if (engagement.likes !== undefined && engagement.likes > 0) {
+        metrics.push({ icon: ThumbsUp, value: engagement.likes, label: 'likes', priority: 3 });
+    }
+    if (engagement.claps !== undefined && engagement.claps > 0) {
+        metrics.push({ icon: Hand, value: engagement.claps, label: 'claps', priority: 3 });
+    }
+    if (engagement.downloads !== undefined && engagement.downloads > 0) {
+        metrics.push({ icon: Download, value: engagement.downloads, label: 'downloads', priority: 3 });
+    }
+
+    // Secondary metrics
+    if (engagement.forks !== undefined && engagement.forks > 0) {
+        metrics.push({ icon: GitFork, value: engagement.forks, label: 'forks', priority: 4 });
+    }
+    if (engagement.comments !== undefined && engagement.comments > 0) {
+        metrics.push({ icon: MessageCircle, value: engagement.comments, label: 'comments', priority: 5 });
+    }
+    if (engagement.responses !== undefined && engagement.responses > 0) {
+        metrics.push({ icon: Reply, value: engagement.responses, label: 'responses', priority: 5 });
+    }
+
+    // Sort by priority and limit display
+    return metrics.sort((a, b) => a.priority - b.priority).slice(0, 4);
+}
+
 export function ContentCard({ item }: ContentCardProps) {
     const publishedDate = new Date(item.publishedAt);
     const timeAgo = formatDistanceToNow(publishedDate, { addSuffix: true });
     const scoreInfo = item.trendingScore ? getScoreInfo(item.trendingScore) : null;
-    const engagementParts = formatEngagement(item.engagement);
+    const performanceInfo = getPerformanceLevel(item.trendingScore);
+    const engagementMetrics = getEngagementMetrics(item.engagement);
     const isMustRead = item.matchedKeywords && item.matchedKeywords.length > 0;
+    const hasEngagement = engagementMetrics.length > 0;
 
     return (
         <article className={`content-card ${isMustRead ? 'must-read' : ''}`} aria-labelledby={`title-${item.id}`}>
+            {/* Performance indicator bar at top */}
+            {item.trendingScore !== undefined && item.trendingScore > 0 && (
+                <div className={`performance-bar ${performanceInfo.className}`}>
+                    <div
+                        className="performance-fill"
+                        style={{ width: `${Math.min(item.trendingScore, 100)}%` }}
+                    />
+                </div>
+            )}
+
             <div className="content-card-header">
                 <div className="content-card-meta">
                     <span className="content-source">{formatSourceName(item.sourceId)}</span>
@@ -100,26 +154,17 @@ export function ContentCard({ item }: ContentCardProps) {
                     <span className="content-author">by {item.author}</span>
                 )}
 
-                {engagementParts.length > 0 && (
+                {hasEngagement && (
                     <div className="content-engagement">
-                        {item.engagement?.upvotes !== undefined && (
-                            <span className="engagement-item" title="Upvotes">
-                                <ArrowUp size={12} />
-                                {formatNumber(item.engagement.upvotes)}
-                            </span>
-                        )}
-                        {item.engagement?.stars !== undefined && (
-                            <span className="engagement-item" title="Stars">
-                                <Star size={12} />
-                                {formatNumber(item.engagement.stars)}
-                            </span>
-                        )}
-                        {item.engagement?.comments !== undefined && (
-                            <span className="engagement-item" title="Comments">
-                                <MessageCircle size={12} />
-                                {item.engagement.comments}
-                            </span>
-                        )}
+                        {engagementMetrics.map((metric, i) => {
+                            const Icon = metric.icon;
+                            return (
+                                <span key={i} className="engagement-item" title={metric.label}>
+                                    <Icon size={12} />
+                                    {formatNumber(metric.value)}
+                                </span>
+                            );
+                        })}
                     </div>
                 )}
             </div>

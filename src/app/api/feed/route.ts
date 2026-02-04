@@ -2,16 +2,42 @@ import { NextResponse } from 'next/server';
 import { getEnabledSourcesFiltered } from '@/lib/config/sources';
 import { createAdapter } from '@/lib/adapters';
 import { deduplicateItems } from '@/lib/adapters/base';
-import { ContentItem, TimeRange } from '@/types';
+import { ContentItem, TimeRange, FeedMode } from '@/types';
 import {
     getEnabledSourceIds,
     getSetting,
+    updateSetting,
     getCachedContent,
     cacheContent,
+    cleanOldContent,
     getAllSourcePriorities,
     getBoostKeywords,
 } from '@/lib/db/actions';
-import { scoreAndSortItems, ScoringConfig } from '@/lib/scoring';
+import { scoreAndSortItems, scoreItemsByFeedMode, ScoringConfig } from '@/lib/scoring';
+import { getBulkVelocities, cleanupOldSnapshots } from '@/lib/db/engagement-tracker';
+
+// Run cleanup once per day max
+const CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
+
+async function maybeRunCleanup() {
+    try {
+        const lastCleanup = await getSetting<string>('lastCleanupTime', '');
+        const lastTime = lastCleanup ? new Date(lastCleanup).getTime() : 0;
+
+        if (Date.now() - lastTime > CLEANUP_INTERVAL_MS) {
+            // Run cleanup in background (don't await)
+            Promise.all([
+                cleanOldContent(7),        // Keep 7 days of content
+                cleanupOldSnapshots(7),    // Keep 7 days of snapshots
+            ]).then(([contentDeleted, snapshotsDeleted]) => {
+                console.log(`Cleanup: removed ${contentDeleted} old items, ${snapshotsDeleted} old snapshots`);
+            });
+            await updateSetting('lastCleanupTime', new Date().toISOString());
+        }
+    } catch (error) {
+        console.error('Cleanup check failed:', error);
+    }
+}
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -22,11 +48,14 @@ interface AdapterFailure {
 }
 
 export async function GET(request: Request) {
+    // Trigger cleanup if needed (runs in background, once per day)
+    maybeRunCleanup();
+
     const { searchParams } = new URL(request.url);
     const category = searchParams.get('category');
     const sourceId = searchParams.get('source');
     const queryTimeRange = searchParams.get('timeRange') as TimeRange | null;
-    const forceRefresh = searchParams.get('refresh') === 'true';
+    const feedMode = (searchParams.get('mode') as FeedMode) || 'hot';
 
     try {
         // Get user's time range setting from DB, with query param override
@@ -47,18 +76,25 @@ export async function GET(request: Request) {
 
         const sourceIds = sources.map(s => s.id);
 
-        // Check cache first (unless force refresh)
-        if (!forceRefresh) {
-            const cached = await getCachedContent(sourceIds, timeRange);
-            if (cached && !cached.isStale) {
-                return NextResponse.json({
-                    success: true,
-                    count: cached.items.length,
-                    items: cached.items,
-                    fetchedAt: cached.fetchedAt.toISOString(),
-                    cached: true,
-                });
-            }
+        // Check cache first
+        const cached = await getCachedContent(sourceIds, timeRange);
+        if (cached && !cached.isStale) {
+            // Get velocities for Hot/Rising modes
+            const velocities = (feedMode === 'hot' || feedMode === 'rising')
+                ? await getBulkVelocities(cached.items.map(i => i.id))
+                : new Map<string, number>();
+
+            // Score and sort based on feed mode
+            const scoredItems = scoreItemsByFeedMode(cached.items, velocities, feedMode);
+
+            return NextResponse.json({
+                success: true,
+                count: scoredItems.length,
+                items: scoredItems,
+                fetchedAt: cached.fetchedAt.toISOString(),
+                cached: true,
+                mode: feedMode,
+            });
         }
 
         // Create adapters for each source
@@ -91,20 +127,16 @@ export async function GET(request: Request) {
         // Deduplicate items
         const uniqueItems = deduplicateItems(allItems);
 
-        // Get scoring configuration
-        const priorities = await getAllSourcePriorities();
-        const boostKeywords = await getBoostKeywords();
+        // Cache the results first (before scoring, as base items)
+        await cacheContent(uniqueItems, sourceIds, timeRange);
 
-        const scoringConfig: ScoringConfig = {
-            priorities,
-            boostKeywords,
-        };
+        // Get velocities for Hot/Rising modes
+        const velocities = (feedMode === 'hot' || feedMode === 'rising')
+            ? await getBulkVelocities(uniqueItems.map(i => i.id))
+            : new Map<string, number>();
 
-        // Score and sort items by trending score
-        const scoredItems = scoreAndSortItems(uniqueItems, scoringConfig);
-
-        // Cache the results
-        await cacheContent(scoredItems, sourceIds, timeRange);
+        // Score and sort based on feed mode
+        const scoredItems = scoreItemsByFeedMode(uniqueItems, velocities, feedMode);
 
         return NextResponse.json({
             success: true,
@@ -112,6 +144,7 @@ export async function GET(request: Request) {
             items: scoredItems,
             fetchedAt: new Date().toISOString(),
             cached: false,
+            mode: feedMode,
             failures: failures.length > 0 ? failures : undefined,
         });
     } catch (error) {
