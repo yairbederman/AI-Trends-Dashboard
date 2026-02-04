@@ -1,7 +1,18 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npx drizzle-kit push)"
+      "Bash(npx drizzle-kit push)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run dev:*)",
+      "Bash(curl:*)",
+      "Bash(node:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm ls:*)",
+      "Bash(npm install:*)",
+      "Bash(cat:*)",
+      "Bash(timeout /t 5 /nobreak)",
+      "Bash(findstr:*)",
+      "WebFetch(domain:localhost)"
     ]
   }
 }
