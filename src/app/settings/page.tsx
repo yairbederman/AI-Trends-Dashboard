@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Check, X, RefreshCw, Moon, Sun, AlertCircle, Star, Sparkles, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Check, X, RefreshCw, Moon, Sun, AlertCircle, Star, Sparkles, Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import Link from 'next/link';
 import { SourceCategory, CATEGORY_LABELS } from '@/types';
 import { useSettings } from '@/lib/contexts/SettingsContext';
@@ -44,6 +44,7 @@ export default function SettingsPage() {
     const [categories, setCategories] = useState<CategoryData[]>([]);
     const [loading, setLoading] = useState(true);
     const [newKeyword, setNewKeyword] = useState('');
+    const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
 
     // Use shared context
     const {
@@ -111,6 +112,16 @@ export default function SettingsPage() {
             e.preventDefault();
             handleAddKeyword();
         }
+    };
+
+    const toggleCollapse = (category: string) => {
+        const newExpanded = new Set(expandedCategories);
+        if (newExpanded.has(category)) {
+            newExpanded.delete(category);
+        } else {
+            newExpanded.add(category);
+        }
+        setExpandedCategories(newExpanded);
     };
 
     if (loading) {
@@ -259,9 +270,26 @@ export default function SettingsPage() {
 
                 {/* Sources by Category */}
                 {categories.map((cat) => (
-                    <section key={cat.category} className="settings-section">
+                    <section
+                        key={cat.category}
+                        className={`settings-section ${!expandedCategories.has(cat.category) ? 'collapsed' : ''}`}
+                    >
                         <div className="category-header">
-                            <h2>{CATEGORY_LABELS[cat.category]}</h2>
+                            <button
+                                className="category-title-btn"
+                                onClick={() => toggleCollapse(cat.category)}
+                                aria-expanded={expandedCategories.has(cat.category)}
+                            >
+                                {expandedCategories.has(cat.category) ? (
+                                    <ChevronUp size={20} className="category-chevron" />
+                                ) : (
+                                    <ChevronDown size={20} className="category-chevron" />
+                                )}
+                                <h2>{CATEGORY_LABELS[cat.category]}</h2>
+                                <span className="category-count">
+                                    {cat.sources.filter(s => enabledSources.has(s.id)).length}/{cat.sources.length}
+                                </span>
+                            </button>
                             <div className="category-actions">
                                 <button
                                     className="category-btn enable"
@@ -278,61 +306,63 @@ export default function SettingsPage() {
                             </div>
                         </div>
 
-                        <div className="source-list">
-                            {cat.sources.map((source) => (
-                                <div
-                                    key={source.id}
-                                    className={`source-item ${enabledSources.has(source.id) ? 'enabled' : 'disabled'}`}
-                                >
-                                    <div className="source-info">
-                                        <span className="source-icon">{source.icon}</span>
-                                        <span className="source-name">{source.name}</span>
-                                        {source.requiresKey && (
-                                            <span className={`api-badge ${source.enabled ? 'has-key' : 'needs-key'}`}>
-                                                {source.enabled ? 'API Key ✓' : 'Needs API Key'}
+                        {expandedCategories.has(cat.category) && (
+                            <div className="source-list">
+                                {cat.sources.map((source) => (
+                                    <div
+                                        key={source.id}
+                                        className={`source-item ${enabledSources.has(source.id) ? 'enabled' : 'disabled'}`}
+                                    >
+                                        <div className="source-info">
+                                            <span className="source-icon">{source.icon}</span>
+                                            <span className="source-name">{source.name}</span>
+                                            {source.requiresKey && (
+                                                <span className={`api-badge ${source.enabled ? 'has-key' : 'needs-key'}`}>
+                                                    {source.enabled ? 'API Key ✓' : 'Needs API Key'}
+                                                </span>
+                                            )}
+                                            <span className={`tier-badge tier-${source.qualityTier}`} title={`Quality Tier ${source.qualityTier}: ${source.qualityTierLabel} (baseline: ${(source.qualityBaseline * 100).toFixed(0)}%)`}>
+                                                {source.hasEngagementMetrics ? (
+                                                    <>T{source.qualityTier} + {source.engagementType}</>
+                                                ) : (
+                                                    <>Tier {source.qualityTier}</>
+                                                )}
                                             </span>
-                                        )}
-                                        <span className={`tier-badge tier-${source.qualityTier}`} title={`Quality Tier ${source.qualityTier}: ${source.qualityTierLabel} (baseline: ${(source.qualityBaseline * 100).toFixed(0)}%)`}>
-                                            {source.hasEngagementMetrics ? (
-                                                <>T{source.qualityTier} + {source.engagementType}</>
-                                            ) : (
-                                                <>Tier {source.qualityTier}</>
-                                            )}
-                                        </span>
-                                        <span className="method-badge">{source.method.toUpperCase()}</span>
-                                    </div>
-                                    <div className="source-actions">
-                                        <div className="priority-selector" title="Source priority">
-                                            <Star size={14} className="priority-icon" />
-                                            <select
-                                                value={getSourcePriority(source.id)}
-                                                onChange={(e) => setSourcePriority(source.id, Number(e.target.value))}
-                                                className="priority-select"
-                                                aria-label={`Priority for ${source.name}`}
-                                            >
-                                                {[1, 2, 3, 4, 5].map((p) => (
-                                                    <option key={p} value={p}>
-                                                        {p} - {PRIORITY_LABELS[p]}
-                                                    </option>
-                                                ))}
-                                            </select>
+                                            <span className="method-badge">{source.method.toUpperCase()}</span>
                                         </div>
-                                        <button
-                                            className="toggle-btn"
-                                            onClick={() => toggleSource(source.id)}
-                                            disabled={source.requiresKey && !source.enabled}
-                                            aria-label={enabledSources.has(source.id) ? `Disable ${source.name}` : `Enable ${source.name}`}
-                                        >
-                                            {enabledSources.has(source.id) ? (
-                                                <Check size={18} />
-                                            ) : (
-                                                <X size={18} />
-                                            )}
-                                        </button>
+                                        <div className="source-actions">
+                                            <div className="priority-selector" title="Source priority">
+                                                <Star size={14} className="priority-icon" />
+                                                <select
+                                                    value={getSourcePriority(source.id)}
+                                                    onChange={(e) => setSourcePriority(source.id, Number(e.target.value))}
+                                                    className="priority-select"
+                                                    aria-label={`Priority for ${source.name}`}
+                                                >
+                                                    {[1, 2, 3, 4, 5].map((p) => (
+                                                        <option key={p} value={p}>
+                                                            {p} - {PRIORITY_LABELS[p]}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <button
+                                                className="toggle-btn"
+                                                onClick={() => toggleSource(source.id)}
+                                                disabled={source.requiresKey && !source.enabled}
+                                                aria-label={enabledSources.has(source.id) ? `Disable ${source.name}` : `Enable ${source.name}`}
+                                            >
+                                                {enabledSources.has(source.id) ? (
+                                                    <Check size={18} />
+                                                ) : (
+                                                    <X size={18} />
+                                                )}
+                                            </button>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
-                        </div>
+                                ))}
+                            </div>
+                        )}
                     </section>
                 ))}
             </main>

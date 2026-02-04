@@ -1,14 +1,15 @@
 'use client';
 
 import { FeedMode, FEED_MODE_LABELS, FEED_MODE_DESCRIPTIONS } from '@/types';
-import { LiquidButton, type ColorVariant } from '@/components/ui/liquid-glass-button';
 import { Flame, TrendingUp, Trophy } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { motion } from 'framer-motion';
 
 interface FeedModeSelectorProps {
   activeMode: FeedMode;
   onModeChange: (mode: FeedMode) => void;
 }
+
+const MODES: FeedMode[] = ['hot', 'rising', 'top'];
 
 const MODE_ICONS: Record<FeedMode, typeof Flame> = {
   hot: Flame,
@@ -16,34 +17,50 @@ const MODE_ICONS: Record<FeedMode, typeof Flame> = {
   top: Trophy,
 };
 
-const MODE_COLORS: Record<FeedMode, ColorVariant> = {
-  hot: 'error',      // Red/orange tones for hot
-  rising: 'success', // Green tones for rising
-  top: 'gold',       // Golden tones for top
-};
-
-const MODE_INACTIVE_COLORS: ColorVariant = 'default'; // Subtle glass gray when inactive
-
 export function FeedModeSelector({ activeMode, onModeChange }: FeedModeSelectorProps) {
   return (
-    <div className="flex items-center gap-3 p-1" role="tablist" aria-label="Feed mode">
-      {(['hot', 'rising', 'top'] as FeedMode[]).map((mode) => {
+    <div
+      className="flex items-center gap-3"
+      role="tablist"
+      aria-label="Feed mode"
+    >
+      {MODES.map((mode) => {
         const Icon = MODE_ICONS[mode];
         const isActive = activeMode === mode;
 
         return (
-          <LiquidButton
+          <button
             key={mode}
             role="tab"
             aria-selected={isActive}
-            variant={isActive ? MODE_COLORS[mode] : MODE_INACTIVE_COLORS}
             onClick={() => onModeChange(mode)}
             title={FEED_MODE_DESCRIPTIONS[mode]}
-            className="gap-2 !h-10 !px-5"
+            className={`relative flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium transition-colors duration-300 outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)] ${isActive
+                ? 'text-[var(--accent-primary)] drop-shadow-[0_0_8px_rgba(var(--accent-primary-rgb),0.5)]'
+                : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'
+              }`}
           >
-            <Icon size={16} className="shrink-0" aria-hidden="true" />
-            <span className="font-semibold">{FEED_MODE_LABELS[mode]}</span>
-          </LiquidButton>
+            {/* Inactive Border (Visible only when not active) */}
+            {!isActive && (
+              <div className="absolute inset-0 rounded-full border border-white/10" />
+            )}
+
+            {/* Active Glowing Ring (Animated) */}
+            {isActive && (
+              <motion.div
+                layoutId="activeModeRing"
+                className="absolute inset-0 z-10 rounded-full border-2 border-[var(--accent-primary)] shadow-[0_0_15px_var(--accent-glow)] bg-transparent"
+                initial={false}
+                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              />
+            )}
+
+            {/* Content */}
+            <span className="relative z-20 flex items-center gap-2">
+              <Icon size={14} className={isActive ? "text-[var(--accent-primary)]" : "text-gray-500"} aria-hidden="true" />
+              <span className="hidden sm:inline">{FEED_MODE_LABELS[mode]}</span>
+            </span>
+          </button>
         );
       })}
     </div>

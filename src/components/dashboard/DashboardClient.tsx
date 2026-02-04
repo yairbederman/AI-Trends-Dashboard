@@ -6,10 +6,11 @@ import { ContentItem, SourceCategory, TimeRange, FeedMode } from '@/types';
 import { ContentCard } from '@/components/dashboard/ContentCard';
 import { SourceTabs } from '@/components/dashboard/SourceTabs';
 import { TrendCharts } from '@/components/dashboard/TrendCharts';
-import { TimeRangeChips } from './TimeRangeChips';
+import { TimeRangeSelector } from './TimeRangeSelector';
 import { FeedModeSelector } from './FeedModeSelector';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useSettings } from '@/lib/contexts/SettingsContext';
-import { Settings, Sparkles, TrendingUp, AlertTriangle } from 'lucide-react';
+import { Settings, Sparkles, TrendingUp, AlertTriangle, LayoutDashboard, LayoutList } from 'lucide-react';
 import Link from 'next/link';
 
 interface DashboardClientProps {
@@ -39,7 +40,7 @@ const CATEGORIES: SourceCategory[] = [
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export function DashboardClient({ initialItems }: DashboardClientProps) {
-    const [activeCategory, setActiveCategory] = useState<SourceCategory | 'all'>('all');
+    const [activeCategory, setActiveCategory] = useState<SourceCategory | 'all' | 'dashboard'>('dashboard');
     const [timeRange, setTimeRange] = useState<TimeRange>('24h');
     const [feedMode, setFeedMode] = useState<FeedMode>('hot');
     const { isSourceEnabled } = useSettings();
@@ -49,7 +50,7 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
         const params = new URLSearchParams();
         params.set('timeRange', timeRange);
         params.set('mode', feedMode);
-        if (activeCategory !== 'all') {
+        if (activeCategory !== 'all' && activeCategory !== 'dashboard') {
             params.set('category', activeCategory);
         }
         return `/api/feed?${params.toString()}`;
@@ -87,9 +88,10 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
                         <Sparkles className="logo-icon" aria-hidden="true" />
                         <h1>AI Trends</h1>
                     </div>
+
                     <div className="header-actions">
                         <FeedModeSelector activeMode={feedMode} onModeChange={setFeedMode} />
-                        <TimeRangeChips activeRange={timeRange} onRangeChange={setTimeRange} />
+                        <TimeRangeSelector activeRange={timeRange} onRangeChange={setTimeRange} />
                         <Link href="/settings" className="settings-btn" aria-label="Open settings">
                             <Settings size={20} aria-hidden="true" />
                         </Link>
@@ -127,12 +129,15 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
                     </div>
                 ) : (
                     <>
-                        {activeCategory === 'all' && <TrendCharts items={items} />}
-                        <div className="content-grid" role="feed" aria-label="AI content feed">
-                            {items.map((item) => (
-                                <ContentCard key={item.id} item={item} />
-                            ))}
-                        </div>
+                        {activeCategory === 'dashboard' ? (
+                            <TrendCharts items={items} />
+                        ) : (
+                            <div className="content-grid" role="feed" aria-label="AI content feed">
+                                {items.map((item) => (
+                                    <ContentCard key={item.id} item={item} />
+                                ))}
+                            </div>
+                        )}
                     </>
                 )}
             </main>
