@@ -10,7 +10,8 @@ import { TimeRangeDropdown } from './TimeRangeDropdown';
 import { FeedModeSelector } from './FeedModeSelector';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useSettings } from '@/lib/contexts/SettingsContext';
-import { Settings, Sparkles, TrendingUp, AlertTriangle, LayoutDashboard, LayoutList } from 'lucide-react';
+import { Settings, Sparkles, TrendingUp, AlertTriangle, LayoutDashboard, LayoutList, Flame, Clock, Activity } from 'lucide-react';
+import { SOURCES } from '@/lib/config/sources';
 import Link from 'next/link';
 
 interface DashboardClientProps {
@@ -36,6 +37,10 @@ const CATEGORIES: SourceCategory[] = [
     'newsletters',
     'leaderboards',
 ];
+
+function formatSourceName(sourceId: string): string {
+    return sourceId.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+}
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -102,6 +107,41 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
         return allItems.filter((item) => isSourceEnabled(item.sourceId));
     }, [allItems, isSourceEnabled]);
 
+    const sourceToCategory = useMemo(() => {
+        const map: Record<string, string> = {};
+        SOURCES.forEach(s => { map[s.id] = s.category; });
+        return map;
+    }, []);
+
+    const categoryCounts = useMemo(() => {
+        const counts: Record<string, number> = {};
+        items.forEach(item => {
+            const cat = sourceToCategory[item.sourceId];
+            if (cat) counts[cat] = (counts[cat] || 0) + 1;
+        });
+        return counts;
+    }, [items, sourceToCategory]);
+
+    const kpiData = useMemo(() => {
+        if (items.length === 0) return null;
+        const topItem = items.reduce((best, item) =>
+            (item.trendingScore || 0) > (best.trendingScore || 0) ? item : best
+        , items[0]);
+        const sourceCounts: Record<string, number> = {};
+        items.forEach(item => { sourceCounts[item.sourceId] = (sourceCounts[item.sourceId] || 0) + 1; });
+        const topEntry = Object.entries(sourceCounts).sort((a, b) => b[1] - a[1])[0];
+        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+        const freshCount = items.filter(item => new Date(item.publishedAt) > oneHourAgo).length;
+        return {
+            total: items.length,
+            topScore: topItem?.trendingScore || 0,
+            topTitle: topItem?.title || '',
+            topSourceId: topEntry?.[0] || '',
+            topSourceCount: topEntry?.[1] || 0,
+            freshCount,
+        };
+    }, [items]);
+
     const hasFailures = data?.failures && data.failures.length > 0;
 
     return (
@@ -126,6 +166,8 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
                     categories={CATEGORIES}
                     activeCategory={activeCategory}
                     onCategoryChange={setActiveCategory}
+                    itemCounts={categoryCounts}
+                    totalCount={items.length}
                 />
             </header>
 
@@ -147,18 +189,49 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
                     </div>
                 ) : items.length === 0 ? (
                     <div className="empty-state" role="status">
-                        <TrendingUp size={48} aria-hidden="true" />
+                        <div className="empty-state-icon">
+                            <TrendingUp size={48} aria-hidden="true" />
+                        </div>
                         <h2>No items found</h2>
                         <p>Try selecting a different category or feed mode.</p>
                     </div>
                 ) : (
                     <>
                         {activeCategory === 'dashboard' ? (
-                            <TrendCharts items={items} />
+                            <>
+                                {kpiData && (
+                                    <div className="kpi-grid">
+                                        <div className="kpi-card kpi-total">
+                                            <div className="kpi-icon"><LayoutList size={20} aria-hidden="true" /></div>
+                                            <span className="kpi-label">Total Items</span>
+                                            <span className="kpi-value">{kpiData.total}</span>
+                                        </div>
+                                        <div className="kpi-card kpi-trending">
+                                            <div className="kpi-icon"><Flame size={20} aria-hidden="true" /></div>
+                                            <span className="kpi-label">Top Trending</span>
+                                            <span className="kpi-value">{kpiData.topScore}</span>
+                                            <span className="kpi-detail">{kpiData.topTitle.length > 40 ? kpiData.topTitle.slice(0, 40) + '…' : kpiData.topTitle}</span>
+                                        </div>
+                                        <div className="kpi-card kpi-active">
+                                            <div className="kpi-icon"><Activity size={20} aria-hidden="true" /></div>
+                                            <span className="kpi-label">Top Source</span>
+                                            <span className="kpi-value">{kpiData.topSourceCount}</span>
+                                            <span className="kpi-detail">{formatSourceName(kpiData.topSourceId)}</span>
+                                        </div>
+                                        <div className="kpi-card kpi-fresh">
+                                            <div className="kpi-icon"><Clock size={20} aria-hidden="true" /></div>
+                                            <span className="kpi-label">Last Hour</span>
+                                            <span className="kpi-value">{kpiData.freshCount}</span>
+                                            <span className="kpi-detail">{kpiData.freshCount === 1 ? 'new item' : 'new items'}</span>
+                                        </div>
+                                    </div>
+                                )}
+                                <TrendCharts items={items} />
+                            </>
                         ) : (
                             <div className="content-grid" role="feed" aria-label="AI content feed">
-                                {items.map((item) => (
-                                    <ContentCard key={item.id} item={item} />
+                                {items.map((item, index) => (
+                                    <ContentCard key={item.id} item={item} style={{ '--card-delay': `${Math.min(index, 12) * 60}ms` } as any} />
                                 ))}
                             </div>
                         )}

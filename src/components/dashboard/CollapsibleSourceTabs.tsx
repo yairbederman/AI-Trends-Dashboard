@@ -8,9 +8,11 @@ interface CollapsibleSourceTabsProps {
     categories: SourceCategory[];
     activeCategory: SourceCategory | 'all' | 'dashboard';
     onCategoryChange: (category: SourceCategory | 'all' | 'dashboard') => void;
+    itemCounts: Record<string, number>;
+    totalCount: number;
 }
 
-export function CollapsibleSourceTabs({ categories, activeCategory, onCategoryChange }: CollapsibleSourceTabsProps) {
+export function CollapsibleSourceTabs({ categories, activeCategory, onCategoryChange, itemCounts, totalCount }: CollapsibleSourceTabsProps) {
     return (
         <nav
             className="w-full max-w-[var(--content-max-width)] mx-auto mb-8 overflow-hidden pl-1"
@@ -35,6 +37,7 @@ export function CollapsibleSourceTabs({ categories, activeCategory, onCategoryCh
                     isActive={activeCategory === 'all'}
                     onClick={() => onCategoryChange('all')}
                     label="All Sources"
+                    count={totalCount}
                 />
 
                 {/* 3. Dynamic Categories */}
@@ -44,6 +47,7 @@ export function CollapsibleSourceTabs({ categories, activeCategory, onCategoryCh
                         isActive={activeCategory === category}
                         onClick={() => onCategoryChange(category)}
                         label={CATEGORY_LABELS[category]}
+                        count={itemCounts[category]}
                     />
                 ))}
             </div>
@@ -56,12 +60,14 @@ function TabButton({
     isActive,
     onClick,
     label,
-    icon: Icon
+    icon: Icon,
+    count
 }: {
     isActive: boolean;
     onClick: () => void;
     label: string;
-    icon?: any
+    icon?: any;
+    count?: number;
 }) {
     return (
         <motion.button
@@ -99,6 +105,14 @@ function TabButton({
                 `}>
                     {label}
                 </span>
+
+                {count !== undefined && count > 0 && (
+                    <span className={`text-xs font-semibold px-1.5 py-0.5 rounded-full min-w-[20px] text-center
+                        ${isActive ? 'bg-white/25 text-white' : 'bg-white/10 text-[var(--text-muted)]'}
+                    `}>
+                        {count}
+                    </span>
+                )}
             </div>
         </motion.button>
     );

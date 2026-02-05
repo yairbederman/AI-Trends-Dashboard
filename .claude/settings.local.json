@@ -12,7 +12,8 @@
       "Bash(cat:*)",
       "Bash(timeout /t 5 /nobreak)",
       "Bash(findstr:*)",
-      "WebFetch(domain:localhost)"
+      "WebFetch(domain:localhost)",
+      "Bash(npx next build)"
     ]
   }
 }

@@ -13,6 +13,7 @@ import {
     Pie,
     Cell,
 } from 'recharts';
+import { BarChart2 } from 'lucide-react';
 
 interface TrendData {
     date: string;
@@ -104,7 +105,7 @@ export function TrendCharts({ items }: TrendChartsProps) {
     return (
         <section className="charts-section">
             <div className="charts-header">
-                <h2>📊 Trends & Activity</h2>
+                <h2><BarChart2 size={18} aria-hidden="true" /> Trends & Activity</h2>
             </div>
 
             <div className="chart-grid">
@@ -201,7 +202,7 @@ export function TrendCharts({ items }: TrendChartsProps) {
                             marginTop: '-1rem',
                         }}
                     >
-                        {categoryData.slice(0, 5).map((item, index) => (
+                        {categoryData.map((item, index) => (
                             <span
                                 key={item.category}
                                 style={{

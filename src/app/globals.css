@@ -95,7 +95,7 @@
   --bg-card: #ffffff;
   --bg-card-hover: #f8fafc;
 
-  --glass-bg: rgba(255, 255, 255, 0.75);
+  --glass-bg: rgba(255, 255, 255, 0.85);
   --glass-border: rgba(255, 255, 255, 0.4);
   --glass-highlight: rgba(255, 255, 255, 0.2);
   --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
@@ -103,7 +103,7 @@
 
   --text-primary: #0f172a;
   --text-secondary: #475569;
-  --text-muted: #94a3b8;
+  --text-muted: #475569;
 
   --accent-primary: #0d9488;
   --accent-secondary: #14b8a6;
@@ -362,20 +362,6 @@ a {
   /* Hide scrollbar Chrome/Safari */
 }
 
-.source-tabs::-webkit-scrollbar {
-  height: 4px;
-}
-
-.source-tabs::-webkit-scrollbar-track {
-  background: var(--bg-tertiary);
-  border-radius: 2px;
-}
-
-.source-tabs::-webkit-scrollbar-thumb {
-  background: var(--border-color);
-  border-radius: 2px;
-}
-
 .tab {
   background: transparent;
   border: 1px solid transparent;
@@ -437,12 +423,15 @@ a {
   border: 1px solid var(--border-color);
   border-radius: 16px;
   padding: 1.5rem;
+  padding-bottom: 1.25rem;
   transition: all var(--transition-normal);
   position: relative;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  animation: card-fade-in 0.4s ease-out backwards;
+  animation-delay: var(--card-delay, 0ms);
 }
 
 /* Performance Bar - visual indicator at top of card */
@@ -490,6 +479,11 @@ a {
   border-color: var(--border-hover);
   transform: translateY(-2px);
   box-shadow: var(--shadow-card);
+}
+
+@keyframes card-fade-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* Must Read - highlighted cards */
@@ -569,7 +563,7 @@ a {
 }
 
 .content-title {
-  font-size: 1rem;
+  font-size: 1.1rem;
   font-weight: 600;
   line-height: 1.4;
   margin-bottom: 0.5rem;
@@ -615,14 +609,6 @@ a {
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
-}
-
-.tag {
-  font-size: 0.7rem;
-  padding: 0.2rem 0.5rem;
-  background: var(--bg-tertiary);
-  border-radius: 4px;
-  color: var(--text-muted);
 }
 
 /* Score badges */
@@ -756,15 +742,6 @@ a {
 .engagement-item:hover {
   transform: translateY(-2px);
   filter: brightness(1.2);
-}
-
-/* Ensure padding wrapper for main content */
-.content-card {
-  /* ... existing styles ... */
-  display: flex;
-  flex-direction: column;
-  padding-bottom: 1.25rem;
-  /* Space for content before footer */
 }
 
 /* Tags row adjustments for footer */
@@ -969,9 +946,20 @@ a {
   color: var(--text-secondary);
 }
 
-.empty-state svg {
+.empty-state-icon {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.5rem;
+}
+
+.empty-state-icon svg {
   color: var(--text-muted);
-  margin-bottom: 1rem;
 }
 
 .empty-state h2 {
@@ -1018,6 +1006,10 @@ a {
 
   .content-grid {
     grid-template-columns: 1fr;
+  }
+
+  .kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
@@ -1240,6 +1232,10 @@ a {
 }
 
 .category-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
   padding: 0.25rem 0.75rem;
   font-size: 0.75rem;
   border-radius: 4px;
@@ -1291,7 +1287,8 @@ a {
 }
 
 .source-icon {
-  font-size: 1.25rem;
+  color: var(--text-secondary);
+  flex-shrink: 0;
 }
 
 .source-name {
@@ -1324,8 +1321,8 @@ a {
 }
 
 .toggle-btn {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1367,6 +1364,9 @@ a {
 
 .charts-header h2 {
   font-size: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .chart-container {
@@ -1381,6 +1381,74 @@ a {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
   gap: 1.5rem;
+}
+
+/* =====================
+   KPI CARDS
+   ===================== */
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.kpi-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 1.25rem;
+  transition: all var(--transition-normal);
+}
+
+.kpi-card:hover {
+  border-color: var(--border-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-card);
+}
+
+.kpi-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.75rem;
+}
+
+.kpi-total .kpi-icon { background: rgba(20, 184, 166, 0.1); color: var(--accent-primary); }
+.kpi-trending .kpi-icon { background: rgba(34, 197, 94, 0.1); color: #22c55e; }
+.kpi-active .kpi-icon { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+.kpi-fresh .kpi-icon { background: rgba(249, 115, 22, 0.1); color: #f97316; }
+
+.kpi-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.kpi-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.2;
+  display: block;
+}
+
+.kpi-detail {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  display: block;
+  margin-top: 0.25rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* =====================
@@ -1402,6 +1470,46 @@ a {
 
 .warning-banner svg {
   flex-shrink: 0;
+}
+
+/* =====================
+   SKELETON LOADING
+   ===================== */
+
+.skeleton-shimmer {
+  background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--bg-card-hover) 50%, var(--bg-tertiary) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-pulse 1.4s ease infinite;
+  border-radius: 6px;
+}
+
+@keyframes skeleton-pulse {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skeleton-settings-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.skeleton-settings-row:last-child {
+  border-bottom: none;
+}
+
+.skeleton-settings-row-left {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.skeleton-category-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 /* =====================
@@ -1575,17 +1683,25 @@ select:focus-visible,
 }
 
 .remove-keyword-btn {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  width: 24px;
+  height: 24px;
   background: transparent;
   border: none;
   color: inherit;
   cursor: pointer;
   border-radius: 50%;
   transition: all var(--transition-fast);
+}
+
+/* Invisible 44x44 tap target centered on the 24x24 visual */
+.remove-keyword-btn::before {
+  content: '';
+  position: absolute;
+  inset: -10px;
 }
 
 .remove-keyword-btn:hover {

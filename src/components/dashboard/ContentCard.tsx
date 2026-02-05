@@ -9,6 +9,7 @@ import {
 
 interface ContentCardProps {
     item: ContentItem;
+    style?: React.CSSProperties;
 }
 
 function formatSourceName(sourceId: string): string {
@@ -87,7 +88,7 @@ function getEngagementMetrics(engagement: EngagementMetrics | undefined): Metric
     return metrics.sort((a, b) => a.priority - b.priority).slice(0, 4);
 }
 
-export function ContentCard({ item }: ContentCardProps) {
+export function ContentCard({ item, style }: ContentCardProps) {
     const publishedDate = new Date(item.publishedAt);
     const timeAgo = formatDistanceToNow(publishedDate, { addSuffix: true });
     const scoreInfo = item.trendingScore ? getScoreInfo(item.trendingScore) : null;
@@ -97,7 +98,7 @@ export function ContentCard({ item }: ContentCardProps) {
     const hasEngagement = engagementMetrics.length > 0;
 
     return (
-        <article className={`content-card ${isMustRead ? 'must-read' : ''}`} aria-labelledby={`title-${item.id}`}>
+        <article className={`content-card ${isMustRead ? 'must-read' : ''}`} aria-labelledby={`title-${item.id}`} style={style}>
             {/* Performance indicator bar at top */}
             {item.trendingScore !== undefined && item.trendingScore > 0 && (
                 <div className={`performance-bar ${performanceInfo.className}`}>

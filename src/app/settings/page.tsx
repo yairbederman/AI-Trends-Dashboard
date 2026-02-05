@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Check, X, RefreshCw, Moon, Sun, AlertCircle, Star, Sparkles, Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, Check, X, RefreshCw, Moon, Sun, AlertCircle, Star, Sparkles, Plus, Trash2, ChevronDown, ChevronUp, Bot, Palette, Code2, Users, Newspaper, MessageSquare, Mail, Trophy } from 'lucide-react';
 import Link from 'next/link';
 import { SourceCategory, CATEGORY_LABELS } from '@/types';
 import { useSettings } from '@/lib/contexts/SettingsContext';
@@ -31,6 +31,17 @@ interface SourcesResponse {
     totalSources: number;
     enabledSources: number;
 }
+
+const CATEGORY_ICONS: Record<string, typeof Bot> = {
+    'ai-labs': Bot,
+    'creative-ai': Palette,
+    'dev-platforms': Code2,
+    'social': Users,
+    'news': Newspaper,
+    'community': MessageSquare,
+    'newsletters': Mail,
+    'leaderboards': Trophy,
+};
 
 const PRIORITY_LABELS: Record<number, string> = {
     1: 'Low',
@@ -153,10 +164,53 @@ export default function SettingsPage() {
     if (loading) {
         return (
             <div className="settings-page">
-                <div className="loading-container">
-                    <RefreshCw className="spinner" size={32} />
-                    <p>Loading settings...</p>
-                </div>
+                <header className="settings-header" role="banner">
+                    <div className="skeleton-shimmer" style={{ width: 160, height: 18 }} />
+                    <div className="skeleton-shimmer" style={{ width: 100, height: 24 }} />
+                </header>
+                <main className="settings-main" role="main">
+                    <section className="settings-section">
+                        <div className="skeleton-shimmer" style={{ width: 140, height: 20, marginBottom: 16 }} />
+                        <div className="skeleton-settings-row">
+                            <div className="skeleton-settings-row-left">
+                                <div className="skeleton-shimmer" style={{ width: 80, height: 16 }} />
+                                <div className="skeleton-shimmer" style={{ width: 200, height: 13 }} />
+                            </div>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                                <div className="skeleton-shimmer" style={{ width: 80, height: 38, borderRadius: 8 }} />
+                                <div className="skeleton-shimmer" style={{ width: 80, height: 38, borderRadius: 8 }} />
+                            </div>
+                        </div>
+                        <div className="skeleton-settings-row">
+                            <div className="skeleton-settings-row-left">
+                                <div className="skeleton-shimmer" style={{ width: 120, height: 16 }} />
+                                <div className="skeleton-shimmer" style={{ width: 240, height: 13 }} />
+                            </div>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                                <div className="skeleton-shimmer" style={{ width: 90, height: 38, borderRadius: 8 }} />
+                                <div className="skeleton-shimmer" style={{ width: 90, height: 38, borderRadius: 8 }} />
+                            </div>
+                        </div>
+                    </section>
+                    <section className="settings-section">
+                        <div className="skeleton-shimmer" style={{ width: 190, height: 20, marginBottom: 16 }} />
+                        <div className="skeleton-settings-row">
+                            <div className="skeleton-settings-row-left">
+                                <div className="skeleton-shimmer" style={{ width: 130, height: 16 }} />
+                                <div className="skeleton-shimmer" style={{ width: 260, height: 13 }} />
+                            </div>
+                        </div>
+                    </section>
+                    {[0, 1, 2, 3].map(i => (
+                        <section key={i} className="settings-section collapsed">
+                            <div className="skeleton-category-header">
+                                <div className="skeleton-shimmer" style={{ width: 20, height: 20, borderRadius: 4 }} />
+                                <div className="skeleton-shimmer" style={{ width: 130 + i * 25, height: 20 }} />
+                                <div className="skeleton-shimmer" style={{ width: 28, height: 18, borderRadius: 10 }} />
+                            </div>
+                        </section>
+                    ))}
+                </main>
             </div>
         );
     }
@@ -340,7 +394,7 @@ export default function SettingsPage() {
                                         className={`source-item ${enabledSources.has(source.id) ? 'enabled' : 'disabled'}`}
                                     >
                                         <div className="source-info">
-                                            <span className="source-icon">{source.icon}</span>
+                                            {(() => { const Icon = CATEGORY_ICONS[cat.category]; return <Icon size={20} className="source-icon" />; })()}
                                             <span className="source-name">{source.name}</span>
                                             {source.requiresKey && (
                                                 <span className={`api-badge ${source.enabled ? 'has-key' : 'needs-key'}`}>
