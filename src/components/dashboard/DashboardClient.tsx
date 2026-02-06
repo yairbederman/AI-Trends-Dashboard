@@ -6,12 +6,14 @@ import { ContentItem, SourceCategory, TimeRange, FeedMode } from '@/types';
 import { ContentCard } from '@/components/dashboard/ContentCard';
 import { CollapsibleSourceTabs } from '@/components/dashboard/CollapsibleSourceTabs';
 import { TrendCharts } from '@/components/dashboard/TrendCharts';
+import { CategoryHighlights } from '@/components/dashboard/CategoryHighlights';
 import { TimeRangeDropdown } from './TimeRangeDropdown';
 import { FeedModeSelector } from './FeedModeSelector';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useSettings } from '@/lib/contexts/SettingsContext';
-import { Settings, Sparkles, TrendingUp, AlertTriangle, Flame, Activity, Zap, Gauge } from 'lucide-react';
+import { Settings, Sparkles, TrendingUp, AlertTriangle, Activity, Crown, Hash, Rocket } from 'lucide-react';
 import { SOURCES } from '@/lib/config/sources';
+import { CATEGORY_LABELS } from '@/types';
 import { formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
 
@@ -127,51 +129,143 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
 
     // Source lookup map
     const sourceMap = useMemo(() => {
-        const map: Record<string, { name: string }> = {};
-        SOURCES.forEach(s => { map[s.id] = { name: s.name }; });
+        const map: Record<string, { name: string; icon?: string }> = {};
+        SOURCES.forEach(s => { map[s.id] = { name: s.name, icon: s.icon }; });
         return map;
     }, []);
 
     const kpiData = useMemo(() => {
         if (items.length === 0) return null;
 
-        const hotCount = items.filter(item => (item.trendingScore || 0) >= 60).length;
-        const totalScore = items.reduce((sum, item) => sum + (item.trendingScore || 0), 0);
-        const avgScore = Math.round((totalScore / items.length) * 10) / 10;
-        const scoreClass = avgScore >= 60 ? 'On Fire' : avgScore >= 40 ? 'Active' : avgScore >= 20 ? 'Moderate' : 'Quiet';
-        const risingCount = items.filter(item => (item.velocityScore || 0) > 0).length;
-        const activeSourceIds = new Set(items.map(item => item.sourceId));
-        const activeSourceCount = activeSourceIds.size;
-        const totalSourceCount = SOURCES.length;
+        // Top Source: which source has the most high-scoring content (score >= 40)
+        const sourceCounts: Record<string, number> = {};
+        for (const item of items) {
+            if ((item.trendingScore || 0) >= 40) {
+                sourceCounts[item.sourceId] = (sourceCounts[item.sourceId] || 0) + 1;
+            }
+        }
+        let topSourceId = '';
+        let topSourceCount = 0;
+        for (const [id, count] of Object.entries(sourceCounts)) {
+            if (count > topSourceCount) { topSourceId = id; topSourceCount = count; }
+        }
+        const topSourceName = topSourceId ? (sourceMap[topSourceId]?.name || topSourceId) : 'None';
 
-        return {
-            hotCount,
-            avgScore,
-            scoreClass,
-            risingCount,
-            activeSourceCount,
-            totalSourceCount,
-        };
-    }, [items]);
-
-    const highlights = useMemo(() => {
-        if (items.length === 0) return [];
-
-        const sorted = [...items].sort((a, b) => (b.trendingScore || 0) - (a.trendingScore || 0));
-        // Enforce source diversity: max 1 item per source in highlights
-        const top5: typeof items = [];
-        const seenSources = new Set<string>();
-        for (const item of sorted) {
-            if (top5.length >= 5) break;
-            if (seenSources.has(item.sourceId)) continue;
-            seenSources.add(item.sourceId);
-            top5.push(item);
+        // Hottest Topic: most common tag across top 20 items (excluding generic tags)
+        const genericTags = new Set(['ai', 'artificial intelligence', 'machine learning', 'ml', 'deep learning', 'tech', 'technology']);
+        const tagCounts: Record<string, number> = {};
+        const top20 = [...items].sort((a, b) => (b.trendingScore || 0) - (a.trendingScore || 0)).slice(0, 20);
+        for (const item of top20) {
+            const allTags = [...(item.tags || []), ...(item.matchedKeywords || [])];
+            const seen = new Set<string>();
+            for (const tag of allTags) {
+                const t = tag.toLowerCase().trim();
+                if (t && !genericTags.has(t) && !seen.has(t)) {
+                    seen.add(t);
+                    tagCounts[t] = (tagCounts[t] || 0) + 1;
+                }
+            }
+        }
+        let hottestTopic = '';
+        let hottestTopicCount = 0;
+        for (const [tag, count] of Object.entries(tagCounts)) {
+            if (count > hottestTopicCount) { hottestTopic = tag; hottestTopicCount = count; }
         }
 
-        return top5.map(item => {
+        // Biggest Mover: item with highest velocity score
+        let biggestMover: { title: string; sourceName: string; velocity: number } | null = null;
+        for (const item of items) {
+            const v = item.velocityScore || 0;
+            if (v > 0 && (!biggestMover || v > biggestMover.velocity)) {
+                biggestMover = {
+                    title: item.title.length > 50 ? item.title.slice(0, 50) + '...' : item.title,
+                    sourceName: sourceMap[item.sourceId]?.name || item.sourceId,
+                    velocity: v,
+                };
+            }
+        }
+
+        // Driving the Feed: which category has the highest total score among top items
+        const catScores: Record<string, { total: number; count: number }> = {};
+        for (const item of items) {
+            const cat = sourceToCategory[item.sourceId];
+            if (!cat) continue;
+            if (!catScores[cat]) catScores[cat] = { total: 0, count: 0 };
+            catScores[cat].total += (item.trendingScore || 0);
+            catScores[cat].count += 1;
+        }
+        let drivingCategory = '';
+        let drivingCategoryScore = 0;
+        let drivingCategoryCount = 0;
+        for (const [cat, data] of Object.entries(catScores)) {
+            if (data.total > drivingCategoryScore) {
+                drivingCategory = cat;
+                drivingCategoryScore = data.total;
+                drivingCategoryCount = data.count;
+            }
+        }
+        const drivingLabel = CATEGORY_LABELS[drivingCategory as keyof typeof CATEGORY_LABELS] || drivingCategory;
+
+        return {
+            topSourceName,
+            topSourceCount,
+            hottestTopic: hottestTopic || null,
+            hottestTopicCount,
+            biggestMover,
+            drivingLabel,
+            drivingCategoryCount,
+            totalCount: items.length,
+        };
+    }, [items, sourceMap, sourceToCategory]);
+
+    const HIGHLIGHTS_PER_CATEGORY = 3;
+
+    const categoryHighlights = useMemo(() => {
+        if (items.length === 0) return [];
+
+        // Group items by category
+        const byCategory: Record<string, ContentItem[]> = {};
+        for (const item of items) {
+            const cat = sourceToCategory[item.sourceId];
+            if (!cat) continue;
+            if (!byCategory[cat]) byCategory[cat] = [];
+            byCategory[cat].push(item);
+        }
+
+        // For each category, pick top items with source diversity
+        const groups: { category: SourceCategory; items: ReturnType<typeof formatHighlightItem>[] }[] = [];
+
+        for (const [cat, catItems] of Object.entries(byCategory)) {
+            const sorted = catItems.sort((a, b) => (b.trendingScore || 0) - (a.trendingScore || 0));
+            const picked: typeof catItems = [];
+            const sourceCounts: Record<string, number> = {};
+            for (const item of sorted) {
+                if (picked.length >= HIGHLIGHTS_PER_CATEGORY) break;
+                const count = sourceCounts[item.sourceId] || 0;
+                if (count >= 2) continue;
+                sourceCounts[item.sourceId] = count + 1;
+                picked.push(item);
+            }
+
+            if (picked.length > 0) {
+                groups.push({
+                    category: cat as SourceCategory,
+                    items: picked.map(formatHighlightItem),
+                });
+            }
+        }
+
+        // Sort category groups by their top item's score (hottest category first)
+        groups.sort((a, b) => (b.items[0]?.score || 0) - (a.items[0]?.score || 0));
+
+        return groups;
+
+        function formatHighlightItem(item: ContentItem) {
             const score = item.trendingScore || 0;
             const tierClass = score >= 60 ? 'score-hot' : score >= 40 ? 'score-trending' : score >= 20 ? 'score-notable' : 'score-default';
-            const sourceName = sourceMap[item.sourceId]?.name || item.sourceId;
+            const source = sourceMap[item.sourceId];
+            const sourceName = source?.name || item.sourceId;
+            const sourceIcon = source?.icon || '';
 
             let timeAgo: string;
             try {
@@ -181,7 +275,6 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
                 timeAgo = '';
             }
 
-            // Extract primary engagement metric
             let primaryMetric: { label: string; value: string } | null = null;
             const eng = item.engagement;
             if (eng) {
@@ -193,18 +286,9 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
                 else if (eng.claps && eng.claps > 0) primaryMetric = { label: 'claps', value: formatNumber(eng.claps) };
             }
 
-            return {
-                id: item.id,
-                title: item.title,
-                url: item.url,
-                score,
-                tierClass,
-                sourceName,
-                timeAgo,
-                primaryMetric,
-            };
-        });
-    }, [items, sourceMap]);
+            return { id: item.id, title: item.title, url: item.url, score, tierClass, sourceName, sourceIcon, timeAgo, primaryMetric };
+        }
+    }, [items, sourceMap, sourceToCategory]);
 
     const hasFailures = data?.failures && data.failures.length > 0;
 
@@ -266,63 +350,34 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
                                 {kpiData && (
                                     <div className="kpi-grid">
                                         <div className="kpi-card kpi-total">
-                                            <div className="kpi-icon"><Flame size={20} aria-hidden="true" /></div>
-                                            <span className="kpi-label">Hot Right Now</span>
-                                            <span className="kpi-value">{kpiData.hotCount}</span>
-                                            <span className="kpi-detail">score &ge; 60</span>
+                                            <div className="kpi-icon"><Crown size={20} aria-hidden="true" /></div>
+                                            <span className="kpi-label">Top Source</span>
+                                            <span className="kpi-value kpi-value-text">{kpiData.topSourceName}</span>
+                                            <span className="kpi-detail">{kpiData.topSourceCount} trending {kpiData.topSourceCount === 1 ? 'item' : 'items'}</span>
                                         </div>
                                         <div className="kpi-card kpi-trending">
-                                            <div className="kpi-icon"><Gauge size={20} aria-hidden="true" /></div>
-                                            <span className="kpi-label">Avg Score</span>
-                                            <span className="kpi-value">{kpiData.avgScore}</span>
-                                            <span className="kpi-detail">{kpiData.scoreClass}</span>
+                                            <div className="kpi-icon"><Hash size={20} aria-hidden="true" /></div>
+                                            <span className="kpi-label">Hottest Topic</span>
+                                            <span className="kpi-value kpi-value-text">{kpiData.hottestTopic || 'Varied'}</span>
+                                            <span className="kpi-detail">{kpiData.hottestTopic ? `across ${kpiData.hottestTopicCount} top items` : 'no dominant theme'}</span>
                                         </div>
                                         <div className="kpi-card kpi-active">
-                                            <div className="kpi-icon"><TrendingUp size={20} aria-hidden="true" /></div>
-                                            <span className="kpi-label">Rising Fast</span>
-                                            <span className="kpi-value">{kpiData.risingCount}</span>
-                                            <span className="kpi-detail">velocity &gt; 0</span>
+                                            <div className="kpi-icon"><Rocket size={20} aria-hidden="true" /></div>
+                                            <span className="kpi-label">Biggest Mover</span>
+                                            <span className="kpi-value kpi-value-text">{kpiData.biggestMover?.sourceName || 'None yet'}</span>
+                                            <span className="kpi-detail">{kpiData.biggestMover ? kpiData.biggestMover.title : 'no velocity data'}</span>
                                         </div>
                                         <div className="kpi-card kpi-fresh">
                                             <div className="kpi-icon"><Activity size={20} aria-hidden="true" /></div>
-                                            <span className="kpi-label">Sources Active</span>
-                                            <span className="kpi-value">{kpiData.activeSourceCount}/{kpiData.totalSourceCount}</span>
-                                            <span className="kpi-detail">sources with content</span>
+                                            <span className="kpi-label">Driving the Feed</span>
+                                            <span className="kpi-value kpi-value-text">{kpiData.drivingLabel}</span>
+                                            <span className="kpi-detail">{kpiData.drivingCategoryCount} items leading the cycle</span>
                                         </div>
                                     </div>
                                 )}
 
-                                {highlights.length > 0 && (
-                                    <section className="highlights-section">
-                                        <div className="highlights-header">
-                                            <h2><Zap size={20} aria-hidden="true" /> Must-Read Highlights</h2>
-                                        </div>
-                                        <div className="highlights-list">
-                                            {highlights.map(item => (
-                                                <a
-                                                    key={item.id}
-                                                    href={item.url}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="highlight-item"
-                                                >
-                                                    <div className={`highlight-score ${item.tierClass}`}>
-                                                        {item.score}
-                                                    </div>
-                                                    <div className="highlight-content">
-                                                        <span className="highlight-source">{item.sourceName}</span>
-                                                        <span className="highlight-title">{item.title}</span>
-                                                        <span className="highlight-time">{item.timeAgo}</span>
-                                                    </div>
-                                                    {item.primaryMetric && (
-                                                        <span className="highlight-metric">
-                                                            {item.primaryMetric.value} {item.primaryMetric.label}
-                                                        </span>
-                                                    )}
-                                                </a>
-                                            ))}
-                                        </div>
-                                    </section>
+                                {categoryHighlights.length > 0 && (
+                                    <CategoryHighlights groups={categoryHighlights} />
                                 )}
 
                                 <TrendCharts items={items} />

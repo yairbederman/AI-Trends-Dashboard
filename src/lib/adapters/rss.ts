@@ -41,7 +41,8 @@ export class RSSAdapter extends BaseAdapter {
                 tags: this.extractTags(item.categories),
             }));
 
-            return this.filterByTimeRange(items, options?.timeRange);
+            const relevant = this.filterByRelevance(items);
+            return this.filterByTimeRange(relevant, options?.timeRange);
         } catch (error) {
             console.error(`Failed to fetch RSS for ${this.source.name}:`, error);
             return [];

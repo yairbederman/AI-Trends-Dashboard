@@ -44,6 +44,52 @@ async function withRetry<T>(
     throw lastError || new Error('Max retries exceeded');
 }
 
+/**
+ * AI-relevance filtering for general-topic feeds.
+ *
+ * Two-tier matching:
+ * 1. BOUNDARY keywords — short words that appear as substrings of common English
+ *    words (e.g., "ai" in "said"). Matched with regex \b word boundaries.
+ * 2. SUBSTRING keywords — longer words/phrases specific enough for simple includes().
+ *
+ * Removed: "safety", "alignment", "benchmark" — too generic even with word
+ * boundaries. Any AI article about these topics will also contain specific terms.
+ */
+
+// Short keywords matched with \b to avoid "said"→"ai", "storage"→"rag", etc.
+// Uses regex literal to avoid string escaping issues with \b
+const BOUNDARY_REGEX = /\b(ai|rag|gpu|tpu|llm|gpt)/i;
+
+// Longer keywords safe for substring matching
+const SUBSTRING_KEYWORDS = [
+    // Core concepts
+    'artificial intelligence', 'machine learning', 'deep learning',
+    'neural network', 'neural net', 'natural language', 'computer vision',
+    'reinforcement learning', 'language model',
+    // Model types & techniques
+    'transformer', 'diffusion', 'generative', 'fine-tuning', 'fine tuning',
+    'rlhf', 'embedding', 'retrieval augmented', 'prompt engineering',
+    'chain of thought', 'few-shot', 'zero-shot', 'multimodal',
+    'foundation model', 'frontier model', 'agentic', 'chatbot', 'neural',
+    // Companies & products
+    'openai', 'anthropic', 'claude', 'chatgpt', 'gpt-4', 'gpt-5', 'gpt4', 'gpt5',
+    'gemini', 'mistral', 'llama', 'copilot', 'midjourney', 'stable diffusion',
+    'dall-e', 'sora', 'deepmind', 'hugging face', 'huggingface',
+    // Infrastructure
+    'nvidia', 'cuda', 'inference', 'training data',
+    'vector database', 'model weights', 'open source model', 'open-source model',
+];
+
+/**
+ * Check if text is AI-relevant using two-tier keyword matching.
+ * Used by adapters for content filtering.
+ */
+export function isAIRelevant(text: string): boolean {
+    const lower = text.toLowerCase();
+    if (BOUNDARY_REGEX.test(lower)) return true;
+    return SUBSTRING_KEYWORDS.some(kw => lower.includes(kw));
+}
+
 export abstract class BaseAdapter implements SourceAdapter {
     protected maxRetries: number = 3;
     protected retryDelayMs: number = 1000;
@@ -63,6 +109,19 @@ export abstract class BaseAdapter implements SourceAdapter {
             .replace(/\s+/g, ' ')
             .trim();
         return cleaned.length > 300 ? cleaned.substring(0, 300) + '...' : cleaned;
+    }
+
+    /**
+     * Filter items for AI relevance using two-tier keyword matching.
+     * Only applied when source.relevanceFilter is true.
+     */
+    protected filterByRelevance(items: ContentItem[]): ContentItem[] {
+        if (!this.source.relevanceFilter) return items;
+
+        return items.filter(item => {
+            const text = `${item.title} ${item.description || ''} ${item.tags?.join(' ') || ''}`;
+            return isAIRelevant(text);
+        });
     }
 
     protected filterByTimeRange(items: ContentItem[], timeRange?: string): ContentItem[] {

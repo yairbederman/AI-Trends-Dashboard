@@ -2,8 +2,6 @@
 
 import { useMemo } from 'react';
 import {
-    AreaChart,
-    Area,
     BarChart,
     Bar,
     XAxis,
@@ -14,86 +12,105 @@ import {
     Cell,
 } from 'recharts';
 import { BarChart2 } from 'lucide-react';
-import { ContentItem, CATEGORY_LABELS, SourceCategory } from '@/types';
+import { ContentItem, CATEGORY_LABELS, CATEGORY_COLORS, SourceCategory } from '@/types';
 import { SOURCES } from '@/lib/config/sources';
 
 interface TrendChartsProps {
     items: ContentItem[];
 }
 
-const COLORS = [
-    '#6366f1',
-    '#22c55e',
-    '#eab308',
-    '#ef4444',
-    '#a855f7',
-    '#06b6d4',
-    '#ec4899',
-    '#f97316',
+const SCORE_TIERS = [
+    { label: 'Hot', min: 60, max: 101, color: '#ef4444' },
+    { label: 'Trending', min: 40, max: 60, color: '#f97316' },
+    { label: 'Notable', min: 20, max: 40, color: '#eab308' },
+    { label: 'Normal', min: 5, max: 20, color: '#6366f1' },
+    { label: 'Low', min: 0, max: 5, color: '#64748b' },
 ];
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function ScoreDistributionTooltip({ active, payload }: any) {
+    if (!active || !payload?.[0]) return null;
+    const data = payload[0].payload as { label: string; count: number; pct: number };
+    return (
+        <div style={{
+            backgroundColor: 'var(--bg-card)',
+            border: '1px solid var(--border-color)',
+            borderRadius: '8px',
+            padding: '0.5rem 0.75rem',
+            color: 'var(--text-primary)',
+            fontSize: '0.85rem',
+        }}>
+            <strong>{data.label}</strong>: {data.count} items ({data.pct}%)
+        </div>
+    );
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function CategoryQualityTooltip({ active, payload }: any) {
+    if (!active || !payload?.[0]) return null;
+    const data = payload[0].payload as { label: string; avgScore: number; count: number };
+    return (
+        <div style={{
+            backgroundColor: 'var(--bg-card)',
+            border: '1px solid var(--border-color)',
+            borderRadius: '8px',
+            padding: '0.5rem 0.75rem',
+            color: 'var(--text-primary)',
+            fontSize: '0.85rem',
+        }}>
+            <strong>{data.label}</strong><br />
+            Avg score: {data.avgScore} ({data.count} items)
+        </div>
+    );
+}
+
 export function TrendCharts({ items }: TrendChartsProps) {
-    // Build sourceId → category map
     const sourceToCategory = useMemo(() => {
         const map: Record<string, SourceCategory> = {};
         SOURCES.forEach(s => { map[s.id] = s.category; });
         return map;
     }, []);
 
-    // Category Activity data (horizontal bar chart)
-    const categoryData = useMemo(() => {
-        const counts: Record<string, number> = {};
+    // Score Distribution: how many items fall into each score tier
+    const scoreData = useMemo(() => {
+        const total = items.length;
+        if (total === 0) return [];
+
+        return SCORE_TIERS.map(tier => {
+            const count = items.filter(item => {
+                const s = item.trendingScore || 0;
+                return s >= tier.min && s < tier.max;
+            }).length;
+            return {
+                label: tier.label,
+                count,
+                pct: Math.round((count / total) * 100),
+                color: tier.color,
+            };
+        });
+    }, [items]);
+
+    // Category Quality: average trending score per category
+    const categoryQualityData = useMemo(() => {
+        const catStats: Record<string, { total: number; count: number }> = {};
         items.forEach(item => {
             const cat = sourceToCategory[item.sourceId];
-            if (cat) {
-                counts[cat] = (counts[cat] || 0) + 1;
-            }
+            if (!cat) return;
+            if (!catStats[cat]) catStats[cat] = { total: 0, count: 0 };
+            catStats[cat].total += (item.trendingScore || 0);
+            catStats[cat].count += 1;
         });
-        return Object.entries(counts)
-            .map(([key, count]) => ({
+
+        return Object.entries(catStats)
+            .map(([key, stats]) => ({
                 category: key,
                 label: CATEGORY_LABELS[key as SourceCategory] || key,
-                count,
+                avgScore: Math.round((stats.total / stats.count) * 10) / 10,
+                count: stats.count,
+                color: CATEGORY_COLORS[key] || '#6366f1',
             }))
-            .sort((a, b) => b.count - a.count);
+            .sort((a, b) => b.avgScore - a.avgScore);
     }, [items, sourceToCategory]);
-
-    // Hourly Activity data (24h area chart)
-    const hourlyData = useMemo(() => {
-        const now = new Date();
-        const buckets: { hour: Date; label: string; count: number }[] = [];
-
-        // Create 24 hourly buckets
-        for (let i = 23; i >= 0; i--) {
-            const hour = new Date(now);
-            hour.setMinutes(0, 0, 0);
-            hour.setHours(hour.getHours() - i);
-            const label = hour.toLocaleTimeString('en-US', { hour: 'numeric', hour12: true });
-            buckets.push({ hour, label, count: 0 });
-        }
-
-        // Place items into buckets
-        items.forEach(item => {
-            const itemDate = item.publishedAt instanceof Date
-                ? item.publishedAt
-                : new Date(item.publishedAt);
-            if (isNaN(itemDate.getTime())) return;
-
-            // Truncate to hour
-            const itemHour = new Date(itemDate);
-            itemHour.setMinutes(0, 0, 0);
-            const itemTime = itemHour.getTime();
-
-            for (const bucket of buckets) {
-                if (bucket.hour.getTime() === itemTime) {
-                    bucket.count++;
-                    break;
-                }
-            }
-        });
-
-        return buckets.map(b => ({ label: b.label, count: b.count }));
-    }, [items]);
 
     if (items.length === 0) {
         return null;
@@ -106,19 +123,13 @@ export function TrendCharts({ items }: TrendChartsProps) {
             </div>
 
             <div className="chart-grid">
-                {/* Hourly Activity */}
+                {/* Score Distribution */}
                 <div className="chart-container">
                     <h3 style={{ marginBottom: '1rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                        Hourly Activity (Last 24h)
+                        Score Distribution
                     </h3>
                     <ResponsiveContainer width="100%" height="85%">
-                        <AreaChart data={hourlyData}>
-                            <defs>
-                                <linearGradient id="colorHourly" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4} />
-                                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                                </linearGradient>
-                            </defs>
+                        <BarChart data={scoreData}>
                             <CartesianGrid
                                 strokeDasharray="3 3"
                                 stroke="var(--border-color)"
@@ -127,9 +138,8 @@ export function TrendCharts({ items }: TrendChartsProps) {
                             <XAxis
                                 dataKey="label"
                                 stroke="var(--text-muted)"
-                                fontSize={11}
+                                fontSize={12}
                                 tickLine={false}
-                                interval="preserveStartEnd"
                             />
                             <YAxis
                                 stroke="var(--text-muted)"
@@ -137,32 +147,23 @@ export function TrendCharts({ items }: TrendChartsProps) {
                                 tickLine={false}
                                 axisLine={false}
                             />
-                            <Tooltip
-                                contentStyle={{
-                                    backgroundColor: 'var(--bg-card)',
-                                    border: '1px solid var(--border-color)',
-                                    borderRadius: '8px',
-                                    color: 'var(--text-primary)',
-                                }}
-                            />
-                            <Area
-                                type="monotone"
-                                dataKey="count"
-                                stroke="#6366f1"
-                                strokeWidth={2}
-                                fill="url(#colorHourly)"
-                            />
-                        </AreaChart>
+                            <Tooltip content={<ScoreDistributionTooltip />} cursor={{ fill: 'var(--border-color)', opacity: 0.3 }} />
+                            <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                                {scoreData.map((entry, index) => (
+                                    <Cell key={`score-${index}`} fill={entry.color} />
+                                ))}
+                            </Bar>
+                        </BarChart>
                     </ResponsiveContainer>
                 </div>
 
-                {/* Category Activity */}
+                {/* Category Quality */}
                 <div className="chart-container">
                     <h3 style={{ marginBottom: '1rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                        Category Activity
+                        Category Quality (Avg Score)
                     </h3>
                     <ResponsiveContainer width="100%" height="85%">
-                        <BarChart layout="vertical" data={categoryData} margin={{ left: 80 }}>
+                        <BarChart layout="vertical" data={categoryQualityData} margin={{ left: 80 }}>
                             <CartesianGrid
                                 strokeDasharray="3 3"
                                 stroke="var(--border-color)"
@@ -173,6 +174,7 @@ export function TrendCharts({ items }: TrendChartsProps) {
                                 stroke="var(--text-muted)"
                                 fontSize={12}
                                 tickLine={false}
+                                domain={[0, 100]}
                             />
                             <YAxis
                                 type="category"
@@ -183,20 +185,10 @@ export function TrendCharts({ items }: TrendChartsProps) {
                                 axisLine={false}
                                 width={80}
                             />
-                            <Tooltip
-                                contentStyle={{
-                                    backgroundColor: 'var(--bg-card)',
-                                    border: '1px solid var(--border-color)',
-                                    borderRadius: '8px',
-                                    color: 'var(--text-primary)',
-                                }}
-                            />
-                            <Bar dataKey="count" radius={[0, 4, 4, 0]}>
-                                {categoryData.map((_, index) => (
-                                    <Cell
-                                        key={`cell-${index}`}
-                                        fill={COLORS[index % COLORS.length]}
-                                    />
+                            <Tooltip content={<CategoryQualityTooltip />} cursor={{ fill: 'var(--border-color)', opacity: 0.3 }} />
+                            <Bar dataKey="avgScore" radius={[0, 4, 4, 0]}>
+                                {categoryQualityData.map((entry, index) => (
+                                    <Cell key={`cat-${index}`} fill={entry.color} />
                                 ))}
                             </Bar>
                         </BarChart>

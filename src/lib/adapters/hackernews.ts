@@ -1,5 +1,5 @@
 import { ContentItem, SourceConfig } from '@/types';
-import { BaseAdapter, AdapterOptions, createContentId } from './base';
+import { BaseAdapter, AdapterOptions, createContentId, isAIRelevant } from './base';
 
 interface HNItem {
     id: number;
@@ -18,8 +18,6 @@ interface HNItem {
  */
 export class HackerNewsAdapter extends BaseAdapter {
     private baseUrl = 'https://hacker-news.firebaseio.com/v0';
-    private aiKeywords = ['ai', 'llm', 'gpt', 'openai', 'anthropic', 'claude', 'gemini', 'machine learning', 'neural', 'transformer', 'chatbot'];
-
     constructor(public source: SourceConfig) {
         super(source);
     }
@@ -40,8 +38,7 @@ export class HackerNewsAdapter extends BaseAdapter {
             // Filter for AI-related content
             const aiStories = stories.filter((story) => {
                 if (!story || story.type !== 'story') return false;
-                const title = story.title?.toLowerCase() || '';
-                return this.aiKeywords.some((kw) => title.includes(kw));
+                return isAIRelevant(story.title || '');
             });
 
             const items = aiStories.map((story) => ({

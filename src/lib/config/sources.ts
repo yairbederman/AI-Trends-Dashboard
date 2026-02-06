@@ -348,6 +348,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '📰',
+        relevanceFilter: true,
     },
     {
         id: 'techcrunch-ai',
@@ -359,6 +360,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '💚',
+        relevanceFilter: true,
     },
     {
         id: 'venturebeat-ai',
@@ -370,6 +372,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🟣',
+        relevanceFilter: true,
     },
     {
         id: 'mit-tech-review',
@@ -381,6 +384,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🎓',
+        relevanceFilter: true,
     },
     {
         id: 'ars-technica-ai',
@@ -392,6 +396,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🔧',
+        relevanceFilter: true,
     },
     {
         id: 'wired-ai',
@@ -403,6 +408,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '📡',
+        relevanceFilter: true,
     },
 
     // =====================
@@ -472,6 +478,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🤖',
+        relevanceFilter: true,
     },
 
     // =====================
@@ -509,6 +516,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🍪',
+        relevanceFilter: true,
     },
     {
         id: 'the-rundown-ai',
@@ -520,6 +528,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🏃',
+        relevanceFilter: true,
     },
     {
         id: 'latent-space',

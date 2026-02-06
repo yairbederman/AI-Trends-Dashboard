@@ -25,6 +25,8 @@ export interface SourceConfig {
   icon?: string;
   // Default priority (1-5, higher = more important)
   defaultPriority?: number;
+  // If true, items are filtered for AI relevance (for general-topic feeds)
+  relevanceFilter?: boolean;
 }
 
 export interface EngagementMetrics {
@@ -122,4 +124,15 @@ export const TIME_RANGES: Record<TimeRange, string> = {
   '24h': 'Last 24 Hours',
   '48h': 'Last 48 Hours',
   '7d': 'Last Week',
+};
+
+export const CATEGORY_COLORS: Record<string, string> = {
+  'ai-labs': '#6366f1',
+  'creative-ai': '#ec4899',
+  'dev-platforms': '#22c55e',
+  'social': '#06b6d4',
+  'news': '#eab308',
+  'community': '#f97316',
+  'newsletters': '#a855f7',
+  'leaderboards': '#ef4444',
 };

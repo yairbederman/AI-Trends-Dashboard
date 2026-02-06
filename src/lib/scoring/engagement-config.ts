@@ -38,6 +38,8 @@ export const SOURCE_QUALITY_MAP: Record<string, number> = {
     'mistral-ai': SOURCE_QUALITY_TIERS.TIER_1_OFFICIAL,
     'cohere-blog': SOURCE_QUALITY_TIERS.TIER_1_OFFICIAL,
     'stability-ai': SOURCE_QUALITY_TIERS.TIER_1_OFFICIAL,
+    'aws-ai-blog': SOURCE_QUALITY_TIERS.TIER_1_OFFICIAL,
+    'apple-ml': SOURCE_QUALITY_TIERS.TIER_1_OFFICIAL,
     'runway': SOURCE_QUALITY_TIERS.TIER_1_OFFICIAL,
     'elevenlabs': SOURCE_QUALITY_TIERS.TIER_1_OFFICIAL,
 
@@ -48,6 +50,7 @@ export const SOURCE_QUALITY_MAP: Record<string, number> = {
     'venturebeat-ai': SOURCE_QUALITY_TIERS.TIER_2_NEWS,
     'mit-tech-review': SOURCE_QUALITY_TIERS.TIER_2_NEWS,
     'ars-technica-ai': SOURCE_QUALITY_TIERS.TIER_2_NEWS,
+    'wired-ai': SOURCE_QUALITY_TIERS.TIER_2_NEWS,
     'arxiv-cs-ai': SOURCE_QUALITY_TIERS.TIER_2_NEWS,
     'arxiv-cs-cl': SOURCE_QUALITY_TIERS.TIER_2_NEWS,
     'papers-with-code': SOURCE_QUALITY_TIERS.TIER_2_NEWS,
@@ -57,14 +60,14 @@ export const SOURCE_QUALITY_MAP: Record<string, number> = {
     'langchain-blog': SOURCE_QUALITY_TIERS.TIER_3_QUALITY,
     'llamaindex-blog': SOURCE_QUALITY_TIERS.TIER_3_QUALITY,
     'wandb-blog': SOURCE_QUALITY_TIERS.TIER_3_QUALITY,
-    'remotion-blog': SOURCE_QUALITY_TIERS.TIER_3_QUALITY,
     'import-ai': SOURCE_QUALITY_TIERS.TIER_3_QUALITY,
     'the-batch': SOURCE_QUALITY_TIERS.TIER_3_QUALITY,
     'latent-space': SOURCE_QUALITY_TIERS.TIER_3_QUALITY,
     'simon-willison': SOURCE_QUALITY_TIERS.TIER_3_QUALITY,
+    'ahead-of-ai': SOURCE_QUALITY_TIERS.TIER_3_QUALITY,
+    'interconnects': SOURCE_QUALITY_TIERS.TIER_3_QUALITY,
     'bens-bites': SOURCE_QUALITY_TIERS.TIER_3_QUALITY,
     'the-rundown-ai': SOURCE_QUALITY_TIERS.TIER_3_QUALITY,
-    'ai-weekly': SOURCE_QUALITY_TIERS.TIER_3_QUALITY,
 
     // ===== TIER 4: Unimplemented/Lower Signal (0.25) =====
     // Scrape adapters not implemented, leaderboards (data not content)
@@ -72,7 +75,6 @@ export const SOURCE_QUALITY_MAP: Record<string, number> = {
     'kling': SOURCE_QUALITY_TIERS.TIER_4_OTHER,
     'pika': SOURCE_QUALITY_TIERS.TIER_4_OTHER,
     'midjourney': SOURCE_QUALITY_TIERS.TIER_4_OTHER,
-    'veo': SOURCE_QUALITY_TIERS.TIER_4_OTHER,
     'lmsys-arena': SOURCE_QUALITY_TIERS.TIER_4_OTHER,
     'open-llm-leaderboard': SOURCE_QUALITY_TIERS.TIER_4_OTHER,
     'artificial-analysis': SOURCE_QUALITY_TIERS.TIER_4_OTHER,
@@ -263,28 +265,6 @@ export const ENGAGEMENT_CONFIGS: Record<string, SourceEngagementConfig> = {
         noEngagementBaseline: 0.2,
     },
 
-    medium: {
-        sourceType: 'medium',
-        metrics: [
-            {
-                name: 'claps',
-                weight: 0.70,
-                logBase: 4,         // 10^4 = 10K claps to max out
-                baseline: 100,      // 100 claps is good
-                viral: 5000,        // 5K claps is viral
-            },
-            {
-                name: 'responses',
-                weight: 0.30,
-                logBase: 2,         // 10^2 = 100 responses to max out
-                baseline: 5,        // 5 responses shows engagement
-                viral: 50,          // 50 responses is very engaged
-            },
-        ],
-        // No quality ratio for Medium - claps can be inflated
-        noEngagementBaseline: 0.35, // Higher baseline since scraping may fail
-    },
-
     rss: {
         sourceType: 'rss',
         metrics: [],                // No engagement metrics from RSS
@@ -301,8 +281,6 @@ export function getSourceEngagementType(sourceId: string): string {
     if (sourceId === 'github-trending') return 'github';
     if (sourceId === 'hackernews') return 'hackernews';
     if (sourceId === 'huggingface') return 'huggingface';
-    if (sourceId === 'medium') return 'medium';
-
     // Pattern-based mappings
     if (sourceId.startsWith('reddit-')) return 'reddit';
 
