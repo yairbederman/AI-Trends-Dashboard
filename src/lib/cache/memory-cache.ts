@@ -48,5 +48,7 @@ export class MemoryCache<T = unknown> {
 }
 
 // Singleton instances
-export const feedCache = new MemoryCache(60 * 1000);      // 60s TTL
-export const settingsCache = new MemoryCache(30 * 1000);   // 30s TTL
+// Feed cache: 5min TTL matches community sources (fastest refresh rate)
+// Maintains cache coherence - memory layer aligns with per-source freshness tracking
+export const feedCache = new MemoryCache(5 * 60 * 1000);    // 5min TTL
+export const settingsCache = new MemoryCache(30 * 1000);     // 30s TTL
