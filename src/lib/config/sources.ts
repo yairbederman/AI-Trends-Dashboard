@@ -118,6 +118,28 @@ export const SOURCES: SourceConfig[] = [
         requiresKey: false,
         icon: '🎨',
     },
+    {
+        id: 'aws-ai-blog',
+        name: 'AWS AI Blog',
+        category: 'ai-labs',
+        url: 'https://aws.amazon.com/blogs/machine-learning/',
+        feedUrl: 'https://aws.amazon.com/blogs/machine-learning/feed/',
+        method: 'rss',
+        enabled: true,
+        requiresKey: false,
+        icon: '☁️',
+    },
+    {
+        id: 'apple-ml',
+        name: 'Apple ML Research',
+        category: 'ai-labs',
+        url: 'https://machinelearning.apple.com',
+        feedUrl: 'https://machinelearning.apple.com/rss.xml',
+        method: 'rss',
+        enabled: true,
+        requiresKey: false,
+        icon: '🍎',
+    },
 
     // =====================
     // CREATIVE AI
@@ -184,16 +206,6 @@ export const SOURCES: SourceConfig[] = [
         requiresKey: false,
         icon: '🎨',
     },
-    {
-        id: 'veo',
-        name: 'Veo (Google)',
-        category: 'creative-ai',
-        url: 'https://deepmind.google/technologies/veo/',
-        method: 'scrape',
-        enabled: true,
-        requiresKey: false,
-        icon: '📹',
-    },
 
     // =====================
     // DEV PLATFORMS
@@ -229,17 +241,6 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '📄',
-    },
-    {
-        id: 'remotion-blog',
-        name: 'Remotion',
-        category: 'dev-platforms',
-        url: 'https://www.remotion.dev/blog',
-        feedUrl: 'https://www.remotion.dev/blog/rss.xml',
-        method: 'rss',
-        enabled: true,
-        requiresKey: false,
-        icon: '🎬',
     },
     {
         id: 'langchain-blog',
@@ -333,17 +334,6 @@ export const SOURCES: SourceConfig[] = [
         apiKeyEnvVar: 'YOUTUBE_API_KEY',
         icon: '📺',
     },
-    {
-        id: 'medium',
-        name: 'Medium',
-        category: 'social',
-        url: 'https://medium.com/tag/artificial-intelligence',
-        feedUrl: 'https://medium.com/feed/tag/artificial-intelligence',
-        method: 'rss',
-        enabled: true,
-        requiresKey: false,
-        icon: '📝',
-    },
 
     // =====================
     // NEWS
@@ -402,6 +392,17 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🔧',
+    },
+    {
+        id: 'wired-ai',
+        name: 'Wired AI',
+        category: 'news',
+        url: 'https://www.wired.com/tag/ai/',
+        feedUrl: 'https://www.wired.com/feed/tag/ai/latest/rss',
+        method: 'rss',
+        enabled: true,
+        requiresKey: false,
+        icon: '📡',
     },
 
     // =====================
@@ -462,15 +463,15 @@ export const SOURCES: SourceConfig[] = [
         icon: '🖼️',
     },
     {
-        id: 'reddit-singularity',
-        name: 'r/singularity',
+        id: 'reddit-artificial',
+        name: 'r/artificial',
         category: 'community',
-        url: 'https://www.reddit.com/r/singularity/',
-        feedUrl: 'https://www.reddit.com/r/singularity/.rss',
+        url: 'https://www.reddit.com/r/artificial/',
+        feedUrl: 'https://www.reddit.com/r/artificial/.rss',
         method: 'rss',
         enabled: true,
         requiresKey: false,
-        icon: '🔮',
+        icon: '🤖',
     },
 
     // =====================
@@ -497,17 +498,6 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '📧',
-    },
-    {
-        id: 'ai-weekly',
-        name: 'AI Weekly',
-        category: 'newsletters',
-        url: 'https://aiweekly.co',
-        feedUrl: 'https://aiweekly.co/feed',
-        method: 'rss',
-        enabled: true,
-        requiresKey: false,
-        icon: '📅',
     },
     {
         id: 'bens-bites',
@@ -552,6 +542,28 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🔧',
+    },
+    {
+        id: 'ahead-of-ai',
+        name: 'Ahead of AI',
+        category: 'newsletters',
+        url: 'https://magazine.sebastianraschka.com',
+        feedUrl: 'https://magazine.sebastianraschka.com/feed',
+        method: 'rss',
+        enabled: true,
+        requiresKey: false,
+        icon: '🧪',
+    },
+    {
+        id: 'interconnects',
+        name: 'Interconnects',
+        category: 'newsletters',
+        url: 'https://www.interconnects.ai',
+        feedUrl: 'https://www.interconnects.ai/feed',
+        method: 'rss',
+        enabled: true,
+        requiresKey: false,
+        icon: '🔗',
     },
 
     // =====================

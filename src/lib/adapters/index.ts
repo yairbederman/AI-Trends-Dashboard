@@ -5,7 +5,6 @@ import { RedditAdapter } from './reddit';
 import { YouTubeAdapter } from './youtube';
 import { GitHubAdapter } from './github';
 import { HuggingFaceAdapter } from './huggingface';
-import { MediumAdapter } from './medium';
 import { SourceConfig } from '@/types';
 
 /**
@@ -31,10 +30,6 @@ export function createAdapter(source: SourceConfig): SourceAdapter | null {
             if (!source.feedUrl) {
                 console.warn(`No feed URL for RSS source: ${source.name}`);
                 return null;
-            }
-            // Use specialized Medium adapter for Medium source
-            if (source.id === 'medium') {
-                return new MediumAdapter(source);
             }
             return new RSSAdapter(source);
 
@@ -81,5 +76,4 @@ export { RedditAdapter } from './reddit';
 export { YouTubeAdapter } from './youtube';
 export { GitHubAdapter } from './github';
 export { HuggingFaceAdapter } from './huggingface';
-export { MediumAdapter } from './medium';
 export type { SourceAdapter } from './base';

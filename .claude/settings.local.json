@@ -13,7 +13,23 @@
       "Bash(timeout /t 5 /nobreak)",
       "Bash(findstr:*)",
       "WebFetch(domain:localhost)",
-      "Bash(npx next build)"
+      "Bash(npx next build)",
+      "Bash(git add:*)",
+      "Bash(git rm:*)",
+      "Bash(if exist nul del nul)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git log:*)",
+      "WebFetch(domain:x.ai)",
+      "WebFetch(domain:aws.amazon.com)",
+      "WebFetch(domain:machinelearning.apple.com)",
+      "WebFetch(domain:ollama.com)",
+      "WebFetch(domain:lumalabs.ai)",
+      "WebFetch(domain:magazine.sebastianraschka.com)",
+      "WebFetch(domain:www.interconnects.ai)",
+      "WebFetch(domain:www.wired.com)",
+      "WebFetch(domain:www.reddit.com)",
+      "Bash(del \"C:\\\\My Projects\\\\AI-Trends-Dashboard\\\\src\\\\lib\\\\adapters\\\\medium.ts\")"
     ]
   }
 }

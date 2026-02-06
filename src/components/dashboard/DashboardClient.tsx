@@ -158,7 +158,15 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
         if (items.length === 0) return [];
 
         const sorted = [...items].sort((a, b) => (b.trendingScore || 0) - (a.trendingScore || 0));
-        const top5 = sorted.slice(0, 5);
+        // Enforce source diversity: max 1 item per source in highlights
+        const top5: typeof items = [];
+        const seenSources = new Set<string>();
+        for (const item of sorted) {
+            if (top5.length >= 5) break;
+            if (seenSources.has(item.sourceId)) continue;
+            seenSources.add(item.sourceId);
+            top5.push(item);
+        }
 
         return top5.map(item => {
             const score = item.trendingScore || 0;
