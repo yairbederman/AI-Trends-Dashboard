@@ -1452,6 +1452,136 @@ a {
 }
 
 /* =====================
+   MUST-READ HIGHLIGHTS
+   ===================== */
+
+.highlights-section {
+  margin-bottom: 2rem;
+}
+
+.highlights-header h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 1rem;
+}
+
+.highlights-header h2 svg {
+  color: var(--must-read-color, #eab308);
+}
+
+.highlights-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.highlight-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.75rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.highlight-item:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--accent-primary);
+  transform: translateY(-1px);
+}
+
+.highlight-score {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.highlight-score.score-hot {
+  background: rgba(34, 197, 94, 0.1);
+  color: #4ade80;
+}
+
+.highlight-score.score-trending {
+  background: rgba(20, 184, 166, 0.1);
+  color: #2dd4bf;
+}
+
+.highlight-score.score-notable {
+  background: rgba(59, 130, 246, 0.1);
+  color: #60a5fa;
+}
+
+.highlight-score.score-default {
+  background: var(--bg-tertiary);
+  color: var(--text-muted);
+}
+
+.highlight-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.highlight-source {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent-secondary, var(--text-muted));
+}
+
+.highlight-title {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.highlight-time {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.highlight-metric {
+  flex-shrink: 0;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  background: var(--bg-tertiary);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .highlight-metric {
+    display: none;
+  }
+
+  .highlight-item {
+    padding: 0.6rem 0.75rem;
+  }
+}
+
+/* =====================
    WARNING BANNER
    ===================== */
 

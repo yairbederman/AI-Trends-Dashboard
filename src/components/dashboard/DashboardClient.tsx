@@ -10,8 +10,9 @@ import { TimeRangeDropdown } from './TimeRangeDropdown';
 import { FeedModeSelector } from './FeedModeSelector';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useSettings } from '@/lib/contexts/SettingsContext';
-import { Settings, Sparkles, TrendingUp, AlertTriangle, LayoutDashboard, LayoutList, Flame, Clock, Activity } from 'lucide-react';
+import { Settings, Sparkles, TrendingUp, AlertTriangle, Flame, Activity, Zap, Gauge } from 'lucide-react';
 import { SOURCES } from '@/lib/config/sources';
+import { formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
 
 interface DashboardClientProps {
@@ -38,8 +39,10 @@ const CATEGORIES: SourceCategory[] = [
     'leaderboards',
 ];
 
-function formatSourceName(sourceId: string): string {
-    return sourceId.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+function formatNumber(n: number): string {
+    if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
+    if (n >= 1_000) return (n / 1_000).toFixed(1) + 'k';
+    return String(n);
 }
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -122,25 +125,78 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
         return counts;
     }, [items, sourceToCategory]);
 
+    // Source lookup map
+    const sourceMap = useMemo(() => {
+        const map: Record<string, { name: string }> = {};
+        SOURCES.forEach(s => { map[s.id] = { name: s.name }; });
+        return map;
+    }, []);
+
     const kpiData = useMemo(() => {
         if (items.length === 0) return null;
-        const topItem = items.reduce((best, item) =>
-            (item.trendingScore || 0) > (best.trendingScore || 0) ? item : best
-        , items[0]);
-        const sourceCounts: Record<string, number> = {};
-        items.forEach(item => { sourceCounts[item.sourceId] = (sourceCounts[item.sourceId] || 0) + 1; });
-        const topEntry = Object.entries(sourceCounts).sort((a, b) => b[1] - a[1])[0];
-        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-        const freshCount = items.filter(item => new Date(item.publishedAt) > oneHourAgo).length;
+
+        const hotCount = items.filter(item => (item.trendingScore || 0) >= 60).length;
+        const totalScore = items.reduce((sum, item) => sum + (item.trendingScore || 0), 0);
+        const avgScore = Math.round((totalScore / items.length) * 10) / 10;
+        const scoreClass = avgScore >= 60 ? 'On Fire' : avgScore >= 40 ? 'Active' : avgScore >= 20 ? 'Moderate' : 'Quiet';
+        const risingCount = items.filter(item => (item.velocityScore || 0) > 0).length;
+        const activeSourceIds = new Set(items.map(item => item.sourceId));
+        const activeSourceCount = activeSourceIds.size;
+        const totalSourceCount = SOURCES.length;
+
         return {
-            total: items.length,
-            topScore: topItem?.trendingScore || 0,
-            topTitle: topItem?.title || '',
-            topSourceId: topEntry?.[0] || '',
-            topSourceCount: topEntry?.[1] || 0,
-            freshCount,
+            hotCount,
+            avgScore,
+            scoreClass,
+            risingCount,
+            activeSourceCount,
+            totalSourceCount,
         };
     }, [items]);
+
+    const highlights = useMemo(() => {
+        if (items.length === 0) return [];
+
+        const sorted = [...items].sort((a, b) => (b.trendingScore || 0) - (a.trendingScore || 0));
+        const top5 = sorted.slice(0, 5);
+
+        return top5.map(item => {
+            const score = item.trendingScore || 0;
+            const tierClass = score >= 60 ? 'score-hot' : score >= 40 ? 'score-trending' : score >= 20 ? 'score-notable' : 'score-default';
+            const sourceName = sourceMap[item.sourceId]?.name || item.sourceId;
+
+            let timeAgo: string;
+            try {
+                const pubDate = item.publishedAt instanceof Date ? item.publishedAt : new Date(item.publishedAt);
+                timeAgo = formatDistanceToNow(pubDate, { addSuffix: true });
+            } catch {
+                timeAgo = '';
+            }
+
+            // Extract primary engagement metric
+            let primaryMetric: { label: string; value: string } | null = null;
+            const eng = item.engagement;
+            if (eng) {
+                if (eng.views && eng.views > 0) primaryMetric = { label: 'views', value: formatNumber(eng.views) };
+                else if (eng.upvotes && eng.upvotes > 0) primaryMetric = { label: 'upvotes', value: formatNumber(eng.upvotes) };
+                else if (eng.stars && eng.stars > 0) primaryMetric = { label: 'stars', value: formatNumber(eng.stars) };
+                else if (eng.likes && eng.likes > 0) primaryMetric = { label: 'likes', value: formatNumber(eng.likes) };
+                else if (eng.downloads && eng.downloads > 0) primaryMetric = { label: 'downloads', value: formatNumber(eng.downloads) };
+                else if (eng.claps && eng.claps > 0) primaryMetric = { label: 'claps', value: formatNumber(eng.claps) };
+            }
+
+            return {
+                id: item.id,
+                title: item.title,
+                url: item.url,
+                score,
+                tierClass,
+                sourceName,
+                timeAgo,
+                primaryMetric,
+            };
+        });
+    }, [items, sourceMap]);
 
     const hasFailures = data?.failures && data.failures.length > 0;
 
@@ -202,30 +258,65 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
                                 {kpiData && (
                                     <div className="kpi-grid">
                                         <div className="kpi-card kpi-total">
-                                            <div className="kpi-icon"><LayoutList size={20} aria-hidden="true" /></div>
-                                            <span className="kpi-label">Total Items</span>
-                                            <span className="kpi-value">{kpiData.total}</span>
+                                            <div className="kpi-icon"><Flame size={20} aria-hidden="true" /></div>
+                                            <span className="kpi-label">Hot Right Now</span>
+                                            <span className="kpi-value">{kpiData.hotCount}</span>
+                                            <span className="kpi-detail">score &ge; 60</span>
                                         </div>
                                         <div className="kpi-card kpi-trending">
-                                            <div className="kpi-icon"><Flame size={20} aria-hidden="true" /></div>
-                                            <span className="kpi-label">Top Trending</span>
-                                            <span className="kpi-value">{kpiData.topScore}</span>
-                                            <span className="kpi-detail">{kpiData.topTitle.length > 40 ? kpiData.topTitle.slice(0, 40) + '…' : kpiData.topTitle}</span>
+                                            <div className="kpi-icon"><Gauge size={20} aria-hidden="true" /></div>
+                                            <span className="kpi-label">Avg Score</span>
+                                            <span className="kpi-value">{kpiData.avgScore}</span>
+                                            <span className="kpi-detail">{kpiData.scoreClass}</span>
                                         </div>
                                         <div className="kpi-card kpi-active">
-                                            <div className="kpi-icon"><Activity size={20} aria-hidden="true" /></div>
-                                            <span className="kpi-label">Top Source</span>
-                                            <span className="kpi-value">{kpiData.topSourceCount}</span>
-                                            <span className="kpi-detail">{formatSourceName(kpiData.topSourceId)}</span>
+                                            <div className="kpi-icon"><TrendingUp size={20} aria-hidden="true" /></div>
+                                            <span className="kpi-label">Rising Fast</span>
+                                            <span className="kpi-value">{kpiData.risingCount}</span>
+                                            <span className="kpi-detail">velocity &gt; 0</span>
                                         </div>
                                         <div className="kpi-card kpi-fresh">
-                                            <div className="kpi-icon"><Clock size={20} aria-hidden="true" /></div>
-                                            <span className="kpi-label">Last Hour</span>
-                                            <span className="kpi-value">{kpiData.freshCount}</span>
-                                            <span className="kpi-detail">{kpiData.freshCount === 1 ? 'new item' : 'new items'}</span>
+                                            <div className="kpi-icon"><Activity size={20} aria-hidden="true" /></div>
+                                            <span className="kpi-label">Sources Active</span>
+                                            <span className="kpi-value">{kpiData.activeSourceCount}/{kpiData.totalSourceCount}</span>
+                                            <span className="kpi-detail">sources with content</span>
                                         </div>
                                     </div>
                                 )}
+
+                                {highlights.length > 0 && (
+                                    <section className="highlights-section">
+                                        <div className="highlights-header">
+                                            <h2><Zap size={20} aria-hidden="true" /> Must-Read Highlights</h2>
+                                        </div>
+                                        <div className="highlights-list">
+                                            {highlights.map(item => (
+                                                <a
+                                                    key={item.id}
+                                                    href={item.url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="highlight-item"
+                                                >
+                                                    <div className={`highlight-score ${item.tierClass}`}>
+                                                        {item.score}
+                                                    </div>
+                                                    <div className="highlight-content">
+                                                        <span className="highlight-source">{item.sourceName}</span>
+                                                        <span className="highlight-title">{item.title}</span>
+                                                        <span className="highlight-time">{item.timeAgo}</span>
+                                                    </div>
+                                                    {item.primaryMetric && (
+                                                        <span className="highlight-metric">
+                                                            {item.primaryMetric.value} {item.primaryMetric.label}
+                                                        </span>
+                                                    )}
+                                                </a>
+                                            ))}
+                                        </div>
+                                    </section>
+                                )}
+
                                 <TrendCharts items={items} />
                             </>
                         ) : (
