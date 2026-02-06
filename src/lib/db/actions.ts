@@ -1,22 +1,33 @@
 import { db } from './index';
 import { settings, sources, contentItems } from './schema';
 import { eq, inArray, gte, and, desc, sql } from 'drizzle-orm';
-import { SOURCES } from '@/lib/config/sources';
+import { SOURCES, getSourceById } from '@/lib/config/sources';
 import { ContentItem, TimeRange } from '@/types';
 import { recordEngagementSnapshot } from './engagement-tracker';
+import { isSourceStale } from './cache-config';
+import { settingsCache } from '@/lib/cache/memory-cache';
 
 // === Settings Actions ===
 
 export async function getSetting<T = string>(key: string, defaultValue: T): Promise<T> {
     try {
+        // Check in-memory cache first
+        const cacheKey = `setting:${key}`;
+        const cached = settingsCache.get(cacheKey);
+        if (cached !== undefined) return cached as T;
+
         const result = await db.select().from(settings).where(eq(settings.key, key)).get();
         if (!result) return defaultValue;
 
+        let value: T;
         try {
-            return JSON.parse(result.value) as T;
+            value = JSON.parse(result.value) as T;
         } catch {
-            return result.value as unknown as T;
+            value = result.value as unknown as T;
         }
+
+        settingsCache.set(cacheKey, value);
+        return value;
     } catch (error) {
         console.error(`Failed to get setting ${key}:`, error);
         return defaultValue;
@@ -121,14 +132,6 @@ export async function setCategoryEnabled(sourceIds: string[], enabled: boolean):
 
 // === Content Caching Actions ===
 
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes cache TTL
-
-interface CachedFeedResult {
-    items: ContentItem[];
-    fetchedAt: Date;
-    isStale: boolean;
-}
-
 function getTimeRangeCutoff(timeRange: TimeRange): Date {
     const now = new Date();
     const cutoff = new Date();
@@ -156,21 +159,90 @@ function getTimeRangeCutoff(timeRange: TimeRange): Date {
     return cutoff;
 }
 
-export async function getCachedContent(
-    sourceIds: string[],
-    timeRange: TimeRange = '24h'
-): Promise<CachedFeedResult | null> {
-    try {
-        const cutoff = getTimeRangeCutoff(timeRange);
-        const cacheKey = `feed_cache_${sourceIds.sort().join('_')}_${timeRange}`;
-        const lastFetch = await getSetting<string>(`${cacheKey}_time`, '');
+// === Per-Source Freshness Tracking ===
 
-        if (!lastFetch) {
-            return null;
+export async function getSourceFreshness(
+    sourceIds: string[]
+): Promise<{ stale: string[]; fresh: string[] }> {
+    try {
+        const dbSources = await db
+            .select({ id: sources.id, lastFetchedAt: sources.lastFetchedAt })
+            .from(sources)
+            .where(inArray(sources.id, sourceIds))
+            .all();
+
+        const dbMap = new Map(dbSources.map(s => [s.id, s.lastFetchedAt]));
+
+        const stale: string[] = [];
+        const fresh: string[] = [];
+
+        for (const id of sourceIds) {
+            const sourceConfig = getSourceById(id);
+            if (!sourceConfig) {
+                stale.push(id);
+                continue;
+            }
+
+            const lastFetchedAt = dbMap.get(id) ?? null;
+            if (isSourceStale(lastFetchedAt, sourceConfig.category)) {
+                stale.push(id);
+            } else {
+                fresh.push(id);
+            }
         }
 
-        const fetchedAt = new Date(lastFetch);
-        const isStale = Date.now() - fetchedAt.getTime() > CACHE_TTL_MS;
+        return { stale, fresh };
+    } catch (error) {
+        console.error('Failed to get source freshness:', error);
+        return { stale: sourceIds, fresh: [] };
+    }
+}
+
+export async function updateSourceLastFetched(sourceIds: string[]): Promise<void> {
+    try {
+        const now = new Date();
+
+        const existingIds = await db
+            .select({ id: sources.id })
+            .from(sources)
+            .where(inArray(sources.id, sourceIds))
+            .all();
+
+        const existingIdSet = new Set(existingIds.map(s => s.id));
+        const toUpdate = sourceIds.filter(id => existingIdSet.has(id));
+        const toInsert = sourceIds.filter(id => !existingIdSet.has(id));
+
+        if (toUpdate.length > 0) {
+            await db
+                .update(sources)
+                .set({ lastFetchedAt: now })
+                .where(inArray(sources.id, toUpdate))
+                .run();
+        }
+
+        if (toInsert.length > 0) {
+            await db
+                .insert(sources)
+                .values(toInsert.map(id => ({
+                    id,
+                    enabled: true,
+                    lastFetchedAt: now,
+                })))
+                .run();
+        }
+    } catch (error) {
+        console.error('Failed to update source lastFetchedAt:', error);
+    }
+}
+
+export async function getCachedContentBySourceIds(
+    sourceIds: string[],
+    timeRange: TimeRange = '24h'
+): Promise<ContentItem[]> {
+    try {
+        if (sourceIds.length === 0) return [];
+
+        const cutoff = getTimeRangeCutoff(timeRange);
 
         const items = await db
             .select()
@@ -184,52 +256,36 @@ export async function getCachedContent(
             .orderBy(desc(contentItems.publishedAt))
             .all();
 
-        if (items.length === 0) {
-            return null;
-        }
-
-        return {
-            items: items.map(item => ({
-                id: item.id,
-                sourceId: item.sourceId,
-                title: item.title,
-                description: item.description ?? undefined,
-                url: item.url,
-                imageUrl: item.imageUrl ?? undefined,
-                publishedAt: item.publishedAt!,
-                fetchedAt: item.fetchedAt!,
-                author: item.author ?? undefined,
-                tags: item.tags ? JSON.parse(item.tags) : undefined,
-                sentiment: item.sentiment as ContentItem['sentiment'],
-                sentimentScore: item.sentimentScore ?? undefined,
-                engagement: item.engagement ? JSON.parse(item.engagement) : undefined,
-            })),
-            fetchedAt,
-            isStale,
-        };
+        return items.map(item => ({
+            id: item.id,
+            sourceId: item.sourceId,
+            title: item.title,
+            description: item.description ?? undefined,
+            url: item.url,
+            imageUrl: item.imageUrl ?? undefined,
+            publishedAt: item.publishedAt!,
+            fetchedAt: item.fetchedAt!,
+            author: item.author ?? undefined,
+            tags: item.tags ? JSON.parse(item.tags) : undefined,
+            sentiment: item.sentiment as ContentItem['sentiment'],
+            sentimentScore: item.sentimentScore ?? undefined,
+            engagement: item.engagement ? JSON.parse(item.engagement) : undefined,
+        }));
     } catch (error) {
-        console.error('Failed to get cached content:', error);
-        return null;
+        console.error('Failed to get cached content by source IDs:', error);
+        return [];
     }
 }
 
-export async function cacheContent(
-    items: ContentItem[],
-    sourceIds: string[],
-    timeRange: TimeRange = '24h'
-): Promise<void> {
+export async function cacheContent(items: ContentItem[]): Promise<void> {
     try {
         if (items.length === 0) return;
 
-        // Upsert content items
-        for (const item of items) {
-            const existing = await db
-                .select({ id: contentItems.id })
-                .from(contentItems)
-                .where(eq(contentItems.id, item.id))
-                .get();
-
-            const dbItem = {
+        // Batch upsert content items in chunks of 100
+        const CHUNK_SIZE = 100;
+        for (let i = 0; i < items.length; i += CHUNK_SIZE) {
+            const chunk = items.slice(i, i + CHUNK_SIZE);
+            const dbItems = chunk.map(item => ({
                 id: item.id,
                 sourceId: item.sourceId,
                 title: item.title,
@@ -243,30 +299,36 @@ export async function cacheContent(
                 sentiment: item.sentiment ?? null,
                 sentimentScore: item.sentimentScore ?? null,
                 engagement: item.engagement ? JSON.stringify(item.engagement) : null,
-            };
+            }));
 
-            if (existing) {
-                await db
-                    .update(contentItems)
-                    .set(dbItem)
-                    .where(eq(contentItems.id, item.id))
-                    .run();
-            } else {
-                await db.insert(contentItems).values(dbItem).run();
-            }
+            await db.insert(contentItems)
+                .values(dbItems)
+                .onConflictDoUpdate({
+                    target: contentItems.id,
+                    set: {
+                        sourceId: sql`excluded.source_id`,
+                        title: sql`excluded.title`,
+                        description: sql`excluded.description`,
+                        url: sql`excluded.url`,
+                        imageUrl: sql`excluded.image_url`,
+                        publishedAt: sql`excluded.published_at`,
+                        fetchedAt: sql`excluded.fetched_at`,
+                        author: sql`excluded.author`,
+                        tags: sql`excluded.tags`,
+                        sentiment: sql`excluded.sentiment`,
+                        sentimentScore: sql`excluded.sentiment_score`,
+                        engagement: sql`excluded.engagement`,
+                    },
+                })
+                .run();
         }
 
-        // Record engagement snapshots for velocity tracking
+        // Record engagement snapshots for velocity tracking (inherently sequential)
         for (const item of items) {
             if (item.engagement) {
                 await recordEngagementSnapshot(item.id, item.engagement);
             }
         }
-
-        // Update cache timestamp
-        const cacheKey = `feed_cache_${sourceIds.sort().join('_')}_${timeRange}`;
-        await updateSetting(`${cacheKey}_time`, new Date().toISOString());
-
     } catch (error) {
         console.error('Failed to cache content:', error);
     }

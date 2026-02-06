@@ -8,10 +8,12 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import {
   getEnabledSourceIds,
   getSetting,
-  getCachedContent,
   cacheContent,
   getAllSourcePriorities,
   getBoostKeywords,
+  getSourceFreshness,
+  updateSourceLastFetched,
+  getCachedContentBySourceIds,
 } from '@/lib/db/actions';
 import { scoreAndSortItems, ScoringConfig } from '@/lib/scoring';
 
@@ -24,34 +26,41 @@ async function fetchAllContent(): Promise<ContentItem[]> {
   const sources = getEnabledSourcesFiltered(enabledSourceIds);
   const sourceIds = sources.map(s => s.id);
 
-  // Check cache first
-  const cached = await getCachedContent(sourceIds, timeRange);
-  if (cached && !cached.isStale) {
-    // Re-score cached items (scores depend on recency which changes over time)
-    const priorities = await getAllSourcePriorities();
-    const boostKeywords = await getBoostKeywords();
-    const scoringConfig: ScoringConfig = { priorities, boostKeywords };
-    return scoreAndSortItems(cached.items, scoringConfig);
+  // Check per-source freshness
+  const { stale } = await getSourceFreshness(sourceIds);
+
+  if (stale.length > 0) {
+    // Fetch only stale sources
+    const staleSources = sources.filter(s => stale.includes(s.id));
+    const adapterPairs = staleSources
+      .map((source) => ({ source, adapter: createAdapter(source) }))
+      .filter((pair): pair is { source: typeof pair.source; adapter: NonNullable<typeof pair.adapter> } => pair.adapter !== null);
+
+    const results = await Promise.allSettled(
+      adapterPairs.map(({ adapter }) => adapter.fetch({ timeRange }))
+    );
+
+    const items: ContentItem[] = [];
+    results.forEach((result) => {
+      if (result.status === 'fulfilled' && result.value) {
+        items.push(...result.value);
+      }
+    });
+
+    const uniqueItems = deduplicateItems(items);
+    await cacheContent(uniqueItems);
+
+    // Update lastFetchedAt for successfully fetched sources
+    const successfulSourceIds = adapterPairs
+      .filter((_, i) => results[i].status === 'fulfilled')
+      .map(p => p.source.id);
+    if (successfulSourceIds.length > 0) {
+      await updateSourceLastFetched(successfulSourceIds);
+    }
   }
 
-  // Fetch fresh content
-  const adapters = sources
-    .map((source) => createAdapter(source))
-    .filter((adapter) => adapter !== null);
-
-  const results = await Promise.allSettled(
-    adapters.map((adapter) => adapter.fetch({ timeRange }))
-  );
-
-  const items: ContentItem[] = [];
-  results.forEach((result) => {
-    if (result.status === 'fulfilled' && result.value) {
-      items.push(...result.value);
-    }
-  });
-
-  // Deduplicate items
-  const uniqueItems = deduplicateItems(items);
+  // Get all items from DB (fresh + newly cached)
+  const allItems = await getCachedContentBySourceIds(sourceIds, timeRange);
 
   // Get scoring configuration
   const priorities = await getAllSourcePriorities();
@@ -63,12 +72,7 @@ async function fetchAllContent(): Promise<ContentItem[]> {
   };
 
   // Score and sort items
-  const scoredItems = scoreAndSortItems(uniqueItems, scoringConfig);
-
-  // Cache results
-  await cacheContent(scoredItems, sourceIds, timeRange);
-
-  return scoredItems;
+  return scoreAndSortItems(allItems, scoringConfig);
 }
 
 // Async Server Component wrapper

@@ -11,6 +11,7 @@ import {
     setBoostKeywords,
 } from '@/lib/db/actions';
 import { TimeRange } from '@/types';
+import { feedCache, settingsCache } from '@/lib/cache/memory-cache';
 
 // Validation helpers
 const VALID_THEMES = ['dark', 'light'] as const;
@@ -189,6 +190,10 @@ export async function POST(request: Request) {
                     { status: 400 }
                 );
         }
+
+        // Invalidate caches after any settings mutation
+        feedCache.clear();
+        settingsCache.clear();
 
         return NextResponse.json({ success: true });
     } catch (error) {

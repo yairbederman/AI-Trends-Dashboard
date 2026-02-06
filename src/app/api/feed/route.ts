@@ -7,14 +7,18 @@ import {
     getEnabledSourceIds,
     getSetting,
     updateSetting,
-    getCachedContent,
     cacheContent,
     cleanOldContent,
-    getAllSourcePriorities,
-    getBoostKeywords,
+    getSourceFreshness,
+    updateSourceLastFetched,
+    getCachedContentBySourceIds,
 } from '@/lib/db/actions';
-import { scoreAndSortItems, scoreItemsByFeedMode, ScoringConfig } from '@/lib/scoring';
+import { scoreItemsByFeedMode } from '@/lib/scoring';
 import { getBulkVelocities, cleanupOldSnapshots } from '@/lib/db/engagement-tracker';
+import { feedCache } from '@/lib/cache/memory-cache';
+import { db } from '@/lib/db';
+import { settings } from '@/lib/db/schema';
+import { sql } from 'drizzle-orm';
 
 // Run cleanup once per day max
 const CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
@@ -29,8 +33,10 @@ async function maybeRunCleanup() {
             Promise.all([
                 cleanOldContent(7),        // Keep 7 days of content
                 cleanupOldSnapshots(7),    // Keep 7 days of snapshots
+                // Phase 4: Clean up stale feed_cache_* entries from settings table
+                db.delete(settings).where(sql`${settings.key} LIKE 'feed_cache_%'`).run(),
             ]).then(([contentDeleted, snapshotsDeleted]) => {
-                console.log(`Cleanup: removed ${contentDeleted} old items, ${snapshotsDeleted} old snapshots`);
+                console.log(`Cleanup: removed ${contentDeleted} old items, ${snapshotsDeleted} old snapshots, cleaned feed_cache_* settings`);
             });
             await updateSetting('lastCleanupTime', new Date().toISOString());
         }
@@ -62,91 +68,99 @@ export async function GET(request: Request) {
         const dbTimeRange = await getSetting<TimeRange>('timeRange', '24h');
         const timeRange = queryTimeRange || dbTimeRange;
 
-        // Get enabled sources from database
+        // 1. Determine target source IDs
         const enabledSourceIds = await getEnabledSourceIds();
-        let sources = getEnabledSourcesFiltered(enabledSourceIds);
+        let targetSources = getEnabledSourcesFiltered(enabledSourceIds);
 
         if (category) {
-            sources = sources.filter((s) => s.category === category);
+            targetSources = targetSources.filter((s) => s.category === category);
         }
 
         if (sourceId) {
-            sources = sources.filter((s) => s.id === sourceId);
+            targetSources = targetSources.filter((s) => s.id === sourceId);
         }
 
-        const sourceIds = sources.map(s => s.id);
+        const targetSourceIds = targetSources.map(s => s.id);
 
-        // Check cache first
-        const cached = await getCachedContent(sourceIds, timeRange);
-        if (cached && !cached.isStale) {
-            // Get velocities for Hot/Rising modes
-            const velocities = (feedMode === 'hot' || feedMode === 'rising')
-                ? await getBulkVelocities(cached.items.map(i => i.id))
-                : new Map<string, number>();
+        // Check in-memory cache first
+        const memoryCacheKey = `feed:${targetSourceIds.sort().join(',')}:${timeRange}:${feedMode}`;
+        const memoryCached = feedCache.get(memoryCacheKey);
+        if (memoryCached) {
+            return NextResponse.json(memoryCached);
+        }
 
-            // Score and sort based on feed mode
-            const scoredItems = scoreItemsByFeedMode(cached.items, velocities, feedMode);
+        // 2. Check per-source freshness
+        const { stale, fresh } = await getSourceFreshness(targetSourceIds);
 
-            return NextResponse.json({
-                success: true,
-                count: scoredItems.length,
-                items: scoredItems,
-                fetchedAt: cached.fetchedAt.toISOString(),
-                cached: true,
-                mode: feedMode,
+        let failures: AdapterFailure[] = [];
+
+        // 3. Fetch only stale sources
+        if (stale.length > 0) {
+            console.log(`Selective fetch: ${stale.length} stale, ${fresh.length} fresh of ${targetSourceIds.length} total`);
+
+            const staleSources = targetSources.filter(s => stale.includes(s.id));
+            const adapterPairs = staleSources
+                .map((source) => ({ source, adapter: createAdapter(source) }))
+                .filter((pair): pair is { source: typeof pair.source; adapter: NonNullable<typeof pair.adapter> } => pair.adapter !== null);
+
+            // 4. Fetch stale sources in parallel
+            const results = await Promise.allSettled(
+                adapterPairs.map(({ adapter }) => adapter.fetch({ timeRange }))
+            );
+
+            const newItems: ContentItem[] = [];
+
+            results.forEach((result, index) => {
+                if (result.status === 'fulfilled') {
+                    newItems.push(...result.value);
+                } else {
+                    const failure = {
+                        source: adapterPairs[index].source.name,
+                        error: result.reason?.message || 'Unknown error',
+                    };
+                    failures.push(failure);
+                    console.error(`Adapter ${failure.source} failed:`, result.reason);
+                }
             });
+
+            // 5. Cache new items + update lastFetchedAt
+            const uniqueNewItems = deduplicateItems(newItems);
+            await cacheContent(uniqueNewItems);
+
+            // Update lastFetchedAt for successfully fetched sources
+            const successfulSourceIds = adapterPairs
+                .filter((_, i) => results[i].status === 'fulfilled')
+                .map(p => p.source.id);
+            if (successfulSourceIds.length > 0) {
+                await updateSourceLastFetched(successfulSourceIds);
+            }
         }
 
-        // Create adapters for each source
-        const adapters = sources
-            .map((source) => createAdapter(source))
-            .filter((adapter) => adapter !== null);
-
-        // Fetch content from all adapters in parallel
-        const results = await Promise.allSettled(
-            adapters.map((adapter) => adapter.fetch({ timeRange }))
-        );
-
-        // Combine all successful results and track failures
-        const allItems: ContentItem[] = [];
-        const failures: AdapterFailure[] = [];
-
-        results.forEach((result, index) => {
-            if (result.status === 'fulfilled') {
-                allItems.push(...result.value);
-            } else {
-                const failure = {
-                    source: adapters[index].source.name,
-                    error: result.reason?.message || 'Unknown error',
-                };
-                failures.push(failure);
-                console.error(`Adapter ${failure.source} failed:`, result.reason);
-            }
-        });
-
-        // Deduplicate items
-        const uniqueItems = deduplicateItems(allItems);
-
-        // Cache the results first (before scoring, as base items)
-        await cacheContent(uniqueItems, sourceIds, timeRange);
+        // 6. Query ALL items from DB (fresh cached + newly cached)
+        const allItems = await getCachedContentBySourceIds(targetSourceIds, timeRange);
 
         // Get velocities for Hot/Rising modes
         const velocities = (feedMode === 'hot' || feedMode === 'rising')
-            ? await getBulkVelocities(uniqueItems.map(i => i.id))
+            ? await getBulkVelocities(allItems.map(i => i.id))
             : new Map<string, number>();
 
         // Score and sort based on feed mode
-        const scoredItems = scoreItemsByFeedMode(uniqueItems, velocities, feedMode);
+        const scoredItems = scoreItemsByFeedMode(allItems, velocities, feedMode);
 
-        return NextResponse.json({
+        const response = {
             success: true,
             count: scoredItems.length,
             items: scoredItems,
             fetchedAt: new Date().toISOString(),
-            cached: false,
+            cached: stale.length === 0,
             mode: feedMode,
             failures: failures.length > 0 ? failures : undefined,
-        });
+        };
+
+        // Store in memory cache
+        feedCache.set(memoryCacheKey, response);
+
+        return NextResponse.json(response);
     } catch (error) {
         console.error('Feed API error:', error);
         return NextResponse.json(
