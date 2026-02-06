@@ -29,7 +29,8 @@
       "WebFetch(domain:www.interconnects.ai)",
       "WebFetch(domain:www.wired.com)",
       "WebFetch(domain:www.reddit.com)",
-      "Bash(del \"C:\\\\My Projects\\\\AI-Trends-Dashboard\\\\src\\\\lib\\\\adapters\\\\medium.ts\")"
+      "Bash(del \"C:\\\\My Projects\\\\AI-Trends-Dashboard\\\\src\\\\lib\\\\adapters\\\\medium.ts\")",
+      "Bash(cd:*)"
     ]
   }
 }

@@ -1,5 +1,6 @@
 'use client';
 
+import { memo } from 'react';
 import { Zap } from 'lucide-react';
 import { SourceCategory, CATEGORY_LABELS, CATEGORY_COLORS } from '@/types';
 
@@ -24,11 +25,11 @@ interface CategoryHighlightsProps {
     groups: CategoryHighlightGroup[];
 }
 
-export function CategoryHighlights({ groups }: CategoryHighlightsProps) {
+export const CategoryHighlights = memo(function CategoryHighlights({ groups }: CategoryHighlightsProps) {
     const totalItems = groups.reduce((sum, g) => sum + g.items.length, 0);
 
     return (
-        <section className="highlights-section">
+        <section className="highlights-section" aria-label="Must-Read Highlights">
             <div className="highlights-header">
                 <h2><Zap size={20} aria-hidden="true" /> Must-Read Highlights</h2>
                 <span className="highlights-subtitle">
@@ -37,56 +38,66 @@ export function CategoryHighlights({ groups }: CategoryHighlightsProps) {
             </div>
 
             <div className="highlights-lanes">
-                {groups.map((group, groupIndex) => (
-                    <div
-                        key={group.category}
-                        className={`highlights-lane${groupIndex === 0 ? ' lane-featured' : ''}`}
-                    >
-                        <div className="lane-header">
-                            <span
-                                className="lane-dot"
-                                style={{ backgroundColor: CATEGORY_COLORS[group.category] }}
-                            />
-                            <h3 className="lane-category-name">
-                                {CATEGORY_LABELS[group.category]}
-                            </h3>
-                        </div>
-                        <div className="lane-cards">
-                            {group.items.map(item => (
-                                <a
-                                    key={item.id}
-                                    href={item.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="lane-card"
-                                    title={item.title}
-                                >
-                                    <div className={`highlight-score ${item.tierClass}`}>
-                                        {item.score}
-                                    </div>
-                                    <div className="lane-card-body">
-                                        <span className="lane-card-source">
-                                            {item.sourceIcon && <span className="lane-card-emoji">{item.sourceIcon}</span>}
-                                            {item.sourceName}
-                                        </span>
-                                        <span className="lane-card-title">{item.title}</span>
-                                    </div>
-                                    <div className="lane-card-meta">
-                                        {item.timeAgo && (
-                                            <span className="lane-card-time">{item.timeAgo}</span>
-                                        )}
-                                        {item.primaryMetric && (
-                                            <span className="lane-card-metric">
-                                                {item.primaryMetric.value} {item.primaryMetric.label}
+                {groups.map((group, groupIndex) => {
+                    const laneId = `lane-${group.category}`;
+                    return (
+                        <div
+                            key={group.category}
+                            className={`highlights-lane${groupIndex === 0 ? ' lane-featured' : ''}`}
+                            role="region"
+                            aria-labelledby={laneId}
+                            style={{ '--lane-delay': `${groupIndex * 80}ms` } as React.CSSProperties}
+                        >
+                            <div className="lane-header">
+                                <span
+                                    className="lane-dot"
+                                    style={{ backgroundColor: CATEGORY_COLORS[group.category] }}
+                                    aria-hidden="true"
+                                />
+                                <h3 className="lane-category-name" id={laneId}>
+                                    {CATEGORY_LABELS[group.category]}
+                                </h3>
+                            </div>
+                            <div className="lane-cards">
+                                {group.items.map(item => (
+                                    <a
+                                        key={item.id}
+                                        href={item.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="lane-card"
+                                        title={item.title}
+                                    >
+                                        <div
+                                            className={`highlight-score ${item.tierClass}`}
+                                            aria-label={`Score: ${item.score}`}
+                                        >
+                                            {item.score}
+                                        </div>
+                                        <div className="lane-card-body">
+                                            <span className="lane-card-source">
+                                                {item.sourceIcon && <span className="lane-card-emoji" aria-hidden="true">{item.sourceIcon}</span>}
+                                                {item.sourceName}
                                             </span>
-                                        )}
-                                    </div>
-                                </a>
-                            ))}
+                                            <span className="lane-card-title">{item.title}</span>
+                                        </div>
+                                        <div className="lane-card-meta">
+                                            {item.timeAgo ? (
+                                                <span className="lane-card-time">{item.timeAgo}</span>
+                                            ) : null}
+                                            {item.primaryMetric ? (
+                                                <span className="lane-card-metric">
+                                                    {item.primaryMetric.value} {item.primaryMetric.label}
+                                                </span>
+                                            ) : null}
+                                        </div>
+                                    </a>
+                                ))}
+                            </div>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
         </section>
     );
-}
+});
