@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Check, X, RefreshCw, Moon, Sun, AlertCircle, Star, Sparkles, Plus, Trash2, ChevronDown, ChevronUp, Bot, Palette, Code2, Users, Newspaper, MessageSquare, Mail, Trophy } from 'lucide-react';
+import { ArrowLeft, Check, X, RefreshCw, Moon, Sun, AlertCircle, Star, Sparkles, Plus, Trash2, ChevronDown, ChevronUp, Bot, Palette, Code2, Users, Newspaper, MessageSquare, Mail, Trophy, Pencil, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { SourceCategory, CATEGORY_LABELS } from '@/types';
 import { useSettings } from '@/lib/contexts/SettingsContext';
@@ -55,6 +55,13 @@ export default function SettingsPage() {
     const [categories, setCategories] = useState<CategoryData[]>([]);
     const [loading, setLoading] = useState(true);
     const [newKeyword, setNewKeyword] = useState('');
+    const [newChannel, setNewChannel] = useState('');
+    const [isResolvingChannel, setIsResolvingChannel] = useState(false);
+    const [channelError, setChannelError] = useState('');
+    const [editingChannelId, setEditingChannelId] = useState<string | null>(null);
+    const [editChannelValue, setEditChannelValue] = useState('');
+    const [isResolvingEdit, setIsResolvingEdit] = useState(false);
+    const [editChannelError, setEditChannelError] = useState('');
     const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
 
     // Smart header state
@@ -97,6 +104,8 @@ export default function SettingsPage() {
         setSourcePriority,
         boostKeywords,
         setBoostKeywords,
+        youtubeChannels,
+        setYouTubeChannels,
         isSyncing,
         syncError,
     } = useSettings();
@@ -148,6 +157,143 @@ export default function SettingsPage() {
         if (e.key === 'Enter') {
             e.preventDefault();
             handleAddKeyword();
+        }
+    };
+
+    const parseChannelInput = (input: string): { type: 'id'; value: string } | { type: 'handle'; value: string } | null => {
+        const trimmed = input.trim();
+        if (!trimmed) return null;
+        // Direct channel ID (UC...)
+        if (/^UC[\w-]{22}$/.test(trimmed)) return { type: 'id', value: trimmed };
+        // URL with /channel/UC...
+        const channelMatch = trimmed.match(/youtube\.com\/channel\/(UC[\w-]{22})/);
+        if (channelMatch) return { type: 'id', value: channelMatch[1] };
+        // URL with @handle
+        const handleUrlMatch = trimmed.match(/youtube\.com\/@([\w.-]+)/);
+        if (handleUrlMatch) return { type: 'handle', value: `@${handleUrlMatch[1]}` };
+        // Bare @handle
+        if (/^@[\w.-]+$/.test(trimmed)) return { type: 'handle', value: trimmed };
+        return null;
+    };
+
+    const resolveChannel = async (input: string): Promise<{ channelId: string; name: string } | { error: string }> => {
+        const parsed = parseChannelInput(input);
+        if (!parsed) return { error: 'Invalid input' };
+
+        if (parsed.type === 'id') {
+            return { channelId: parsed.value, name: parsed.value };
+        }
+
+        // Resolve @handle via API
+        try {
+            const res = await fetch(`/api/youtube/resolve?input=${encodeURIComponent(parsed.value)}`);
+            const data = await res.json();
+            if (!res.ok) return { error: data.error || 'Failed to resolve channel' };
+            return { channelId: data.channelId, name: data.name };
+        } catch {
+            return { error: 'Network error resolving channel' };
+        }
+    };
+
+    const handleAddChannel = async () => {
+        const parsed = parseChannelInput(newChannel);
+        if (!parsed || isResolvingChannel) return;
+        setChannelError('');
+
+        if (parsed.type === 'id') {
+            if (youtubeChannels.some(ch => ch.channelId === parsed.value)) {
+                setChannelError('Channel already added');
+                return;
+            }
+            setYouTubeChannels([...youtubeChannels, { channelId: parsed.value, name: parsed.value }]);
+            setNewChannel('');
+            return;
+        }
+
+        // Handle @handle resolution
+        setIsResolvingChannel(true);
+        const result = await resolveChannel(newChannel);
+        setIsResolvingChannel(false);
+
+        if ('error' in result) {
+            setChannelError(result.error);
+            return;
+        }
+
+        if (youtubeChannels.some(ch => ch.channelId === result.channelId)) {
+            setChannelError('Channel already added');
+            return;
+        }
+
+        setYouTubeChannels([...youtubeChannels, { channelId: result.channelId, name: result.name }]);
+        setNewChannel('');
+    };
+
+    const handleRemoveChannel = (channelId: string) => {
+        setYouTubeChannels(youtubeChannels.filter(ch => ch.channelId !== channelId));
+    };
+
+    const handleChannelKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            handleAddChannel();
+        }
+    };
+
+    const startEditChannel = (channelId: string) => {
+        setEditingChannelId(channelId);
+        setEditChannelValue(`youtube.com/channel/${channelId}`);
+        setEditChannelError('');
+    };
+
+    const cancelEditChannel = () => {
+        setEditingChannelId(null);
+        setEditChannelValue('');
+        setEditChannelError('');
+    };
+
+    const saveEditChannel = async () => {
+        if (!editingChannelId || isResolvingEdit) return;
+        setEditChannelError('');
+
+        const parsed = parseChannelInput(editChannelValue);
+        if (!parsed) {
+            setEditChannelError('Invalid input');
+            return;
+        }
+
+        setIsResolvingEdit(true);
+        const result = await resolveChannel(editChannelValue);
+        setIsResolvingEdit(false);
+
+        if ('error' in result) {
+            setEditChannelError(result.error);
+            return;
+        }
+
+        // Check for duplicates (excluding the channel being edited)
+        if (youtubeChannels.some(ch => ch.channelId === result.channelId && ch.channelId !== editingChannelId)) {
+            setEditChannelError('Channel already exists');
+            return;
+        }
+
+        setYouTubeChannels(
+            youtubeChannels.map(ch =>
+                ch.channelId === editingChannelId
+                    ? { channelId: result.channelId, name: result.name }
+                    : ch
+            )
+        );
+        setEditingChannelId(null);
+        setEditChannelValue('');
+    };
+
+    const handleEditKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            saveEditChannel();
+        } else if (e.key === 'Escape') {
+            cancelEditChannel();
         }
     };
 
@@ -343,6 +489,116 @@ export default function SettingsPage() {
                         {boostKeywords.length === 0 && (
                             <p className="setting-hint" style={{ margin: 0 }}>
                                 No boost keywords configured. Add keywords to prioritize specific content.
+                            </p>
+                        )}
+                    </div>
+                </section>
+
+                {/* YouTube Channels */}
+                <section className="settings-section">
+                    <h2>
+                        <span style={{ display: 'inline', marginRight: '0.5rem' }}>📺</span>
+                        YouTube Channels
+                    </h2>
+
+                    <div className="setting-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '1rem' }}>
+                        <div className="setting-label">
+                            <span>Monitored Channels</span>
+                            <span className="setting-hint">
+                                Videos from these channels are fetched via RSS (no API quota cost). Add a @handle, channel URL, or ID.
+                            </span>
+                        </div>
+                        <div className="keyword-input-row">
+                            <input
+                                type="text"
+                                value={newChannel}
+                                onChange={(e) => { setNewChannel(e.target.value); setChannelError(''); }}
+                                onKeyDown={handleChannelKeyDown}
+                                placeholder="@handle, channel URL, or ID (e.g., @Fireship)"
+                                className="keyword-input"
+                                aria-label="Add YouTube channel"
+                            />
+                            <button
+                                onClick={handleAddChannel}
+                                className="add-keyword-btn"
+                                disabled={!parseChannelInput(newChannel) || isResolvingChannel}
+                                aria-label="Add channel"
+                            >
+                                {isResolvingChannel ? (
+                                    <Loader2 size={16} className="spinning" />
+                                ) : (
+                                    <Plus size={16} />
+                                )}
+                                {isResolvingChannel ? 'Resolving...' : 'Add'}
+                            </button>
+                        </div>
+                        {channelError && (
+                            <p className="setting-hint" style={{ margin: 0, color: 'var(--error)' }}>
+                                {channelError}
+                            </p>
+                        )}
+                        {youtubeChannels.length > 0 && (
+                            <div className="keywords-list">
+                                {youtubeChannels.map((channel) => (
+                                    editingChannelId === channel.channelId ? (
+                                        <div key={channel.channelId} className="channel-edit-row">
+                                            <input
+                                                type="text"
+                                                value={editChannelValue}
+                                                onChange={(e) => { setEditChannelValue(e.target.value); setEditChannelError(''); }}
+                                                onKeyDown={handleEditKeyDown}
+                                                className="keyword-input"
+                                                autoFocus
+                                                aria-label="Edit channel"
+                                            />
+                                            <button
+                                                onClick={saveEditChannel}
+                                                className="add-keyword-btn"
+                                                disabled={!parseChannelInput(editChannelValue) || isResolvingEdit}
+                                                aria-label="Save channel"
+                                            >
+                                                {isResolvingEdit ? (
+                                                    <Loader2 size={14} className="spinning" />
+                                                ) : (
+                                                    <Check size={14} />
+                                                )}
+                                            </button>
+                                            <button
+                                                onClick={cancelEditChannel}
+                                                className="channel-edit-btn"
+                                                aria-label="Cancel edit"
+                                            >
+                                                <X size={14} />
+                                            </button>
+                                            {editChannelError && (
+                                                <span style={{ color: 'var(--error)', fontSize: '0.75rem' }}>{editChannelError}</span>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <span key={channel.channelId} className="keyword-chip" title={`youtube.com/channel/${channel.channelId}`}>
+                                            {channel.name}
+                                            <button
+                                                onClick={() => startEditChannel(channel.channelId)}
+                                                className="channel-edit-btn"
+                                                aria-label={`Edit ${channel.name}`}
+                                            >
+                                                <Pencil size={12} />
+                                            </button>
+                                            <button
+                                                onClick={() => handleRemoveChannel(channel.channelId)}
+                                                className="remove-keyword-btn"
+                                                aria-label={`Remove ${channel.name}`}
+                                            >
+                                                <X size={12} />
+                                            </button>
+                                        </span>
+                                    )
+                                ))}
+                            </div>
+                        )}
+                        {youtubeChannels.length === 0 && (
+                            <p className="setting-hint" style={{ margin: 0 }}>
+                                No YouTube channels configured. Add channels to monitor their latest videos.
                             </p>
                         )}
                     </div>

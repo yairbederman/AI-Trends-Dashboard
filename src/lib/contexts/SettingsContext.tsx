@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { SOURCES } from '@/lib/config/sources';
 import { TimeRange } from '@/types';
+import { YouTubeChannelConfig } from '@/lib/config/youtube-channels';
 
 function getAllSourceIds(): string[] {
     return SOURCES.map((s) => s.id);
@@ -27,6 +28,9 @@ interface SettingsContextValue {
     // Keyword boost
     boostKeywords: string[];
     setBoostKeywords: (keywords: string[]) => void;
+    // YouTube channels
+    youtubeChannels: YouTubeChannelConfig[];
+    setYouTubeChannels: (channels: YouTubeChannelConfig[]) => void;
     // Sync state
     isSyncing: boolean;
     syncError: string | null;
@@ -40,6 +44,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     const [enabledSources, setEnabledSources] = useState<Set<string>>(new Set());
     const [priorities, setPriorities] = useState<Map<string, number>>(new Map());
     const [boostKeywords, setBoostKeywordsState] = useState<string[]>([]);
+    const [youtubeChannels, setYouTubeChannelsState] = useState<YouTubeChannelConfig[]>([]);
     const [hydrated, setHydrated] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
     const [syncError, setSyncError] = useState<string | null>(null);
@@ -62,6 +67,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
                     // Load boost keywords
                     if (data.boostKeywords) {
                         setBoostKeywordsState(data.boostKeywords);
+                    }
+                    // Load YouTube channels
+                    if (data.youtubeChannels) {
+                        setYouTubeChannelsState(data.youtubeChannels);
                     }
                 }
             } catch (error) {
@@ -243,6 +252,15 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         });
     }, [boostKeywords, syncSetting]);
 
+    const setYouTubeChannels = useCallback((channels: YouTubeChannelConfig[]) => {
+        const oldChannels = youtubeChannels;
+        setYouTubeChannelsState(channels);
+
+        syncSetting('SET_YOUTUBE_CHANNELS', { channels }, () => {
+            setYouTubeChannelsState(oldChannels);
+        });
+    }, [youtubeChannels, syncSetting]);
+
     if (!hydrated) {
         return null;
     }
@@ -266,6 +284,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
                 getSourcePriority,
                 boostKeywords,
                 setBoostKeywords,
+                youtubeChannels,
+                setYouTubeChannels,
                 isSyncing,
                 syncError,
             }}
@@ -282,4 +302,3 @@ export function useSettings() {
     }
     return context;
 }
-

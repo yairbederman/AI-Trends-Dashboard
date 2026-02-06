@@ -1938,6 +1938,47 @@ select:focus-visible,
   color: #ef4444;
 }
 
+/* Channel edit mode */
+.channel-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.channel-edit-row .keyword-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+}
+
+.channel-edit-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: all var(--transition-fast);
+  position: relative;
+}
+
+.channel-edit-btn::before {
+  content: '';
+  position: absolute;
+  inset: -10px;
+}
+
+.channel-edit-btn:hover {
+  background: rgba(99, 102, 241, 0.2);
+  color: #818cf8;
+}
+
 /* Source actions */
 .source-actions {
   display: flex;

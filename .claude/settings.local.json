@@ -30,7 +30,19 @@
       "WebFetch(domain:www.wired.com)",
       "WebFetch(domain:www.reddit.com)",
       "Bash(del \"C:\\\\My Projects\\\\AI-Trends-Dashboard\\\\src\\\\lib\\\\adapters\\\\medium.ts\")",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "WebFetch(domain:www.youtube.com)",
+      "WebSearch",
+      "WebFetch(domain:vidiq.com)",
+      "WebFetch(domain:socialblade.com)",
+      "WebFetch(domain:www.noxinfluencer.com)",
+      "WebFetch(domain:videos.feedspot.com)",
+      "WebFetch(domain:commentpicker.com)",
+      "WebFetch(domain:lachieslifestyle.com)",
+      "WebFetch(domain:yourdreamai.com)",
+      "Bash(sqlite3:*)",
+      "Bash(taskkill:*)",
+      "Bash(TASKKILL:*)"
     ]
   }
 }

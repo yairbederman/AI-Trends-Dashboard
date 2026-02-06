@@ -3,6 +3,7 @@ import { settings, sources, contentItems } from './schema';
 import { eq, inArray, gte, and, desc, sql } from 'drizzle-orm';
 import { SOURCES, getSourceById } from '@/lib/config/sources';
 import { ContentItem, TimeRange } from '@/types';
+import { YouTubeChannelConfig, DEFAULT_YOUTUBE_CHANNELS } from '@/lib/config/youtube-channels';
 import { recordEngagementSnapshot } from './engagement-tracker';
 import { isSourceStale } from './cache-config';
 import { settingsCache } from '@/lib/cache/memory-cache';
@@ -428,4 +429,14 @@ export async function getBoostKeywords(): Promise<string[]> {
 
 export async function setBoostKeywords(keywords: string[]): Promise<void> {
     await updateSetting('boostKeywords', keywords);
+}
+
+// === YouTube Channel Actions ===
+
+export async function getYouTubeChannels(): Promise<YouTubeChannelConfig[]> {
+    return getSetting<YouTubeChannelConfig[]>('youtubeChannels', DEFAULT_YOUTUBE_CHANNELS);
+}
+
+export async function setYouTubeChannels(channels: YouTubeChannelConfig[]): Promise<void> {
+    await updateSetting('youtubeChannels', channels);
 }

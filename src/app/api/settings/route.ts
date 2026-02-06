@@ -9,6 +9,8 @@ import {
     setSourcePriority,
     getBoostKeywords,
     setBoostKeywords,
+    getYouTubeChannels,
+    setYouTubeChannels,
 } from '@/lib/db/actions';
 import { TimeRange } from '@/types';
 import { feedCache, settingsCache } from '@/lib/cache/memory-cache';
@@ -55,6 +57,7 @@ export async function GET() {
         const enabledSources = await getEnabledSourceIds();
         const priorities = await getAllSourcePriorities();
         const boostKeywords = await getBoostKeywords();
+        const youtubeChannels = await getYouTubeChannels();
 
         return NextResponse.json({
             theme,
@@ -62,6 +65,7 @@ export async function GET() {
             enabledSources,
             priorities: Object.fromEntries(priorities),
             boostKeywords,
+            youtubeChannels,
         });
     } catch (error) {
         console.error('Failed to fetch settings:', error);
@@ -181,6 +185,27 @@ export async function POST(request: Request) {
                     .filter((k: unknown) => typeof k === 'string' && k.trim().length > 0)
                     .map((k: string) => k.trim().toLowerCase());
                 await setBoostKeywords(keywords);
+                break;
+            }
+
+            case 'SET_YOUTUBE_CHANNELS': {
+                if (!Array.isArray(payload.channels)) {
+                    return NextResponse.json(
+                        { error: 'Invalid channels. Must be an array of {channelId, name}' },
+                        { status: 400 }
+                    );
+                }
+                const channels = payload.channels
+                    .filter((ch: unknown) =>
+                        typeof ch === 'object' && ch !== null &&
+                        typeof (ch as Record<string, unknown>).channelId === 'string' &&
+                        typeof (ch as Record<string, unknown>).name === 'string'
+                    )
+                    .map((ch: { channelId: string; name: string }) => ({
+                        channelId: ch.channelId.trim(),
+                        name: ch.name.trim(),
+                    }));
+                await setYouTubeChannels(channels);
                 break;
             }
 

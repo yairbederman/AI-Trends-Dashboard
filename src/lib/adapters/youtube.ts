@@ -1,24 +1,7 @@
+import Parser from 'rss-parser';
 import { ContentItem, SourceConfig } from '@/types';
 import { BaseAdapter, AdapterOptions, createContentId } from './base';
-
-interface YouTubeSearchResult {
-    id: { videoId?: string; channelId?: string };
-    snippet: {
-        title: string;
-        description: string;
-        publishedAt: string;
-        channelTitle: string;
-        thumbnails: {
-            medium?: { url: string };
-            high?: { url: string };
-        };
-    };
-}
-
-interface YouTubeResponse {
-    items: YouTubeSearchResult[];
-    error?: { message: string };
-}
+import { getYouTubeChannels } from '@/lib/db/actions';
 
 interface YouTubeVideoStatistics {
     viewCount?: string;
@@ -36,28 +19,40 @@ interface YouTubeVideosResponse {
     error?: { message: string };
 }
 
+/** Intermediate video data before conversion to ContentItem */
+interface YouTubeVideoInfo {
+    videoId: string;
+    title: string;
+    description: string;
+    publishedAt: string;
+    channelTitle: string;
+    thumbnailUrl?: string;
+}
 
+const rssParser = new Parser({
+    timeout: 10000,
+    headers: {
+        'User-Agent': 'AI-Trends-Dashboard/1.0',
+    },
+});
 
 /**
- * YouTube Data API Adapter
- * Fetches AI-related videos from YouTube
+ * YouTube Adapter
+ * Fetches videos from user-configured YouTube channels via RSS feeds (free, no quota).
+ * Optionally enriches with view/like stats via YouTube Data API if key is available.
  */
 export class YouTubeAdapter extends BaseAdapter {
-    private apiKey: string;
+    private apiKey: string | null;
     private baseUrl = 'https://www.googleapis.com/youtube/v3';
 
     constructor(public source: SourceConfig) {
         super(source);
-        const key = process.env.YOUTUBE_API_KEY;
-        if (!key) {
-            throw new Error('YouTube API key not configured');
-        }
-        this.apiKey = key;
+        this.apiKey = process.env.YOUTUBE_API_KEY || null;
     }
 
     async fetch(options?: AdapterOptions): Promise<ContentItem[]> {
         try {
-            // Calculate publishedAfter date to optimize API usage
+            // Calculate publishedAfter date
             const cutoff = new Date();
             const timeRange = options?.timeRange || '7d';
 
@@ -80,59 +75,94 @@ export class YouTubeAdapter extends BaseAdapter {
                     break;
             }
 
-            // Search for recent AI-related videos
-            const searchQuery = encodeURIComponent('artificial intelligence OR LLM OR GPT OR machine learning');
-            // Allow fetching up to 50 videos (max allowed by API) to ensure we get enough content
-            const publishedAfter = cutoff.toISOString();
-            const url = `${this.baseUrl}/search?part=snippet&q=${searchQuery}&type=video&order=date&publishedAfter=${publishedAfter}&maxResults=50&key=${this.apiKey}`;
+            const rssVideos = await this.fetchChannelRSS(cutoff);
 
-            const response = await fetch(url);
-            const data: YouTubeResponse = await response.json();
+            console.log(`YouTube: ${rssVideos.size} videos from RSS`);
 
-            if (data.error) {
-                console.error('YouTube API error:', data.error.message);
-                return [];
+            // Enrich with stats if API key is available
+            const uniqueVideoIds = Array.from(rssVideos.keys());
+            const statsMap = this.apiKey
+                ? await this.fetchVideoStatistics(uniqueVideoIds)
+                : new Map<string, { views: number; likes: number; comments: number }>();
+
+            // Convert to ContentItem[]
+            const items: ContentItem[] = [];
+            for (const [videoId, info] of rssVideos) {
+                const stats = statsMap.get(videoId);
+                items.push({
+                    id: createContentId(this.source.id, `https://youtube.com/watch?v=${videoId}`),
+                    sourceId: this.source.id,
+                    title: this.decodeHtmlEntities(info.title),
+                    description: this.truncate(info.description, 200),
+                    url: `https://www.youtube.com/watch?v=${videoId}`,
+                    imageUrl: info.thumbnailUrl,
+                    publishedAt: new Date(info.publishedAt),
+                    fetchedAt: new Date(),
+                    author: info.channelTitle,
+                    tags: ['youtube', 'video'],
+                    engagement: stats ? {
+                        views: stats.views,
+                        likes: stats.likes,
+                        comments: stats.comments,
+                    } : undefined,
+                });
             }
 
-            // Extract video IDs for statistics fetch
-            const videoIds = data.items
-                .filter((item) => item.id.videoId)
-                .map((item) => item.id.videoId as string);
-
-            // Fetch engagement statistics for all videos (batched)
-            const statsMap = await this.fetchVideoStatistics(videoIds);
-
-            const items = data.items
-                .filter((item) => item.id.videoId)
-                .map((item) => {
-                    const videoId = item.id.videoId as string;
-                    const stats = statsMap.get(videoId);
-
-                    return {
-                        id: createContentId(this.source.id, `https://youtube.com/watch?v=${videoId}`),
-                        sourceId: this.source.id,
-                        title: this.decodeHtmlEntities(item.snippet.title),
-                        description: this.truncate(item.snippet.description, 200),
-                        url: `https://www.youtube.com/watch?v=${videoId}`,
-                        imageUrl: item.snippet.thumbnails.medium?.url || item.snippet.thumbnails.high?.url,
-                        publishedAt: new Date(item.snippet.publishedAt),
-                        fetchedAt: new Date(),
-                        author: item.snippet.channelTitle,
-                        tags: ['youtube', 'video'],
-                        engagement: stats ? {
-                            views: stats.views,
-                            likes: stats.likes,
-                            comments: stats.comments,
-                        } : undefined,
-                    };
-                });
-
-            // Double check filtering (API should handle it but good to be safe for consistency)
             return this.filterByTimeRange(items, options?.timeRange);
         } catch (error) {
             console.error('Failed to fetch YouTube:', error);
             return [];
         }
+    }
+
+    /**
+     * Fetch videos from user-configured YouTube channel RSS feeds (FREE - no API quota).
+     * Individual channel failures are logged and skipped.
+     */
+    private async fetchChannelRSS(cutoff: Date): Promise<Map<string, YouTubeVideoInfo>> {
+        const videoMap = new Map<string, YouTubeVideoInfo>();
+
+        let channels;
+        try {
+            channels = await getYouTubeChannels();
+        } catch (error) {
+            console.warn('Failed to load YouTube channels from settings:', error);
+            return videoMap;
+        }
+
+        if (channels.length === 0) return videoMap;
+
+        const feedPromises = channels.map(async (channel) => {
+            try {
+                const feedUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${channel.channelId}`;
+                const feed = await rssParser.parseURL(feedUrl);
+
+                for (const item of feed.items) {
+                    // Extract video ID from RSS entry
+                    const videoId = item.id?.replace('yt:video:', '')
+                        || item.link?.split('v=')[1]
+                        || '';
+                    if (!videoId) continue;
+
+                    const pubDate = new Date(item.pubDate || item.isoDate || '');
+                    if (isNaN(pubDate.getTime()) || pubDate < cutoff) continue;
+
+                    videoMap.set(videoId, {
+                        videoId,
+                        title: item.title || '',
+                        description: item.contentSnippet || item.content || '',
+                        publishedAt: pubDate.toISOString(),
+                        channelTitle: feed.title?.replace(' - Videos', '') || channel.name,
+                        thumbnailUrl: `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`,
+                    });
+                }
+            } catch (error) {
+                console.warn(`YouTube RSS failed for ${channel.name} (${channel.channelId}):`, error instanceof Error ? error.message : error);
+            }
+        });
+
+        await Promise.allSettled(feedPromises);
+        return videoMap;
     }
 
     /**
@@ -176,7 +206,6 @@ export class YouTubeAdapter extends BaseAdapter {
             }
         } catch (error) {
             console.error('Failed to fetch YouTube statistics:', error);
-            // Return empty map on error - videos will still be returned without stats
         }
 
         return statsMap;
