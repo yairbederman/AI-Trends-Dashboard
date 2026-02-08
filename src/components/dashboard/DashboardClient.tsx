@@ -325,7 +325,7 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
                     {/* Logo */}
                     <div className="logo">
                         <Sparkles className="logo-icon" aria-hidden="true" />
-                        <h1>AI Trends</h1>
+                        <h1>AI trends / Beedo Studio</h1>
                     </div>
 
                     {/* Primary Controls */}

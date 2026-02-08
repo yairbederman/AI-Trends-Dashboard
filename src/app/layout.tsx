@@ -17,8 +17,8 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: 'AI Trends Dashboard',
-    template: '%s | AI Trends Dashboard',
+    default: 'AI trends / Beedo Studio',
+    template: '%s | AI trends / Beedo Studio',
   },
   description: 'Track the latest trends in artificial intelligence from 30+ sources including OpenAI, Google AI, Anthropic, and more. Real-time aggregation of AI news, research, and community discussions.',
   keywords: [
@@ -36,18 +36,18 @@ export const metadata: Metadata = {
     'Anthropic',
     'Hugging Face',
   ],
-  authors: [{ name: 'AI Trends Dashboard' }],
-  creator: 'AI Trends Dashboard',
+  authors: [{ name: 'Beedo Studio' }],
+  creator: 'Beedo Studio',
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    title: 'AI Trends Dashboard',
+    title: 'AI trends / Beedo Studio',
     description: 'Track the latest trends in artificial intelligence from 30+ sources',
-    siteName: 'AI Trends Dashboard',
+    siteName: 'AI trends / Beedo Studio',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'AI Trends Dashboard',
+    title: 'AI trends / Beedo Studio',
     description: 'Track the latest trends in artificial intelligence from 30+ sources',
   },
   robots: {

@@ -89,7 +89,20 @@
       "WebFetch(domain:elevenlabs.io)",
       "Bash(npx next dev --port 3000)",
       "mcp__plugin_playwright_playwright__browser_click",
-      "Bash(npx next dev:*)"
+      "Bash(npx next dev:*)",
+      "Bash(npx vercel ls)",
+      "Bash(npx vercel ls:*)",
+      "Bash(npx vercel login:*)",
+      "Bash(gh api:*)",
+      "WebFetch(domain:ai-trends-dashboard-7s10sb1dp-yairs-projects-d3a9c1b3.vercel.app)",
+      "Bash(vercel ls:*)",
+      "Bash(vercel login:*)",
+      "mcp__vercel__list_teams",
+      "mcp__vercel__list_projects",
+      "mcp__vercel__list_deployments",
+      "Bash(vercel:*)",
+      "mcp__vercel__deploy_to_vercel",
+      "mcp__vercel__search_vercel_documentation"
     ]
   }
 }
