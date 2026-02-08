@@ -71,7 +71,22 @@
       "Bash(powershell -Command:*)",
       "Bash(start /B npm run dev:*)",
       "Bash(netstat:*)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "mcp__plugin_playwright_playwright__browser_navigate",
+      "mcp__plugin_playwright_playwright__browser_console_messages",
+      "mcp__plugin_playwright_playwright__browser_network_requests",
+      "mcp__plugin_playwright_playwright__browser_wait_for",
+      "mcp__plugin_playwright_playwright__browser_snapshot",
+      "mcp__plugin_playwright_playwright__browser_take_screenshot",
+      "mcp__plugin_playwright_playwright__browser_close",
+      "mcp__plugin_playwright_playwright__browser_evaluate",
+      "Bash(python3:*)",
+      "Bash(python:*)",
+      "WebFetch(domain:bensbites.beehiiv.com)",
+      "WebFetch(domain:cohere-ai.ghost.io)",
+      "WebFetch(domain:stability.ai)",
+      "WebFetch(domain:www.llamaindex.ai)",
+      "WebFetch(domain:elevenlabs.io)"
     ]
   }
 }

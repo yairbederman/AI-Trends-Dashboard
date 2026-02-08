@@ -1,73 +1,82 @@
 import { db } from './index';
 import { engagementSnapshots } from './schema';
 import { EngagementMetrics } from '@/types';
-import { eq, and, gte, desc, sql } from 'drizzle-orm';
+import { desc, sql } from 'drizzle-orm';
 
 /**
- * Record an engagement snapshot for a content item
+ * Record engagement snapshots for multiple content items in batch.
+ * Replaces the old per-item sequential approach which caused N+1 queries
+ * (catastrophic with remote Postgres/Supabase latency).
+ *
+ * Strategy:
+ * 1. Single query to fetch the most recent snapshot per content ID
+ * 2. Calculate velocities in-memory
+ * 3. Single batch INSERT for all new snapshots
  */
-export async function recordEngagementSnapshot(
-  contentId: string,
-  engagement: EngagementMetrics
+export async function recordEngagementSnapshotsBatch(
+  items: { contentId: string; engagement: EngagementMetrics }[]
 ): Promise<void> {
+  if (items.length === 0) return;
+
   try {
     const now = new Date();
+    const windowStart = new Date(Date.now() - 6 * 60 * 60 * 1000);
+    const contentIds = items.map(i => i.contentId);
 
-    // Calculate velocity from previous snapshot
-    const velocity = await calculateVelocityForItem(contentId, engagement, 6);
+    // 1. Batch fetch most recent snapshot per content ID (single query)
+    const previousSnapshots = await db
+      .select()
+      .from(engagementSnapshots)
+      .where(sql`${engagementSnapshots.contentId} IN (${sql.join(contentIds.map(id => sql`${id}`), sql`, `)})
+        AND ${engagementSnapshots.snapshotAt} >= ${windowStart}`)
+      .orderBy(desc(engagementSnapshots.snapshotAt));
 
-    await db.insert(engagementSnapshots).values({
-      contentId,
-      snapshotAt: now,
-      upvotes: engagement.upvotes,
-      comments: engagement.comments,
-      views: engagement.views,
-      likes: engagement.likes,
-      stars: engagement.stars,
-      forks: engagement.forks,
-      downloads: engagement.downloads,
-      claps: engagement.claps,
-      velocityScore: velocity,
+    // Keep only the most recent snapshot per contentId
+    const latestByContentId = new Map<string, typeof previousSnapshots[number]>();
+    for (const snap of previousSnapshots) {
+      if (!latestByContentId.has(snap.contentId)) {
+        latestByContentId.set(snap.contentId, snap);
+      }
+    }
+
+    // 2. Build all snapshot rows with velocity calculated in-memory
+    const rows = items.map(({ contentId, engagement }) => {
+      let velocity = 0;
+      const oldSnapshot = latestByContentId.get(contentId);
+      if (oldSnapshot) {
+        const oldEngagement = getPrimaryMetric(oldSnapshot);
+        const newEngagement = getPrimaryMetricFromEngagement(engagement);
+        const hoursElapsed = (now.getTime() - oldSnapshot.snapshotAt.getTime()) / (1000 * 60 * 60);
+        if (hoursElapsed >= 0.5) {
+          velocity = (newEngagement - oldEngagement) / hoursElapsed;
+        } else {
+          velocity = oldSnapshot.velocityScore || 0;
+        }
+      }
+
+      return {
+        contentId,
+        snapshotAt: now,
+        upvotes: engagement.upvotes,
+        comments: engagement.comments,
+        views: engagement.views,
+        likes: engagement.likes,
+        stars: engagement.stars,
+        forks: engagement.forks,
+        downloads: engagement.downloads,
+        claps: engagement.claps,
+        velocityScore: velocity,
+      };
     });
+
+    // 3. Batch insert all snapshots (chunks of 100 to stay within parameter limits)
+    const CHUNK_SIZE = 100;
+    for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
+      await db.insert(engagementSnapshots).values(rows.slice(i, i + CHUNK_SIZE));
+    }
   } catch (error) {
-    console.error('Failed to record engagement snapshot:', error);
+    console.error('Failed to record engagement snapshots batch:', error);
   }
-}
-
-/**
- * Calculate velocity for a single item based on recent snapshots
- */
-async function calculateVelocityForItem(
-  contentId: string,
-  currentEngagement: EngagementMetrics,
-  windowHours: number
-): Promise<number> {
-  const windowStart = new Date(Date.now() - windowHours * 60 * 60 * 1000);
-
-  const recentSnapshots = await db
-    .select()
-    .from(engagementSnapshots)
-    .where(
-      and(
-        eq(engagementSnapshots.contentId, contentId),
-        gte(engagementSnapshots.snapshotAt, windowStart)
-      )
-    )
-    .orderBy(desc(engagementSnapshots.snapshotAt))
-    .limit(1);
-
-  if (recentSnapshots.length === 0) {
-    return 0; // No previous snapshot, can't calculate velocity
-  }
-
-  const oldSnapshot = recentSnapshots[0];
-  const oldEngagement = getPrimaryMetric(oldSnapshot);
-  const newEngagement = getPrimaryMetricFromEngagement(currentEngagement);
-
-  const hoursElapsed = (Date.now() - oldSnapshot.snapshotAt.getTime()) / (1000 * 60 * 60);
-  if (hoursElapsed < 0.5) return oldSnapshot.velocityScore || 0; // Not enough time elapsed
-
-  return (newEngagement - oldEngagement) / hoursElapsed;
 }
 
 /**
@@ -87,7 +96,9 @@ function getPrimaryMetricFromEngagement(engagement: EngagementMetrics): number {
 }
 
 /**
- * Get velocities for multiple content items (bulk operation)
+ * Get velocities for multiple content items (bulk operation).
+ * Uses Postgres DISTINCT ON to efficiently get only the latest snapshot per content ID
+ * within a 24h window, avoiding unbounded result sets.
  */
 export async function getBulkVelocities(
   contentIds: string[]
@@ -95,22 +106,20 @@ export async function getBulkVelocities(
   if (contentIds.length === 0) return new Map();
 
   try {
-    // Get most recent velocity for each content item
-    const results = await db
-      .select({
-        contentId: engagementSnapshots.contentId,
-        velocityScore: engagementSnapshots.velocityScore,
-      })
-      .from(engagementSnapshots)
-      .where(sql`${engagementSnapshots.contentId} IN (${sql.join(contentIds.map(id => sql`${id}`), sql`, `)})`)
-      .orderBy(desc(engagementSnapshots.snapshotAt));
+    const windowStart = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-    // Keep only the most recent velocity per contentId
+    // Postgres DISTINCT ON: get the most recent snapshot per contentId in one query
+    const results = await db.execute<{ content_id: string; velocity_score: number | null }>(
+      sql`SELECT DISTINCT ON (content_id) content_id, velocity_score
+          FROM engagement_snapshots
+          WHERE content_id IN (${sql.join(contentIds.map(id => sql`${id}`), sql`, `)})
+            AND snapshot_at >= ${windowStart}
+          ORDER BY content_id, snapshot_at DESC`
+    );
+
     const velocityMap = new Map<string, number>();
     for (const row of results) {
-      if (!velocityMap.has(row.contentId)) {
-        velocityMap.set(row.contentId, row.velocityScore || 0);
-      }
+      velocityMap.set(row.content_id, row.velocity_score || 0);
     }
 
     return velocityMap;

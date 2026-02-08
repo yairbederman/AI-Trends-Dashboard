@@ -48,7 +48,7 @@ export const SOURCES: SourceConfig[] = [
         url: 'https://ai.meta.com/blog/',
         feedUrl: 'https://ai.meta.com/blog/rss/',
         method: 'rss',
-        enabled: false, // Disabled - feed URL returns 404
+        enabled: false, // Disabled - no RSS feed available (custom React site, no feed endpoint)
         requiresKey: false,
         icon: '📘',
     },
@@ -92,7 +92,7 @@ export const SOURCES: SourceConfig[] = [
         url: 'https://mistral.ai/news/',
         feedUrl: 'https://mistral.ai/feed/',
         method: 'rss',
-        enabled: false, // Disabled - feed URL returns 404
+        enabled: false, // Disabled - no RSS feed available (Next.js site, no feed endpoint)
         requiresKey: false,
         icon: '🌀',
     },
@@ -101,9 +101,9 @@ export const SOURCES: SourceConfig[] = [
         name: 'Cohere',
         category: 'ai-labs',
         url: 'https://cohere.com/blog',
-        feedUrl: 'https://cohere.com/blog/rss.xml',
+        feedUrl: 'https://cohere-ai.ghost.io/rss/',
         method: 'rss',
-        enabled: false, // Disabled - URL returns HTML, not RSS
+        enabled: true,
         requiresKey: false,
         icon: '🔷',
     },
@@ -112,9 +112,9 @@ export const SOURCES: SourceConfig[] = [
         name: 'Stability AI',
         category: 'ai-labs',
         url: 'https://stability.ai/news',
-        feedUrl: 'https://stability.ai/feed',
+        feedUrl: 'https://stability.ai/news?format=rss',
         method: 'rss',
-        enabled: false, // Disabled - feed URL returns 404
+        enabled: true,
         requiresKey: false,
         icon: '🎨',
     },
@@ -148,10 +148,10 @@ export const SOURCES: SourceConfig[] = [
         id: 'runway',
         name: 'Runway',
         category: 'creative-ai',
-        url: 'https://runwayml.com/blog',
-        feedUrl: 'https://runwayml.com/blog/rss.xml',
+        url: 'https://runwayml.com/news',
+        feedUrl: 'https://runwayml.com/news/rss.xml',
         method: 'rss',
-        enabled: false, // Disabled - feed URL returns 404
+        enabled: false, // Disabled - no RSS feed available (Next.js site, blog moved to /news)
         requiresKey: false,
         icon: '🎬',
     },
@@ -162,7 +162,7 @@ export const SOURCES: SourceConfig[] = [
         url: 'https://elevenlabs.io/blog',
         feedUrl: 'https://elevenlabs.io/blog/rss/',
         method: 'rss',
-        enabled: false, // Disabled - feed URL returns 404
+        enabled: false, // Disabled - no RSS feed available (Next.js site, no feed endpoint)
         requiresKey: false,
         icon: '🎙️',
     },
@@ -235,10 +235,10 @@ export const SOURCES: SourceConfig[] = [
         id: 'papers-with-code',
         name: 'Papers with Code',
         category: 'dev-platforms',
-        url: 'https://paperswithcode.com',
+        url: 'https://huggingface.co/papers',
         feedUrl: 'https://paperswithcode.com/rss',
         method: 'rss',
-        enabled: false, // Disabled - returns HTML instead of RSS
+        enabled: false, // Disabled - site redirects to HuggingFace papers, no RSS feed
         requiresKey: false,
         icon: '📄',
     },
@@ -260,7 +260,7 @@ export const SOURCES: SourceConfig[] = [
         url: 'https://www.llamaindex.ai/blog',
         feedUrl: 'https://www.llamaindex.ai/blog/rss.xml',
         method: 'rss',
-        enabled: false, // Disabled - feed URL returns 404
+        enabled: false, // Disabled - no RSS feed available (Astro site, no feed endpoint)
         requiresKey: false,
         icon: '🦙',
     },
@@ -496,7 +496,7 @@ export const SOURCES: SourceConfig[] = [
         url: 'https://www.deeplearning.ai/the-batch/',
         feedUrl: 'https://www.deeplearning.ai/the-batch/feed/',
         method: 'rss',
-        enabled: false, // Disabled - feed URL returns 404
+        enabled: false, // Disabled - no RSS feed available (custom Next.js site)
         requiresKey: false,
         icon: '📧',
     },
@@ -507,7 +507,7 @@ export const SOURCES: SourceConfig[] = [
         url: 'https://bensbites.beehiiv.com',
         feedUrl: 'https://bensbites.beehiiv.com/feed',
         method: 'rss',
-        enabled: false, // Disabled - feed URL returns 404
+        enabled: false, // Disabled - Beehiiv feed returns 404
         requiresKey: false,
         icon: '🍪',
         relevanceFilter: true,
@@ -519,7 +519,7 @@ export const SOURCES: SourceConfig[] = [
         url: 'https://therundownai.com',
         feedUrl: 'https://therundownai.com/feed',
         method: 'rss',
-        enabled: false, // Disabled - returns HTML, not RSS
+        enabled: false, // Disabled - domain is no longer active (for sale)
         requiresKey: false,
         icon: '🏃',
         relevanceFilter: true,

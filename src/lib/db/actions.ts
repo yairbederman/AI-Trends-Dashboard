@@ -4,7 +4,7 @@ import { eq, inArray, gte, and, desc, sql } from 'drizzle-orm';
 import { SOURCES, getSourceById } from '@/lib/config/sources';
 import { ContentItem, TimeRange } from '@/types';
 import { YouTubeChannelConfig, DEFAULT_YOUTUBE_CHANNELS } from '@/lib/config/youtube-channels';
-import { recordEngagementSnapshot } from './engagement-tracker';
+import { recordEngagementSnapshotsBatch } from './engagement-tracker';
 import { isSourceStale } from './cache-config';
 import { settingsCache } from '@/lib/cache/memory-cache';
 import { analyzeSentiment } from '@/lib/sentiment';
@@ -329,11 +329,15 @@ export async function cacheContent(items: ContentItem[]): Promise<void> {
                 });
         }
 
-        // Record engagement snapshots for velocity tracking (inherently sequential)
-        for (const item of items) {
-            if (item.engagement) {
-                await recordEngagementSnapshot(item.id, item.engagement);
-            }
+        // Record engagement snapshots in background (non-blocking).
+        // Uses batch query instead of per-item N+1 to handle remote DB latency.
+        const engagementItems = items
+            .filter(item => item.engagement)
+            .map(item => ({ contentId: item.id, engagement: item.engagement! }));
+        if (engagementItems.length > 0) {
+            recordEngagementSnapshotsBatch(engagementItems).catch(err =>
+                console.error('Background engagement snapshot failed:', err)
+            );
         }
     } catch (error) {
         console.error('Failed to cache content:', error);

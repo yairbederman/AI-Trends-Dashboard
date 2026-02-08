@@ -90,7 +90,7 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
         return `/api/feed?${params.toString()}`;
     }, [timeRange, feedMode, activeCategory]);
 
-    const { data, error, mutate: refreshData } = useSWR<FeedResponse>(
+    const { data, error, isLoading, mutate: refreshData } = useSWR<FeedResponse>(
         apiUrl,
         fetcher,
         {
@@ -103,6 +103,7 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
             revalidateOnFocus: false,
             refreshInterval: 5 * 60 * 1000, // Auto-refresh every 5 minutes
             dedupingInterval: 60000, // 1 minute
+            keepPreviousData: true,
         }
     );
 
@@ -294,22 +295,27 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
 
     return (
         <div className="dashboard">
-            <header className={`dashboard-header ${!isHeaderVisible ? 'header-hidden' : ''}`} role="banner">
-                <div className="header-content">
+            <header className={`dashboard-header-modern ${!isHeaderVisible ? 'header-hidden' : ''}`} role="banner">
+                <div className="header-row">
+                    {/* Logo */}
                     <div className="logo">
                         <Sparkles className="logo-icon" aria-hidden="true" />
                         <h1>AI Trends</h1>
                     </div>
 
-                    <div className="header-actions">
+                    {/* Primary Controls */}
+                    <div className="header-controls">
                         <FeedModeSelector activeMode={feedMode} onModeChange={setFeedMode} />
                         <TimeRangeDropdown activeRange={timeRange} onRangeChange={setTimeRange} />
-                        <Link href="/settings" className="settings-btn" aria-label="Open settings">
-                            <Settings size={20} aria-hidden="true" />
-                        </Link>
                     </div>
+
+                    {/* Settings */}
+                    <Link href="/settings" className="settings-btn" aria-label="Open settings">
+                        <Settings size={20} aria-hidden="true" />
+                    </Link>
                 </div>
 
+                {/* Category Navigation - Compact Secondary Row */}
                 <CollapsibleSourceTabs
                     categories={CATEGORIES}
                     activeCategory={activeCategory}
@@ -335,6 +341,8 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
                             Try Again
                         </button>
                     </div>
+                ) : isLoading ? (
+                    <LoadingSpinner message="Loading feed..." />
                 ) : items.length === 0 ? (
                     <div className="empty-state" role="status">
                         <div className="empty-state-icon">

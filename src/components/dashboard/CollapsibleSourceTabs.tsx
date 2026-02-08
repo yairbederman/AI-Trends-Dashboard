@@ -15,47 +15,73 @@ interface CollapsibleSourceTabsProps {
 export function CollapsibleSourceTabs({ categories, activeCategory, onCategoryChange, itemCounts, totalCount }: CollapsibleSourceTabsProps) {
     return (
         <nav
-            className="w-full max-w-[var(--content-max-width)] mx-auto mb-8 overflow-hidden pl-1"
+            className="category-tabs-container"
             aria-label="Content categories"
         >
-            <div
-                className="
-                    flex items-center gap-5 overflow-x-auto no-scrollbar 
-                    py-4 px-4 mask-linear-fade
-                "
-            >
-                {/* 1. Dashboard Tab */}
-                <TabButton
-                    isActive={activeCategory === 'dashboard'}
-                    onClick={() => onCategoryChange('dashboard')}
-                    icon={LayoutDashboard}
-                    label="Dashboard"
-                />
+            <div className="category-tabs-wrapper">
+                <motion.div
+                    className="category-tabs-pill"
+                    initial="idle"
+                    whileHover="hover"
+                    animate="idle"
+                >
+                    {/* Container Hover/Bg Effects */}
+                    <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent opacity-0 transition-opacity duration-500 pointer-events-none group-hover:opacity-100" />
 
-                {/* 2. All Sources Tab */}
-                <TabButton
-                    isActive={activeCategory === 'all'}
-                    onClick={() => onCategoryChange('all')}
-                    label="All Sources"
-                    count={totalCount}
-                />
-
-                {/* 3. Dynamic Categories */}
-                {categories.map((category) => (
-                    <TabButton
-                        key={category}
-                        isActive={activeCategory === category}
-                        onClick={() => onCategoryChange(category)}
-                        label={CATEGORY_LABELS[category]}
-                        count={itemCounts[category]}
+                    {/* Cyber Shimmer Beam */}
+                    <motion.div
+                        variants={{
+                            idle: { x: "-150%", opacity: 0 },
+                            hover: {
+                                x: "150%",
+                                opacity: 0.5,
+                                transition: {
+                                    duration: 1.5,
+                                    ease: "easeInOut",
+                                    repeat: Infinity,
+                                    repeatDelay: 0.5
+                                }
+                            }
+                        }}
+                        className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-[rgba(20,184,166,0.1)] to-transparent -skew-x-12 pointer-events-none z-0"
                     />
-                ))}
+
+                    {/* Buttons */}
+                    <div className="relative z-10 flex items-center">
+                    {/* 1. Dashboard Tab */}
+                    <TabButton
+                        isActive={activeCategory === 'dashboard'}
+                        onClick={() => onCategoryChange('dashboard')}
+                        icon={LayoutDashboard}
+                        label="Dashboard"
+                    />
+
+                    {/* 2. All Sources Tab */}
+                    <TabButton
+                        isActive={activeCategory === 'all'}
+                        onClick={() => onCategoryChange('all')}
+                        label="All Sources"
+                        count={totalCount}
+                    />
+
+                    {/* 3. Dynamic Categories */}
+                    {categories.map((category) => (
+                        <TabButton
+                            key={category}
+                            isActive={activeCategory === category}
+                            onClick={() => onCategoryChange(category)}
+                            label={CATEGORY_LABELS[category]}
+                            count={itemCounts[category]}
+                        />
+                    ))}
+                    </div>
+                </motion.div>
             </div>
         </nav>
     );
 }
 
-// Sub-component for cleaner code & shared layout animations
+// Sub-component matching FeedModeSelector style
 function TabButton({
     isActive,
     onClick,
@@ -70,50 +96,39 @@ function TabButton({
     count?: number;
 }) {
     return (
-        <motion.button
-            layout
+        <button
             onClick={onClick}
-            transition={{
-                layout: { duration: 0.25, type: "spring", stiffness: 300, damping: 30 }
-            }}
             className={`
-                relative flex items-center justify-center gap-2.5 px-8 py-3.5 rounded-full 
-                transition-colors duration-200 whitespace-nowrap min-w-fit
-                cursor-pointer shrink-0 border
+                relative flex items-center justify-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium
+                transition-all duration-300 outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)]
+                whitespace-nowrap cursor-pointer shrink-0 min-h-[44px]
                 ${isActive
-                    ? 'text-white border-transparent'
-                    : 'bg-white/5 border-white/5 text-[var(--text-secondary)] hover:bg-white/10 hover:text-white hover:border-white/20'
+                    ? 'text-white'
+                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/5'
                 }
             `}
         >
-            {/* Active Background Slide (layoutId for smooth morph) */}
+            {/* Active Background Slide */}
             {isActive && (
                 <motion.div
-                    layoutId="activeTabBackground"
-                    className="absolute inset-0 z-[-1] rounded-full bg-gradient-to-r from-[var(--accent-primary)] to-[var(--accent-secondary)] shadow-[0_0_20px_rgba(20,184,166,0.5)]"
+                    layoutId="activeCategoryTab"
+                    className="absolute inset-0 z-[-1] rounded-full bg-gradient-to-r from-[var(--accent-primary)] to-[var(--accent-secondary)] shadow-[0_0_20px_rgba(20,184,166,0.4)]"
                     initial={false}
-                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                    transition={{ type: "spring", stiffness: 350, damping: 25 }}
                 />
             )}
 
-            <div className="relative z-10 flex items-center gap-2">
-                {Icon && <Icon size={18} className={isActive ? "text-white" : ""} />}
+            {Icon && <Icon size={16} className={isActive ? "text-white drop-shadow-md" : "opacity-70"} aria-hidden="true" />}
 
-                <span className={`
-                    block transition-all duration-200 text-[15px]
-                    ${isActive ? 'font-bold tracking-wide' : 'font-medium tracking-normal'}
+            <span className="tracking-wide">{label}</span>
+
+            {count !== undefined && count > 0 && (
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full min-w-[22px] text-center
+                    ${isActive ? 'bg-white/25 text-white' : 'bg-white/10 text-[var(--text-muted)]'}
                 `}>
-                    {label}
+                    {count}
                 </span>
-
-                {count !== undefined && count > 0 && (
-                    <span className={`text-xs font-semibold px-1.5 py-0.5 rounded-full min-w-[20px] text-center
-                        ${isActive ? 'bg-white/25 text-white' : 'bg-white/10 text-[var(--text-muted)]'}
-                    `}>
-                        {count}
-                    </span>
-                )}
-            </div>
-        </motion.button>
+            )}
+        </button>
     );
 }

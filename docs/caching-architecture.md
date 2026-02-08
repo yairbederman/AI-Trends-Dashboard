@@ -38,12 +38,12 @@ graph TB
         APIMore[+30 more sources...]
     end
 
-    subgraph "Database Layer (SQLite)"
+    subgraph "Database Layer (Supabase PostgreSQL)"
         BatchUpsert[Batch Upsert<br/>chunks of 100<br/>INSERT...ON CONFLICT]
         UpdateTimestamp[Update<br/>sources.lastFetchedAt]
         QueryAll[Query ALL items<br/>from content_items<br/>WHERE sourceId IN (...)]
 
-        DB[(SQLite Database)]
+        DB[(PostgreSQL Database)]
 
         subgraph "Tables"
             SourcesTable[sources<br/>- id<br/>- enabled<br/>- lastFetchedAt<br/>- priority]
@@ -112,7 +112,7 @@ sequenceDiagram
     participant C as Client
     participant MC as Memory Cache<br/>(60s TTL)
     participant API as Feed API Route
-    participant DB as SQLite DB
+    participant DB as Supabase PostgreSQL
     participant Adapters as Source Adapters
     participant External as External APIs
 
@@ -363,41 +363,17 @@ graph TB
 | **API Calls on Stale** | Refetch all 30 sources | Refetch ~6-8 stale | **70-80% reduction** |
 | **DB Writes (150 items)** | 300 queries (N+1) | 2 queries (batch) | **150x fewer** |
 | **Cache Hit Rate** | ~40% (coarse invalidation) | ~85% (granular + memory) | **2x better** |
-| **Response Time (cached)** | ~50ms (SQLite) | ~1ms (memory) | **50x faster** |
+| **Response Time (cached)** | ~100-200ms (Postgres) | ~1ms (memory) | **100x+ faster** |
 | **Settings Table** | Polluted with cache keys | Clean | Quality of life ✨ |
 
-## Future Migration Path to Supabase
+## Completed Migration: SQLite to Supabase PostgreSQL
 
-```mermaid
-graph LR
-    subgraph "Current: SQLite"
-        SQLite[better-sqlite3]
-        SchemaSQL[schema/sqlite.ts]
-        DrizzleSQL[drizzle-orm/better-sqlite3]
-    end
+The database was migrated from local SQLite (`better-sqlite3`) to Supabase PostgreSQL. Key changes:
 
-    subgraph "Future: Supabase (PostgreSQL)"
-        Supabase[Supabase PostgreSQL]
-        SchemaPG[schema/postgres.ts<br/>NEW]
-        DrizzlePG[drizzle-orm/postgres-js]
-    end
-
-    subgraph "Migration Steps"
-        Step1[1. Create schema/postgres.ts<br/>with pgTable equivalents]
-        Step2[2. Switch re-export in<br/>schema/index.ts]
-        Step3[3. Swap Drizzle driver<br/>in db/index.ts]
-        Step4[4. Update drizzle.config.ts<br/>for PostgreSQL]
-        Step5[5. Run drizzle-kit push]
-    end
-
-    SQLite -.->|When ready| Step1
-    Step1 --> Step2
-    Step2 --> Step3
-    Step3 --> Step4
-    Step4 --> Step5
-    Step5 --> Supabase
-
-    style SQLite fill:#e1f5ff
-    style Supabase fill:#ffe1f5
-```
+1. Schema defined in `src/lib/db/schema/postgres.ts` using `pgTable`
+2. Driver switched to `postgres` + `drizzle-orm/postgres-js` in `src/lib/db/index.ts`
+3. `drizzle.config.ts` set to `dialect: 'postgresql'`
+4. Connection uses `prepare: false` for Supabase transaction pooler (port 6543)
+5. Engagement snapshots batched to avoid N+1 latency with remote DB
+6. `getBulkVelocities` uses Postgres `DISTINCT ON` for efficient latest-per-group queries
 
