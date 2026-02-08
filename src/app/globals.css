@@ -183,10 +183,27 @@ a {
 /* Header Controls Group */
 .header-controls {
   display: flex;
+  flex: 1;
   align-items: center;
-  gap: 0.75rem;
+  gap: 1.25rem;
   margin-left: auto;
-  margin-right: 0.75rem;
+}
+
+/* Allow FeedModeSelector to grow while TimeRange stays fixed */
+.header-controls> :first-child {
+  flex: 1;
+}
+
+/* Vertical Separator between controls */
+.header-control-separator {
+  width: 1px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.12);
+  flex-shrink: 0;
+}
+
+.header-controls> :last-child {
+  flex-shrink: 0;
 }
 
 .dashboard-header {
@@ -283,7 +300,8 @@ a {
 
 .category-tabs-pill {
   position: relative;
-  display: inline-flex;
+  display: flex;
+  width: 100%;
   align-items: center;
   padding: 0.375rem;
   gap: 0.5rem;
@@ -292,7 +310,6 @@ a {
   border-radius: 9999px;
   backdrop-filter: blur(24px);
   overflow: hidden;
-  min-width: max-content;
 }
 
 .logo-icon {
@@ -552,8 +569,15 @@ a {
 }
 
 @keyframes card-fade-in {
-  from { opacity: 0; transform: translateY(16px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Must Read - highlighted cards */
@@ -1418,6 +1442,214 @@ a {
 }
 
 /* =====================
+   INSIGHT CHARTS (Deep Insights)
+   ===================== */
+
+.insight-charts-section {
+  margin-bottom: 2rem;
+}
+
+.insight-charts-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1.25rem;
+}
+
+.insight-charts-header h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-primary);
+}
+
+.insight-row {
+  display: grid;
+  gap: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.insight-row-2col {
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+}
+
+.insight-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  padding: 1.25rem;
+  transition: all var(--transition-normal);
+  overflow: hidden;
+}
+
+.insight-card:hover {
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow-card);
+}
+
+.insight-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  color: var(--text-secondary);
+}
+
+.insight-card-header h3 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.insight-card-header svg {
+  color: var(--accent-primary);
+  flex-shrink: 0;
+}
+
+.insight-subtitle {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+.insight-chart-wrapper {
+  width: 100%;
+}
+
+/* ── Leaderboard ────────────────────────────── */
+
+.leaderboard-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.leaderboard-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.6rem 0.5rem;
+  border-radius: 8px;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.leaderboard-item:hover {
+  background: var(--bg-card-hover);
+}
+
+.leaderboard-rank {
+  font-size: 1.1rem;
+  font-weight: 800;
+  min-width: 1.5rem;
+  text-align: center;
+  line-height: 1.2;
+  padding-top: 0.1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.leaderboard-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.leaderboard-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.leaderboard-source {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent-secondary);
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.leaderboard-metric {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  background: var(--bg-tertiary);
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+}
+
+.leaderboard-title {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.leaderboard-bar-track {
+  width: 100%;
+  height: 3px;
+  background: var(--bg-tertiary);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 0.15rem;
+}
+
+.leaderboard-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Radar Legend ────────────────────────────── */
+
+.radar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: center;
+  margin-top: 0.75rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.radar-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+
+.radar-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .insight-row-2col {
+    grid-template-columns: 1fr;
+  }
+
+  .leaderboard-item {
+    padding: 0.4rem 0.25rem;
+  }
+}
+
+/* =====================
    TREND CHARTS
    ===================== */
 
@@ -1488,10 +1720,25 @@ a {
   margin-bottom: 0.75rem;
 }
 
-.kpi-total .kpi-icon { background: rgba(20, 184, 166, 0.1); color: var(--accent-primary); }
-.kpi-trending .kpi-icon { background: rgba(34, 197, 94, 0.1); color: #22c55e; }
-.kpi-active .kpi-icon { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
-.kpi-fresh .kpi-icon { background: rgba(249, 115, 22, 0.1); color: #f97316; }
+.kpi-total .kpi-icon {
+  background: rgba(20, 184, 166, 0.1);
+  color: var(--accent-primary);
+}
+
+.kpi-trending .kpi-icon {
+  background: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+}
+
+.kpi-active .kpi-icon {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+}
+
+.kpi-fresh .kpi-icon {
+  background: rgba(249, 115, 22, 0.1);
+  color: #f97316;
+}
 
 .kpi-label {
   font-size: 0.72rem;
@@ -1783,8 +2030,13 @@ a {
 }
 
 @keyframes skeleton-pulse {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 .skeleton-settings-row {

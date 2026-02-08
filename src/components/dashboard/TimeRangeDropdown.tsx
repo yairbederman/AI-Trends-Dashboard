@@ -30,34 +30,38 @@ export function TimeRangeDropdown({ activeRange, onRangeChange }: TimeRangeDropd
 
     return (
         <div className="relative z-50" ref={containerRef}>
-            <motion.button
-                onClick={() => setIsOpen(!isOpen)}
-                whileHover={{ scale: 1.02, backgroundColor: "rgba(255,255,255,0.05)" }}
-                whileTap={{ scale: 0.98 }}
-                className={`
-          flex items-center gap-2.5 px-4 py-2.5 
-          min-h-[44px] min-w-[140px] justify-between
-          rounded-xl border backdrop-blur-md outline-none
-          transition-colors duration-200 cursor-pointer
-          ${isOpen
-                        ? 'bg-white/10 border-[var(--accent-primary)] text-white shadow-[0_0_15px_rgba(20,184,166,0.15)]'
-                        : 'bg-white/5 border-white/10 text-[var(--text-secondary)] hover:text-white hover:border-white/20'
-                    }
-        `}
-                aria-haspopup="listbox"
-                aria-expanded={isOpen}
+            <motion.div
+                className="flex items-center p-1.5 bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.08)] rounded-full backdrop-blur-xl"
             >
-                <div className="flex items-center gap-2">
-                    <Clock size={16} className={isOpen ? "text-[var(--accent-primary)]" : "opacity-70"} />
-                    <span className="text-sm font-medium">{activeLabel}</span>
-                </div>
-                <motion.div
-                    animate={{ rotate: isOpen ? 180 : 0 }}
-                    transition={{ duration: 0.2 }}
+                <motion.button
+                    onClick={() => setIsOpen(!isOpen)}
+                    whileHover={{ backgroundColor: "rgba(255,255,255,0.05)" }}
+                    whileTap={{ scale: 0.98 }}
+                    className={`
+            flex items-center gap-4 px-4 py-2.5 
+            min-h-[42px] justify-between
+            rounded-full outline-none
+            transition-all duration-300 cursor-pointer
+            ${isOpen
+                            ? 'text-white'
+                            : 'text-[var(--text-secondary)] hover:text-white'
+                        }
+          `}
+                    aria-haspopup="listbox"
+                    aria-expanded={isOpen}
                 >
-                    <ChevronDown size={14} className="opacity-50" />
-                </motion.div>
-            </motion.button>
+                    <div className="flex items-center gap-3">
+                        <Clock size={14} className={isOpen ? "text-[var(--accent-primary)]" : "opacity-60"} aria-hidden="true" />
+                        <span className="text-[13px] font-medium tracking-tight whitespace-nowrap">{activeLabel}</span>
+                    </div>
+                    <motion.div
+                        animate={{ rotate: isOpen ? 180 : 0 }}
+                        transition={{ duration: 0.2 }}
+                    >
+                        <ChevronDown size={14} className="opacity-40" />
+                    </motion.div>
+                </motion.button>
+            </motion.div>
 
             <AnimatePresence>
                 {isOpen && (

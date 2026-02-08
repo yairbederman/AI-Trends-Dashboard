@@ -86,7 +86,10 @@
       "WebFetch(domain:cohere-ai.ghost.io)",
       "WebFetch(domain:stability.ai)",
       "WebFetch(domain:www.llamaindex.ai)",
-      "WebFetch(domain:elevenlabs.io)"
+      "WebFetch(domain:elevenlabs.io)",
+      "Bash(npx next dev --port 3000)",
+      "mcp__plugin_playwright_playwright__browser_click",
+      "Bash(npx next dev:*)"
     ]
   }
 }

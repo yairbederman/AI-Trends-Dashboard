@@ -18,64 +18,40 @@ export function CollapsibleSourceTabs({ categories, activeCategory, onCategoryCh
             className="category-tabs-container"
             aria-label="Content categories"
         >
-            <div className="category-tabs-wrapper">
-                <motion.div
-                    className="category-tabs-pill"
-                    initial="idle"
-                    whileHover="hover"
-                    animate="idle"
-                >
-                    {/* Container Hover/Bg Effects */}
-                    <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent opacity-0 transition-opacity duration-500 pointer-events-none group-hover:opacity-100" />
-
-                    {/* Cyber Shimmer Beam */}
-                    <motion.div
-                        variants={{
-                            idle: { x: "-150%", opacity: 0 },
-                            hover: {
-                                x: "150%",
-                                opacity: 0.5,
-                                transition: {
-                                    duration: 1.5,
-                                    ease: "easeInOut",
-                                    repeat: Infinity,
-                                    repeatDelay: 0.5
-                                }
-                            }
-                        }}
-                        className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-[rgba(20,184,166,0.1)] to-transparent -skew-x-12 pointer-events-none z-0"
-                    />
-
-                    {/* Buttons */}
-                    <div className="relative z-10 flex items-center">
-                    {/* 1. Dashboard Tab */}
-                    <TabButton
-                        isActive={activeCategory === 'dashboard'}
-                        onClick={() => onCategoryChange('dashboard')}
-                        icon={LayoutDashboard}
-                        label="Dashboard"
-                    />
-
-                    {/* 2. All Sources Tab */}
-                    <TabButton
-                        isActive={activeCategory === 'all'}
-                        onClick={() => onCategoryChange('all')}
-                        label="All Sources"
-                        count={totalCount}
-                    />
-
-                    {/* 3. Dynamic Categories */}
-                    {categories.map((category) => (
+            <div className="category-tabs-wrapper w-full">
+                <div className="category-tabs-pill w-full md:w-full min-w-max md:min-w-0 bg-[rgba(255,255,255,0.02)] border-[0.5px] border-[rgba(255,255,255,0.1)] shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]">
+                    {/* Buttons container */}
+                    <div className="relative z-10 flex items-center gap-4 w-full md:w-full min-w-max md:min-w-0">
+                        {/* 1. Dashboard Tab */}
                         <TabButton
-                            key={category}
-                            isActive={activeCategory === category}
-                            onClick={() => onCategoryChange(category)}
-                            label={CATEGORY_LABELS[category]}
-                            count={itemCounts[category]}
+                            isActive={activeCategory === 'dashboard'}
+                            onClick={() => onCategoryChange('dashboard')}
+                            icon={LayoutDashboard}
+                            label="Dashboard"
                         />
-                    ))}
+
+                        {/* 2. All Sources Tab */}
+                        <TabButton
+                            isActive={activeCategory === 'all'}
+                            onClick={() => onCategoryChange('all')}
+                            label="All"
+                            count={totalCount}
+                        />
+
+                        <div className="w-[1px] h-4 bg-white/10 mx-2 shrink-0" />
+
+                        {/* 3. Dynamic Categories */}
+                        {categories.map((category) => (
+                            <TabButton
+                                key={category}
+                                isActive={activeCategory === category}
+                                onClick={() => onCategoryChange(category)}
+                                label={CATEGORY_LABELS[category]}
+                                count={itemCounts[category]}
+                            />
+                        ))}
                     </div>
-                </motion.div>
+                </div>
             </div>
         </nav>
     );
@@ -99,12 +75,12 @@ function TabButton({
         <button
             onClick={onClick}
             className={`
-                relative flex items-center justify-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium
-                transition-all duration-300 outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)]
-                whitespace-nowrap cursor-pointer shrink-0 min-h-[44px]
+                relative md:flex-1 md:min-w-0 flex-shrink-0 flex items-center justify-center gap-3 px-8 md:px-4 py-2.5 rounded-full text-[13px] font-medium
+                transition-all duration-300 outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent-primary)]
+                whitespace-nowrap cursor-pointer min-h-[42px]
                 ${isActive
                     ? 'text-white'
-                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/5'
+                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/5 active:scale-95'
                 }
             `}
         >
@@ -112,19 +88,19 @@ function TabButton({
             {isActive && (
                 <motion.div
                     layoutId="activeCategoryTab"
-                    className="absolute inset-0 z-[-1] rounded-full bg-gradient-to-r from-[var(--accent-primary)] to-[var(--accent-secondary)] shadow-[0_0_20px_rgba(20,184,166,0.4)]"
+                    className="absolute inset-0 z-[-1] rounded-full bg-gradient-to-br from-[var(--accent-primary)] to-[var(--accent-secondary)] shadow-[0_4px_12px_rgba(20,184,166,0.25)]"
                     initial={false}
-                    transition={{ type: "spring", stiffness: 350, damping: 25 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
                 />
             )}
 
-            {Icon && <Icon size={16} className={isActive ? "text-white drop-shadow-md" : "opacity-70"} aria-hidden="true" />}
+            {Icon && <Icon size={14} className={isActive ? "text-white drop-shadow-sm" : "opacity-60"} aria-hidden="true" />}
 
-            <span className="tracking-wide">{label}</span>
+            <span className="tracking-tight">{label}</span>
 
             {count !== undefined && count > 0 && (
-                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full min-w-[22px] text-center
-                    ${isActive ? 'bg-white/25 text-white' : 'bg-white/10 text-[var(--text-muted)]'}
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md min-w-[18px] text-center transition-colors duration-300
+                    ${isActive ? 'bg-white/20 text-white' : 'bg-white/5 text-[var(--text-muted)] group-hover:text-[var(--text-secondary)]'}
                 `}>
                     {count}
                 </span>

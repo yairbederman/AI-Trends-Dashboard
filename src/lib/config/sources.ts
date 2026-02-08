@@ -172,7 +172,7 @@ export const SOURCES: SourceConfig[] = [
         category: 'creative-ai',
         url: 'https://suno.com/blog',
         method: 'scrape',
-        enabled: true,
+        enabled: false, // REMOVED: RSS feed returns junk (legal pages, external articles, broken timestamps)
         requiresKey: false,
         icon: '🎵',
     },
@@ -192,7 +192,7 @@ export const SOURCES: SourceConfig[] = [
         category: 'creative-ai',
         url: 'https://pika.art/blog',
         method: 'scrape',
-        enabled: true,
+        enabled: false, // REMOVED: RSS feed returns only legal/policy pages, no actual blog content
         requiresKey: false,
         icon: '⚡',
     },

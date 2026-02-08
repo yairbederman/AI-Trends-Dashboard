@@ -6,6 +6,7 @@ import { ContentItem, SourceCategory, TimeRange, FeedMode } from '@/types';
 import { ContentCard } from '@/components/dashboard/ContentCard';
 import { CollapsibleSourceTabs } from '@/components/dashboard/CollapsibleSourceTabs';
 import { TrendCharts } from '@/components/dashboard/TrendCharts';
+import { InsightCharts } from '@/components/dashboard/InsightCharts';
 import { CategoryHighlights } from '@/components/dashboard/CategoryHighlights';
 import { TimeRangeDropdown } from './TimeRangeDropdown';
 import { FeedModeSelector } from './FeedModeSelector';
@@ -138,10 +139,15 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
     const kpiData = useMemo(() => {
         if (items.length === 0) return null;
 
-        // Top Source: which source has the most high-scoring content (score >= 40)
+        // Top Source: which source has the most high-scoring content
+        // Use adaptive threshold: top 25% of score range (works across all feed modes)
+        const scores = items.map(i => i.trendingScore || 0);
+        const maxScore = Math.max(...scores);
+        const scoreThreshold = maxScore * 0.5; // Top half of score range
+
         const sourceCounts: Record<string, number> = {};
         for (const item of items) {
-            if ((item.trendingScore || 0) >= 40) {
+            if ((item.trendingScore || 0) >= scoreThreshold) {
                 sourceCounts[item.sourceId] = (sourceCounts[item.sourceId] || 0) + 1;
             }
         }
@@ -152,8 +158,13 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
         }
         const topSourceName = topSourceId ? (sourceMap[topSourceId]?.name || topSourceId) : 'None';
 
-        // Hottest Topic: most common tag across top 20 items (excluding generic tags)
-        const genericTags = new Set(['ai', 'artificial intelligence', 'machine learning', 'ml', 'deep learning', 'tech', 'technology']);
+        // Hottest Topic: most common tag across top 20 items (excluding generic/junk tags)
+        const genericTags = new Set([
+            'ai', 'artificial intelligence', 'machine learning', 'ml', 'deep learning',
+            'tech', 'technology', 'other', 'none', 'general', 'misc', 'discussion',
+            'en', 'us', 'question', 'help', 'showcase', 'news',
+        ]);
+        const junkPatterns = [/^region:/, /^lang:/, /^license:/, /^type:/, /^v\d/, /^\d+$/, /^question\s*-/i];
         const tagCounts: Record<string, number> = {};
         const top20 = [...items].sort((a, b) => (b.trendingScore || 0) - (a.trendingScore || 0)).slice(0, 20);
         for (const item of top20) {
@@ -161,7 +172,7 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
             const seen = new Set<string>();
             for (const tag of allTags) {
                 const t = tag.toLowerCase().trim();
-                if (t && !genericTags.has(t) && !seen.has(t)) {
+                if (t && t.length > 2 && !genericTags.has(t) && !seen.has(t) && !junkPatterns.some(p => p.test(t))) {
                     seen.add(t);
                     tagCounts[t] = (tagCounts[t] || 0) + 1;
                 }
@@ -173,7 +184,7 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
             if (count > hottestTopicCount) { hottestTopic = tag; hottestTopicCount = count; }
         }
 
-        // Biggest Mover: item with highest velocity score
+        // Biggest Mover: item with highest velocity score, or fallback to newest high-scorer
         let biggestMover: { title: string; sourceName: string; velocity: number } | null = null;
         for (const item of items) {
             const v = item.velocityScore || 0;
@@ -182,6 +193,20 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
                     title: item.title.length > 50 ? item.title.slice(0, 50) + '...' : item.title,
                     sourceName: sourceMap[item.sourceId]?.name || item.sourceId,
                     velocity: v,
+                };
+            }
+        }
+        // Fallback: newest item in the top 10 by score (proxy for "rising fast")
+        if (!biggestMover) {
+            const topByScore = [...items].sort((a, b) => (b.trendingScore || 0) - (a.trendingScore || 0)).slice(0, 10);
+            const newestTop = topByScore.sort((a, b) =>
+                new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
+            )[0];
+            if (newestTop) {
+                biggestMover = {
+                    title: newestTop.title.length > 50 ? newestTop.title.slice(0, 50) + '...' : newestTop.title,
+                    sourceName: sourceMap[newestTop.sourceId]?.name || newestTop.sourceId,
+                    velocity: 0,
                 };
             }
         }
@@ -306,6 +331,7 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
                     {/* Primary Controls */}
                     <div className="header-controls">
                         <FeedModeSelector activeMode={feedMode} onModeChange={setFeedMode} />
+                        <div className="header-control-separator" aria-hidden="true" />
                         <TimeRangeDropdown activeRange={timeRange} onRangeChange={setTimeRange} />
                     </div>
 
@@ -373,7 +399,7 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
                                             <div className="kpi-icon"><Rocket size={20} aria-hidden="true" /></div>
                                             <span className="kpi-label">Biggest Mover</span>
                                             <span className="kpi-value kpi-value-text">{kpiData.biggestMover?.sourceName || 'None yet'}</span>
-                                            <span className="kpi-detail">{kpiData.biggestMover ? kpiData.biggestMover.title : 'no velocity data'}</span>
+                                            <span className="kpi-detail">{kpiData.biggestMover ? kpiData.biggestMover.title : 'no data yet'}</span>
                                         </div>
                                         <div className="kpi-card kpi-fresh">
                                             <div className="kpi-icon"><Activity size={20} aria-hidden="true" /></div>
@@ -388,6 +414,7 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
                                     <CategoryHighlights groups={categoryHighlights} />
                                 )}
 
+                                <InsightCharts items={items} />
                                 <TrendCharts items={items} />
                             </>
                         ) : (
