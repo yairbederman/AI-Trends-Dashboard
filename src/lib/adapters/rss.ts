@@ -42,7 +42,9 @@ export class RSSAdapter extends BaseAdapter {
             }));
 
             const relevant = this.filterByRelevance(items);
-            return this.filterByTimeRange(relevant, options?.timeRange);
+            // Don't filter by time range here — cache everything the feed returns.
+            // The DB query in getCachedContentBySourceIds already filters by the user's time range.
+            return relevant;
         } catch (error) {
             console.error(`Failed to fetch RSS for ${this.source.name}:`, error);
             return [];

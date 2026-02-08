@@ -127,11 +127,12 @@ export async function cleanupOldSnapshots(daysToKeep: number = 30): Promise<numb
   const cutoff = new Date(Date.now() - daysToKeep * 24 * 60 * 60 * 1000);
 
   try {
-    const result = await db
+    const deleted = await db
       .delete(engagementSnapshots)
-      .where(sql`${engagementSnapshots.snapshotAt} < ${cutoff}`);
+      .where(sql`${engagementSnapshots.snapshotAt} < ${cutoff}`)
+      .returning({ id: engagementSnapshots.id });
 
-    return result.changes || 0;
+    return deleted.length;
   } catch (error) {
     console.error('Failed to cleanup old snapshots:', error);
     return 0;

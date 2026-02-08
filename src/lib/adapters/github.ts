@@ -111,8 +111,7 @@ export class GitHubAdapter extends BaseAdapter {
                 },
             }));
 
-            // Apply precise filtering (since GitHub API is day-granularity only)
-            return this.filterByTimeRange(items, options?.timeRange);
+            return items;
         } catch (error) {
             console.error('Failed to fetch GitHub:', error);
             return [];

@@ -108,7 +108,7 @@ export class YouTubeAdapter extends BaseAdapter {
                 });
             }
 
-            return this.filterByTimeRange(items, options?.timeRange);
+            return items;
         } catch (error) {
             console.error('Failed to fetch YouTube:', error);
             return [];

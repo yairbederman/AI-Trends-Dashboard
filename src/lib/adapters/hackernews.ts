@@ -57,8 +57,7 @@ export class HackerNewsAdapter extends BaseAdapter {
                 },
             }));
 
-            // Filter items by time range
-            return this.filterByTimeRange(items, options?.timeRange);
+            return items;
         } catch (error) {
             console.error('Failed to fetch Hacker News:', error);
             return [];

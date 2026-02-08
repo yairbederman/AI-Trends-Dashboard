@@ -7,6 +7,7 @@ import { YouTubeChannelConfig, DEFAULT_YOUTUBE_CHANNELS } from '@/lib/config/you
 import { recordEngagementSnapshot } from './engagement-tracker';
 import { isSourceStale } from './cache-config';
 import { settingsCache } from '@/lib/cache/memory-cache';
+import { analyzeSentiment } from '@/lib/sentiment';
 
 // === Settings Actions ===
 
@@ -17,7 +18,7 @@ export async function getSetting<T = string>(key: string, defaultValue: T): Prom
         const cached = settingsCache.get(cacheKey);
         if (cached !== undefined) return cached as T;
 
-        const result = await db.select().from(settings).where(eq(settings.key, key)).get();
+        const [result] = await db.select().from(settings).where(eq(settings.key, key));
         if (!result) return defaultValue;
 
         let value: T;
@@ -38,12 +39,12 @@ export async function getSetting<T = string>(key: string, defaultValue: T): Prom
 export async function updateSetting(key: string, value: unknown): Promise<void> {
     try {
         const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
-        const existing = await db.select().from(settings).where(eq(settings.key, key)).get();
+        const [existing] = await db.select().from(settings).where(eq(settings.key, key));
 
         if (existing) {
-            await db.update(settings).set({ value: stringValue }).where(eq(settings.key, key)).run();
+            await db.update(settings).set({ value: stringValue }).where(eq(settings.key, key));
         } else {
-            await db.insert(settings).values({ key, value: stringValue }).run();
+            await db.insert(settings).values({ key, value: stringValue });
         }
     } catch (error) {
         console.error(`Failed to update setting ${key}:`, error);
@@ -55,7 +56,9 @@ export async function updateSetting(key: string, value: unknown): Promise<void> 
 
 export async function getEnabledSourceIds(): Promise<string[]> {
     try {
-        const dbSources = await db.select().from(sources).all();
+        console.log('Fetching sources from database...');
+        const dbSources = await db.select().from(sources);
+        console.log('Successfully fetched sources:', dbSources.length);
         const dbSourceMap = new Map(dbSources.map(s => [s.id, s.enabled]));
 
         return SOURCES.filter(s => {
@@ -66,23 +69,27 @@ export async function getEnabledSourceIds(): Promise<string[]> {
         }).map(s => s.id);
 
     } catch (error) {
-        console.error('Failed to get enabled sources:', error);
+        console.error('Failed to get enabled sources - Full error:', error);
+        console.error('Error details:', {
+            message: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+        });
         return SOURCES.filter(s => s.enabled).map(s => s.id);
     }
 }
 
 export async function toggleSourceEnabled(sourceId: string, enabled: boolean): Promise<void> {
     try {
-        const existing = await db.select().from(sources).where(eq(sources.id, sourceId)).get();
+        const [existing] = await db.select().from(sources).where(eq(sources.id, sourceId));
 
         if (existing) {
-            await db.update(sources).set({ enabled }).where(eq(sources.id, sourceId)).run();
+            await db.update(sources).set({ enabled }).where(eq(sources.id, sourceId));
         } else {
             await db.insert(sources).values({
                 id: sourceId,
                 enabled: enabled,
                 lastFetchedAt: new Date()
-            }).run();
+            });
         }
     } catch (error) {
         console.error(`Failed to toggle source ${sourceId}:`, error);
@@ -98,8 +105,7 @@ export async function setCategoryEnabled(sourceIds: string[], enabled: boolean):
         const existingIds = await db
             .select({ id: sources.id })
             .from(sources)
-            .where(inArray(sources.id, sourceIds))
-            .all();
+            .where(inArray(sources.id, sourceIds));
 
         const existingIdSet = new Set(existingIds.map(s => s.id));
         const toUpdate = sourceIds.filter(id => existingIdSet.has(id));
@@ -110,8 +116,7 @@ export async function setCategoryEnabled(sourceIds: string[], enabled: boolean):
             await db
                 .update(sources)
                 .set({ enabled })
-                .where(inArray(sources.id, toUpdate))
-                .run();
+                .where(inArray(sources.id, toUpdate));
         }
 
         // Batch insert new
@@ -122,8 +127,7 @@ export async function setCategoryEnabled(sourceIds: string[], enabled: boolean):
                     id,
                     enabled,
                     lastFetchedAt: new Date()
-                })))
-                .run();
+                })));
         }
     } catch (error) {
         console.error('Failed to toggle category:', error);
@@ -169,8 +173,7 @@ export async function getSourceFreshness(
         const dbSources = await db
             .select({ id: sources.id, lastFetchedAt: sources.lastFetchedAt })
             .from(sources)
-            .where(inArray(sources.id, sourceIds))
-            .all();
+            .where(inArray(sources.id, sourceIds));
 
         const dbMap = new Map(dbSources.map(s => [s.id, s.lastFetchedAt]));
 
@@ -206,8 +209,7 @@ export async function updateSourceLastFetched(sourceIds: string[]): Promise<void
         const existingIds = await db
             .select({ id: sources.id })
             .from(sources)
-            .where(inArray(sources.id, sourceIds))
-            .all();
+            .where(inArray(sources.id, sourceIds));
 
         const existingIdSet = new Set(existingIds.map(s => s.id));
         const toUpdate = sourceIds.filter(id => existingIdSet.has(id));
@@ -217,8 +219,7 @@ export async function updateSourceLastFetched(sourceIds: string[]): Promise<void
             await db
                 .update(sources)
                 .set({ lastFetchedAt: now })
-                .where(inArray(sources.id, toUpdate))
-                .run();
+                .where(inArray(sources.id, toUpdate));
         }
 
         if (toInsert.length > 0) {
@@ -228,8 +229,7 @@ export async function updateSourceLastFetched(sourceIds: string[]): Promise<void
                     id,
                     enabled: true,
                     lastFetchedAt: now,
-                })))
-                .run();
+                })));
         }
     } catch (error) {
         console.error('Failed to update source lastFetchedAt:', error);
@@ -254,8 +254,7 @@ export async function getCachedContentBySourceIds(
                     gte(contentItems.publishedAt, cutoff)
                 )
             )
-            .orderBy(desc(contentItems.publishedAt))
-            .all();
+            .orderBy(desc(contentItems.publishedAt));
 
         return items.map(item => ({
             id: item.id,
@@ -286,21 +285,28 @@ export async function cacheContent(items: ContentItem[]): Promise<void> {
         const CHUNK_SIZE = 100;
         for (let i = 0; i < items.length; i += CHUNK_SIZE) {
             const chunk = items.slice(i, i + CHUNK_SIZE);
-            const dbItems = chunk.map(item => ({
-                id: item.id,
-                sourceId: item.sourceId,
-                title: item.title,
-                description: item.description ?? null,
-                url: item.url,
-                imageUrl: item.imageUrl ?? null,
-                publishedAt: item.publishedAt,
-                fetchedAt: item.fetchedAt,
-                author: item.author ?? null,
-                tags: item.tags ? JSON.stringify(item.tags) : null,
-                sentiment: item.sentiment ?? null,
-                sentimentScore: item.sentimentScore ?? null,
-                engagement: item.engagement ? JSON.stringify(item.engagement) : null,
-            }));
+            const dbItems = chunk.map(item => {
+                // Run sentiment analysis if not already set
+                const sentimentResult = (!item.sentiment)
+                    ? analyzeSentiment(item.title, item.description)
+                    : null;
+
+                return {
+                    id: item.id,
+                    sourceId: item.sourceId,
+                    title: item.title,
+                    description: item.description ?? null,
+                    url: item.url,
+                    imageUrl: item.imageUrl ?? null,
+                    publishedAt: item.publishedAt,
+                    fetchedAt: item.fetchedAt,
+                    author: item.author ?? null,
+                    tags: item.tags ? JSON.stringify(item.tags) : null,
+                    sentiment: item.sentiment ?? sentimentResult?.sentiment ?? null,
+                    sentimentScore: item.sentimentScore ?? sentimentResult?.score ?? null,
+                    engagement: item.engagement ? JSON.stringify(item.engagement) : null,
+                };
+            });
 
             await db.insert(contentItems)
                 .values(dbItems)
@@ -320,8 +326,7 @@ export async function cacheContent(items: ContentItem[]): Promise<void> {
                         sentimentScore: sql`excluded.sentiment_score`,
                         engagement: sql`excluded.engagement`,
                     },
-                })
-                .run();
+                });
         }
 
         // Record engagement snapshots for velocity tracking (inherently sequential)
@@ -340,12 +345,12 @@ export async function cleanOldContent(daysToKeep: number = 30): Promise<number> 
         const cutoff = new Date();
         cutoff.setDate(cutoff.getDate() - daysToKeep);
 
-        const result = await db
+        const deleted = await db
             .delete(contentItems)
-            .where(sql`${contentItems.fetchedAt} < ${cutoff.getTime()}`)
-            .run();
+            .where(sql`${contentItems.fetchedAt} < ${cutoff}`)
+            .returning({ id: contentItems.id });
 
-        return result.changes;
+        return deleted.length;
     } catch (error) {
         console.error('Failed to clean old content:', error);
         return 0;
@@ -356,11 +361,10 @@ export async function cleanOldContent(daysToKeep: number = 30): Promise<number> 
 
 export async function getSourcePriority(sourceId: string): Promise<number> {
     try {
-        const result = await db
+        const [result] = await db
             .select({ priority: sources.priority })
             .from(sources)
-            .where(eq(sources.id, sourceId))
-            .get();
+            .where(eq(sources.id, sourceId));
 
         return result?.priority ?? 3; // Default priority is 3
     } catch (error) {
@@ -374,18 +378,16 @@ export async function setSourcePriority(sourceId: string, priority: number): Pro
     const clampedPriority = Math.max(1, Math.min(5, priority));
 
     try {
-        const existing = await db
+        const [existing] = await db
             .select({ id: sources.id })
             .from(sources)
-            .where(eq(sources.id, sourceId))
-            .get();
+            .where(eq(sources.id, sourceId));
 
         if (existing) {
             await db
                 .update(sources)
                 .set({ priority: clampedPriority })
-                .where(eq(sources.id, sourceId))
-                .run();
+                .where(eq(sources.id, sourceId));
         } else {
             await db
                 .insert(sources)
@@ -394,8 +396,7 @@ export async function setSourcePriority(sourceId: string, priority: number): Pro
                     enabled: true,
                     priority: clampedPriority,
                     lastFetchedAt: new Date(),
-                })
-                .run();
+                });
         }
     } catch (error) {
         console.error(`Failed to set priority for ${sourceId}:`, error);
@@ -407,8 +408,7 @@ export async function getAllSourcePriorities(): Promise<Map<string, number>> {
     try {
         const results = await db
             .select({ id: sources.id, priority: sources.priority })
-            .from(sources)
-            .all();
+            .from(sources);
 
         const priorities = new Map<string, number>();
         for (const row of results) {

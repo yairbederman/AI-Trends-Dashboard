@@ -40,14 +40,13 @@ export class RedditAdapter extends BaseAdapter {
 
     async fetch(options?: AdapterOptions): Promise<ContentItem[]> {
         const subreddit = this.getSubreddit();
-        // We could use t=hour/day/week param if we switched to /top/.json
-        // But /hot/.json is usually better for "trends", so we'll fetch hot and filter by date
-        const url = `https://www.reddit.com/r/${subreddit}/hot.json?limit=50`;
+        const url = `https://old.reddit.com/r/${subreddit}/hot.json?limit=50&raw_json=1`;
 
         try {
             const response = await fetch(url, {
                 headers: {
-                    'User-Agent': 'AI-Trends-Dashboard/1.0',
+                    'User-Agent': 'Mozilla/5.0 (compatible; AI-Trends-Dashboard/1.0)',
+                    'Accept': 'application/json',
                 },
             });
 
@@ -74,8 +73,8 @@ export class RedditAdapter extends BaseAdapter {
                 },
             }));
 
-            // Filter items by time range
-            return this.filterByTimeRange(items, options?.timeRange);
+            // Don't filter by time range — cache everything, DB query filters by user's time range.
+            return items;
         } catch (error) {
             console.error(`Failed to fetch Reddit r/${subreddit}:`, error);
             return [];

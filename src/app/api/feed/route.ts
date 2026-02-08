@@ -34,7 +34,7 @@ async function maybeRunCleanup() {
                 cleanOldContent(7),        // Keep 7 days of content
                 cleanupOldSnapshots(7),    // Keep 7 days of snapshots
                 // Phase 4: Clean up stale feed_cache_* entries from settings table
-                db.delete(settings).where(sql`${settings.key} LIKE 'feed_cache_%'`).run(),
+                db.delete(settings).where(sql`${settings.key} LIKE 'feed_cache_%'`),
             ]).then(([contentDeleted, snapshotsDeleted]) => {
                 console.log(`Cleanup: removed ${contentDeleted} old items, ${snapshotsDeleted} old snapshots, cleaned feed_cache_* settings`);
             });
@@ -103,9 +103,16 @@ export async function GET(request: Request) {
                 .map((source) => ({ source, adapter: createAdapter(source) }))
                 .filter((pair): pair is { source: typeof pair.source; adapter: NonNullable<typeof pair.adapter> } => pair.adapter !== null);
 
-            // 4. Fetch stale sources in parallel
+            // 4. Fetch stale sources in parallel with 10s timeout per adapter
             const results = await Promise.allSettled(
-                adapterPairs.map(({ adapter }) => adapter.fetch({ timeRange }))
+                adapterPairs.map(({ adapter }) =>
+                    Promise.race([
+                        adapter.fetch({ timeRange }),
+                        new Promise<ContentItem[]>((_, reject) =>
+                            setTimeout(() => reject(new Error('Adapter timeout')), 10000)
+                        )
+                    ])
+                )
             );
 
             const newItems: ContentItem[] = [];

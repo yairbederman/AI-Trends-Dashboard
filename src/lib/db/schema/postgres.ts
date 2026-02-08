@@ -1,27 +1,27 @@
-import { sqliteTable, text, integer, real, index } from 'drizzle-orm/sqlite-core';
+import { pgTable, text, boolean, integer, doublePrecision, timestamp, serial, index } from 'drizzle-orm/pg-core';
 
 // Sources configuration (stored for user overrides)
-export const sources = sqliteTable('sources', {
+export const sources = pgTable('sources', {
     id: text('id').primaryKey(),
-    enabled: integer('enabled', { mode: 'boolean' }).default(true),
+    enabled: boolean('enabled').default(true),
     priority: integer('priority').default(3), // 1-5, default 3
-    lastFetchedAt: integer('last_fetched_at', { mode: 'timestamp' }),
+    lastFetchedAt: timestamp('last_fetched_at', { withTimezone: true }),
 });
 
 // Content items fetched from sources
-export const contentItems = sqliteTable('content_items', {
+export const contentItems = pgTable('content_items', {
     id: text('id').primaryKey(),
     sourceId: text('source_id').notNull(),
     title: text('title').notNull(),
     description: text('description'),
     url: text('url').notNull(),
     imageUrl: text('image_url'),
-    publishedAt: integer('published_at', { mode: 'timestamp' }).notNull(),
-    fetchedAt: integer('fetched_at', { mode: 'timestamp' }).notNull(),
+    publishedAt: timestamp('published_at', { withTimezone: true }).notNull(),
+    fetchedAt: timestamp('fetched_at', { withTimezone: true }).notNull(),
     author: text('author'),
     tags: text('tags'), // JSON array stored as string
     sentiment: text('sentiment'), // 'positive' | 'neutral' | 'negative'
-    sentimentScore: real('sentiment_score'),
+    sentimentScore: doublePrecision('sentiment_score'),
     // Engagement metrics (JSON)
     engagement: text('engagement'), // JSON: {upvotes, comments, stars, etc.}
 }, (table) => [
@@ -31,16 +31,16 @@ export const contentItems = sqliteTable('content_items', {
 ]);
 
 // User settings
-export const settings = sqliteTable('settings', {
+export const settings = pgTable('settings', {
     key: text('key').primaryKey(),
     value: text('value').notNull(),
 });
 
 // Engagement snapshots for velocity tracking
-export const engagementSnapshots = sqliteTable('engagement_snapshots', {
-    id: integer('id').primaryKey({ autoIncrement: true }),
+export const engagementSnapshots = pgTable('engagement_snapshots', {
+    id: serial('id').primaryKey(),
     contentId: text('content_id').notNull(),
-    snapshotAt: integer('snapshot_at', { mode: 'timestamp' }).notNull(),
+    snapshotAt: timestamp('snapshot_at', { withTimezone: true }).notNull(),
     // Individual metrics for efficient queries
     upvotes: integer('upvotes'),
     comments: integer('comments'),
@@ -51,7 +51,7 @@ export const engagementSnapshots = sqliteTable('engagement_snapshots', {
     downloads: integer('downloads'),
     claps: integer('claps'),
     // Pre-calculated velocity
-    velocityScore: real('velocity_score'),
+    velocityScore: doublePrecision('velocity_score'),
 }, (table) => [
     index('idx_snapshot_content').on(table.contentId),
     index('idx_snapshot_time').on(table.snapshotAt),
