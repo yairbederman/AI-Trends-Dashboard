@@ -2,24 +2,43 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as schema from './schema';
 
-const connectionString = process.env.DATABASE_URL!;
+let clientInstance: postgres.Sql | null = null;
+let dbInstance: ReturnType<typeof drizzle> | null = null;
 
-if (!connectionString) {
-    throw new Error('DATABASE_URL environment variable is not set');
+function getClient() {
+    if (!clientInstance) {
+        const connectionString = process.env.DATABASE_URL;
+
+        if (!connectionString) {
+            throw new Error('DATABASE_URL environment variable is not set');
+        }
+
+        console.log('Connecting to database with URL:', connectionString.replace(/:[^:@]+@/, ':****@'));
+
+        clientInstance = postgres(connectionString, {
+            onnotice: () => { }, // Suppress notices
+            prepare: false, // Required for Supabase transaction pooler (port 6543)
+        });
+
+        // Test connection
+        clientInstance`SELECT 1`.catch((err) => {
+            console.error('Database connection test failed:', err);
+        });
+    }
+    return clientInstance;
 }
 
-console.log('Connecting to database with URL:', connectionString.replace(/:[^:@]+@/, ':****@'));
+function getDb() {
+    if (!dbInstance) {
+        dbInstance = drizzle(getClient(), { schema });
+    }
+    return dbInstance;
+}
 
-const client = postgres(connectionString, {
-    onnotice: () => { }, // Suppress notices
-    prepare: false, // Required for Supabase transaction pooler (port 6543)
+export const db = new Proxy({} as ReturnType<typeof drizzle>, {
+    get: (_, prop) => {
+        return getDb()[prop as keyof ReturnType<typeof drizzle>];
+    }
 });
-
-// Test connection
-client`SELECT 1`.catch((err) => {
-    console.error('Database connection test failed:', err);
-});
-
-export const db = drizzle(client, { schema });
 
 export { schema };
