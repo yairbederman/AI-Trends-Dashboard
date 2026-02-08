@@ -42,10 +42,25 @@ git push
    - Name: `YOUTUBE_API_KEY`, Value: `your-youtube-api-key`
 3. Make sure to set them for **Production**, **Preview**, and **Development** environments
 
-### 4. Deploy
+### 4. Initialize Database
+**IMPORTANT:** Before the app will show data, you need to set up the database schema and initial data.
+
+Run this command locally (only needed once):
+```bash
+npm run db:setup
+```
+
+This will:
+- Create all required database tables
+- Insert default settings
+- Configure enabled data sources
+- Set up initial YouTube channels
+
+### 5. Deploy
 1. Click **Deploy** or trigger a deployment from the dashboard
 2. Wait for the build to complete
 3. Your app will be live at `your-project.vercel.app`
+4. The first load may take a moment as data is fetched from sources
 
 ## Troubleshooting
 
