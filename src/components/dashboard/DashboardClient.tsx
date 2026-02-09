@@ -33,7 +33,6 @@ interface FeedResponse {
 
 const CATEGORIES: SourceCategory[] = [
     'ai-labs',
-    'creative-ai',
     'dev-platforms',
     'social',
     'news',
@@ -312,7 +311,21 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
                 else if (eng.claps && eng.claps > 0) primaryMetric = { label: 'claps', value: formatNumber(eng.claps) };
             }
 
-            return { id: item.id, title: item.title, url: item.url, score, tierClass, sourceName, sourceIcon, timeAgo, primaryMetric };
+            return {
+                id: item.id,
+                title: item.title,
+                url: item.url,
+                score,
+                tierClass,
+                sourceName,
+                sourceIcon,
+                timeAgo,
+                primaryMetric,
+                description: item.description,
+                engagement: item.engagement,
+                author: item.author,
+                velocityScore: item.velocityScore,
+            };
         }
     }, [items, sourceMap, sourceToCategory]);
 

@@ -2,7 +2,6 @@
 
 export type SourceCategory =
   | 'ai-labs'
-  | 'creative-ai'
   | 'dev-platforms'
   | 'social'
   | 'news'
@@ -109,7 +108,6 @@ export interface DailyHighlight {
 
 export const CATEGORY_LABELS: Record<SourceCategory, string> = {
   'ai-labs': 'AI Labs',
-  'creative-ai': 'Creative AI',
   'dev-platforms': 'Dev Platforms',
   'social': 'Social & Blogs',
   'news': 'News',
@@ -128,7 +126,6 @@ export const TIME_RANGES: Record<TimeRange, string> = {
 
 export const CATEGORY_COLORS: Record<string, string> = {
   'ai-labs': '#6366f1',
-  'creative-ai': '#ec4899',
   'dev-platforms': '#22c55e',
   'social': '#06b6d4',
   'news': '#eab308',

@@ -110,7 +110,9 @@
       "Bash(then grep \"DATABASE_URL\" .env.local)",
       "Bash(else echo \".env.local not found\")",
       "Bash(fi)",
-      "Bash(npm run db:setup:*)"
+      "Bash(npm run db:setup:*)",
+      "mcp__plugin_playwright_playwright__browser_run_code",
+      "Bash(exit:*)"
     ]
   }
 }

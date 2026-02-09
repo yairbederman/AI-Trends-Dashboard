@@ -6,7 +6,6 @@ const CATEGORY_TTL_MS: Record<SourceCategory, number> = {
     'social': 15 * 60 * 1000,          // 15 min - moderate
     'news': 15 * 60 * 1000,            // 15 min - moderate
     'ai-labs': 15 * 60 * 1000,         // 15 min - moderate
-    'creative-ai': 15 * 60 * 1000,     // 15 min - moderate
     'dev-platforms': 15 * 60 * 1000,   // 15 min - moderate
     'newsletters': 30 * 60 * 1000,     // 30 min - slow-moving
     'leaderboards': 60 * 60 * 1000,    // 60 min - rarely changes

@@ -9,13 +9,10 @@ import { SourceConfig } from '@/types';
 
 /**
  * Factory function to create the appropriate adapter for a source
+ * Note: Source filtering by enabled status happens in getEnabledSourceIds()
+ * which respects database settings. Don't re-check static config here.
  */
 export function createAdapter(source: SourceConfig): SourceAdapter | null {
-    // Skip disabled sources
-    if (!source.enabled) {
-        return null;
-    }
-
     // Check for required API keys
     if (source.requiresKey && source.apiKeyEnvVar) {
         const hasKey = process.env[source.apiKeyEnvVar];

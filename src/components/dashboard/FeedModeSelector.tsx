@@ -25,7 +25,7 @@ export function FeedModeSelector({ activeMode, onModeChange }: FeedModeSelectorP
       aria-label="Feed mode"
     >
       {/* Buttons */}
-      <div className="relative z-10 flex items-center gap-2 w-full">
+      <div className="relative z-10 flex items-center gap-1.5 sm:gap-2 w-full">
         {MODES.map((mode) => {
           const Icon = MODE_ICONS[mode];
           const isActive = activeMode === mode;
@@ -37,7 +37,7 @@ export function FeedModeSelector({ activeMode, onModeChange }: FeedModeSelectorP
               aria-selected={isActive}
               onClick={() => onModeChange(mode)}
               title={FEED_MODE_DESCRIPTIONS[mode]}
-              className={`relative flex-1 min-w-0 flex items-center justify-center gap-4 px-4 py-2.5 rounded-full text-[13px] font-medium transition-all duration-300 outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent-primary)] cursor-pointer min-h-[42px] ${isActive ? 'text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/5 active:scale-95'
+              className={`relative flex-1 min-w-0 flex items-center justify-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 rounded-full text-[12px] sm:text-[13px] font-medium transition-all duration-300 outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent-primary)] cursor-pointer min-h-[44px] ${isActive ? 'text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/5 active:scale-95'
                 }`}
             >
               {/* Active Background Slide */}
@@ -51,7 +51,7 @@ export function FeedModeSelector({ activeMode, onModeChange }: FeedModeSelectorP
               )}
 
               <Icon size={14} className={isActive ? "text-white drop-shadow-sm" : "opacity-60"} aria-hidden="true" />
-              <span className="hidden sm:inline tracking-tight">{FEED_MODE_LABELS[mode]}</span>
+              <span className="text-[11px] sm:text-[13px] tracking-tight">{FEED_MODE_LABELS[mode]}</span>
             </button>
           );
         })}
