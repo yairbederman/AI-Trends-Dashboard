@@ -37,54 +37,90 @@ function formatNumber(n: number): string {
 }
 
 function HighlightTooltip({ item }: { item: HighlightItem }) {
-    // Find the most relevant engagement metric to show
-    const getTopMetric = () => {
-        const eng = item.engagement;
-        if (!eng) return null;
+    const eng = item.engagement;
 
-        if (eng.views && eng.views > 0) return { icon: Eye, label: 'views', value: formatNumber(eng.views) };
-        if (eng.upvotes && eng.upvotes > 0) return { icon: ThumbsUp, label: 'upvotes', value: formatNumber(eng.upvotes) };
-        if (eng.stars && eng.stars > 0) return { icon: Star, label: 'stars', value: formatNumber(eng.stars) };
-        if (eng.likes && eng.likes > 0) return { icon: Heart, label: 'likes', value: formatNumber(eng.likes) };
-        if (eng.downloads && eng.downloads > 0) return { icon: Download, label: 'downloads', value: formatNumber(eng.downloads) };
-        if (eng.comments && eng.comments > 0) return { icon: MessageSquare, label: 'comments', value: formatNumber(eng.comments) };
-        return null;
+    // Filter out generic/unhelpful descriptions
+    const isGenericDescription = (desc: string | undefined): boolean => {
+        if (!desc) return true;
+        const lower = desc.toLowerCase().trim();
+        const genericPatterns = [
+            'discussion on hacker news',
+            'comments on hacker news',
+            'discussion on hackernews',
+            'submitted by',
+            'posted in',
+            'discussion in',
+            'thread on',
+            'comments',
+            'discuss this',
+        ];
+        return genericPatterns.some(pattern => lower.includes(pattern)) || lower.length < 20;
     };
 
-    const topMetric = getTopMetric();
-    const hasContent = item.description || topMetric || item.author;
+    // Use description only if it's meaningful
+    const meaningfulDescription = !isGenericDescription(item.description) ? item.description : undefined;
+
+    // Collect all available engagement metrics
+    const metrics = [];
+    if (eng?.views && eng.views > 0) metrics.push({ icon: Eye, label: 'views', value: formatNumber(eng.views) });
+    if (eng?.upvotes && eng.upvotes > 0) metrics.push({ icon: ThumbsUp, label: 'upvotes', value: formatNumber(eng.upvotes) });
+    if (eng?.stars && eng.stars > 0) metrics.push({ icon: Star, label: 'stars', value: formatNumber(eng.stars) });
+    if (eng?.likes && eng.likes > 0) metrics.push({ icon: Heart, label: 'likes', value: formatNumber(eng.likes) });
+    if (eng?.comments && eng.comments > 0) metrics.push({ icon: MessageSquare, label: 'comments', value: formatNumber(eng.comments) });
+    if (eng?.downloads && eng.downloads > 0) metrics.push({ icon: Download, label: 'downloads', value: formatNumber(eng.downloads) });
+
+    const hasContent = meaningfulDescription || metrics.length > 0 || item.author;
 
     if (!hasContent) {
         return null;
     }
 
+    // Case 1: Has meaningful description - show summary style
+    if (meaningfulDescription) {
+        const topMetric = metrics[0];
+        return (
+            <div>
+                <div className="tooltip-description">
+                    {meaningfulDescription.length > 150
+                        ? meaningfulDescription.slice(0, 150) + '...'
+                        : meaningfulDescription}
+                </div>
+                {(topMetric || item.author) && (
+                    <div className="tooltip-footer">
+                        {item.author && (
+                            <span className="tooltip-footer-item">
+                                by {item.author}
+                            </span>
+                        )}
+                        {topMetric && (
+                            <span className="tooltip-footer-item tooltip-footer-metric">
+                                <topMetric.icon size={14} />
+                                {topMetric.value} {topMetric.label}
+                            </span>
+                        )}
+                    </div>
+                )}
+            </div>
+        );
+    }
+
+    // Case 2: No description, but has metrics - show engagement data
     return (
         <div>
-            {/* Summary/Description - Main content */}
-            {item.description && (
-                <div className="tooltip-description">
-                    {item.description.length > 150
-                        ? item.description.slice(0, 150) + '...'
-                        : item.description}
+            {item.author && (
+                <div className="tooltip-description" style={{ borderBottom: 'none', paddingBottom: 0, marginBottom: '0.5rem' }}>
+                    by {item.author}
                 </div>
             )}
-
-            {/* Compact metadata at bottom */}
-            {(topMetric || item.author) && (
-                <div className="tooltip-footer">
-                    {item.author && (
-                        <span className="tooltip-footer-item">
-                            by {item.author}
-                        </span>
-                    )}
-                    {topMetric && (
-                        <span className="tooltip-footer-item tooltip-footer-metric">
-                            <topMetric.icon size={14} />
-                            {topMetric.value} {topMetric.label}
-                        </span>
-                    )}
-                </div>
-            )}
+            <div className="tooltip-metrics-compact">
+                {metrics.slice(0, 3).map((metric, idx) => (
+                    <div key={idx} className="tooltip-metric-compact">
+                        <metric.icon size={14} />
+                        <span className="tooltip-metric-compact-value">{metric.value}</span>
+                        <span className="tooltip-metric-compact-label">{metric.label}</span>
+                    </div>
+                ))}
+            </div>
         </div>
     );
 }

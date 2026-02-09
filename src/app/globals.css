@@ -3145,6 +3145,35 @@ select:focus-visible,
   gap: 0.5rem;
 }
 
+.tooltip-metrics-compact {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.tooltip-metric-compact {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.tooltip-metric-compact svg {
+  color: var(--accent-primary);
+  flex-shrink: 0;
+}
+
+.tooltip-metric-compact-value {
+  color: var(--text-primary);
+  font-weight: 600;
+  min-width: 40px;
+}
+
+.tooltip-metric-compact-label {
+  color: var(--text-muted);
+}
+
 .tooltip-metric-row {
   display: flex;
   align-items: center;
