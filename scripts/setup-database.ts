@@ -168,7 +168,7 @@ async function setupDatabase() {
             { id: 'linkedin', enabled: false },
             { id: 'midjourney', enabled: true },
             { id: 'kling', enabled: true },
-            { id: 'pika', enabled: true },
+            { id: 'pika', enabled: false },
             { id: 'suno', enabled: true },
             { id: 'lmsys-arena', enabled: true },
             { id: 'open-llm-leaderboard', enabled: true },
@@ -184,6 +184,60 @@ async function setupDatabase() {
         }
 
         console.log('✅ Migration 2: Sources initialized');
+
+        // Migration 3: Update source priorities based on platform reliability
+        console.log('\n📋 Step 3: Updating source priorities...');
+
+        // Priority 5 (Highest - Most reliable)
+        const priority5Sources = [
+            'openai-blog', 'google-ai-blog', 'deepmind-blog',
+            'github-trending', 'huggingface', 'arxiv-cs-ai', 'arxiv-cs-cl',
+            'mit-tech-review', 'hackernews',
+            'import-ai', 'latent-space', 'simon-willison', 'ahead-of-ai',
+            'lmsys-arena', 'open-llm-leaderboard'
+        ];
+
+        for (const sourceId of priority5Sources) {
+            await db.execute(sql`UPDATE sources SET priority = 5 WHERE id = ${sourceId}`);
+        }
+
+        // Priority 4 (Good reliability)
+        const priority4Sources = [
+            'microsoft-ai', 'nvidia-ai', 'cohere-blog', 'stability-ai', 'aws-ai-blog', 'apple-ml',
+            'langchain-blog', 'wandb-blog', 'youtube',
+            'verge-ai', 'techcrunch-ai', 'venturebeat-ai', 'ars-technica-ai', 'wired-ai',
+            'reddit-ml', 'reddit-localllama',
+            'interconnects', 'artificial-analysis'
+        ];
+
+        for (const sourceId of priority4Sources) {
+            await db.execute(sql`UPDATE sources SET priority = 4 WHERE id = ${sourceId}`);
+        }
+
+        // Priority 3 (Medium - stays at default)
+        const priority3Sources = [
+            'kling', 'midjourney',
+            'reddit-chatgpt', 'reddit-stablediffusion', 'reddit-artificial'
+        ];
+
+        for (const sourceId of priority3Sources) {
+            await db.execute(sql`UPDATE sources SET priority = 3 WHERE id = ${sourceId}`);
+        }
+
+        // Priority 1 (Low - broken/disabled)
+        const priority1Sources = [
+            'anthropic-blog', 'meta-ai-blog', 'mistral-ai',
+            'runway', 'elevenlabs', 'suno', 'pika',
+            'papers-with-code', 'llamaindex-blog',
+            'twitter', 'linkedin',
+            'the-batch', 'bens-bites', 'the-rundown-ai'
+        ];
+
+        for (const sourceId of priority1Sources) {
+            await db.execute(sql`UPDATE sources SET priority = 1 WHERE id = ${sourceId}`);
+        }
+
+        console.log('✅ Migration 3: Source priorities updated');
 
         // Verify setup
         console.log('\n📊 Verifying setup...');

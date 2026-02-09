@@ -102,7 +102,15 @@
       "mcp__vercel__list_deployments",
       "Bash(vercel:*)",
       "mcp__vercel__deploy_to_vercel",
-      "mcp__vercel__search_vercel_documentation"
+      "mcp__vercel__search_vercel_documentation",
+      "Bash(npm run db:studio:*)",
+      "Bash(npx tsx:*)",
+      "WebFetch(domain:www.anthropic.com)",
+      "Bash(if [ -f .env.local ])",
+      "Bash(then grep \"DATABASE_URL\" .env.local)",
+      "Bash(else echo \".env.local not found\")",
+      "Bash(fi)",
+      "Bash(npm run db:setup:*)"
     ]
   }
 }

@@ -18,6 +18,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🤖',
+        defaultPriority: 5, // High priority: Leading AI lab, reliable RSS feed
     },
     {
         id: 'google-ai-blog',
@@ -29,6 +30,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🔵',
+        defaultPriority: 5, // High priority: Major AI lab, stable RSS feed
     },
     {
         id: 'anthropic-blog',
@@ -37,9 +39,10 @@ export const SOURCES: SourceConfig[] = [
         url: 'https://www.anthropic.com/news',
         feedUrl: 'https://www.anthropic.com/rss.xml',
         method: 'rss',
-        enabled: true,
+        enabled: false, // Disabled - RSS feed returns 404, requires scraping
         requiresKey: false,
         icon: '🟠',
+        defaultPriority: 1, // Low priority: RSS feed broken (404)
     },
     {
         id: 'meta-ai-blog',
@@ -51,6 +54,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: false, // Disabled - no RSS feed available (custom React site, no feed endpoint)
         requiresKey: false,
         icon: '📘',
+        defaultPriority: 1, // Low priority: No RSS feed available
     },
     {
         id: 'deepmind-blog',
@@ -62,6 +66,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🧠',
+        defaultPriority: 5, // High priority: Leading research lab, reliable RSS
     },
     {
         id: 'microsoft-ai',
@@ -73,6 +78,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🪟',
+        defaultPriority: 4, // Good priority: Major player, reliable RSS
     },
     {
         id: 'nvidia-ai',
@@ -84,6 +90,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '💚',
+        defaultPriority: 4, // Good priority: Important for AI hardware/infrastructure
     },
     {
         id: 'mistral-ai',
@@ -95,6 +102,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: false, // Disabled - no RSS feed available (Next.js site, no feed endpoint)
         requiresKey: false,
         icon: '🌀',
+        defaultPriority: 1, // Low priority: No RSS feed available
     },
     {
         id: 'cohere-blog',
@@ -106,6 +114,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🔷',
+        defaultPriority: 4, // Good priority: Important LLM provider, Ghost RSS reliable
     },
     {
         id: 'stability-ai',
@@ -117,6 +126,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🎨',
+        defaultPriority: 4, // Good priority: Leading image gen, reliable RSS
     },
     {
         id: 'aws-ai-blog',
@@ -128,6 +138,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '☁️',
+        defaultPriority: 4, // Good priority: Important cloud AI provider
     },
     {
         id: 'apple-ml',
@@ -139,6 +150,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🍎',
+        defaultPriority: 4, // Good priority: Major tech company, quality research
     },
 
     // =====================
@@ -154,6 +166,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: false, // Disabled - no RSS feed available (Next.js site, blog moved to /news)
         requiresKey: false,
         icon: '🎬',
+        defaultPriority: 1, // Low priority: No RSS feed available
     },
     {
         id: 'elevenlabs',
@@ -165,6 +178,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: false, // Disabled - no RSS feed available (Next.js site, no feed endpoint)
         requiresKey: false,
         icon: '🎙️',
+        defaultPriority: 1, // Low priority: No RSS feed available
     },
     {
         id: 'suno',
@@ -175,6 +189,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: false, // REMOVED: RSS feed returns junk (legal pages, external articles, broken timestamps)
         requiresKey: false,
         icon: '🎵',
+        defaultPriority: 1, // Low priority: Feed returns junk data
     },
     {
         id: 'kling',
@@ -185,6 +200,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🎥',
+        defaultPriority: 3, // Medium priority: Scraping method, moderate reliability
     },
     {
         id: 'pika',
@@ -195,6 +211,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: false, // REMOVED: RSS feed returns only legal/policy pages, no actual blog content
         requiresKey: false,
         icon: '⚡',
+        defaultPriority: 1, // Low priority: Feed returns only legal pages
     },
     {
         id: 'midjourney',
@@ -205,6 +222,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🎨',
+        defaultPriority: 3, // Medium priority: Scraping method, but important tool
     },
 
     // =====================
@@ -220,6 +238,7 @@ export const SOURCES: SourceConfig[] = [
         requiresKey: false, // Works without key, better with
         apiKeyEnvVar: 'GITHUB_TOKEN',
         icon: '🐙',
+        defaultPriority: 5, // High priority: Essential developer platform, reliable API
     },
     {
         id: 'huggingface',
@@ -230,6 +249,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🤗',
+        defaultPriority: 5, // High priority: Central AI/ML platform, excellent API
     },
     {
         id: 'papers-with-code',
@@ -241,6 +261,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: false, // Disabled - site redirects to HuggingFace papers, no RSS feed
         requiresKey: false,
         icon: '📄',
+        defaultPriority: 1, // Low priority: Site redirected, no RSS feed
     },
     {
         id: 'langchain-blog',
@@ -252,6 +273,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🦜',
+        defaultPriority: 4, // Good priority: Important LLM framework, reliable RSS
     },
     {
         id: 'llamaindex-blog',
@@ -263,6 +285,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: false, // Disabled - no RSS feed available (Astro site, no feed endpoint)
         requiresKey: false,
         icon: '🦙',
+        defaultPriority: 1, // Low priority: No RSS feed available
     },
     {
         id: 'wandb-blog',
@@ -274,6 +297,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '📊',
+        defaultPriority: 4, // Good priority: Important ML tool, reliable RSS
     },
     {
         id: 'arxiv-cs-ai',
@@ -285,6 +309,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '📑',
+        defaultPriority: 5, // High priority: Research papers, highly reliable RSS
     },
     {
         id: 'arxiv-cs-cl',
@@ -296,6 +321,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '📝',
+        defaultPriority: 5, // High priority: NLP research papers, highly reliable RSS
     },
 
     // =====================
@@ -311,6 +337,7 @@ export const SOURCES: SourceConfig[] = [
         requiresKey: true,
         apiKeyEnvVar: 'TWITTER_API_KEY',
         icon: '🐦',
+        defaultPriority: 1, // Low priority: Requires expensive paid API
     },
     {
         id: 'linkedin',
@@ -322,6 +349,7 @@ export const SOURCES: SourceConfig[] = [
         requiresKey: true,
         apiKeyEnvVar: 'LINKEDIN_API_KEY',
         icon: '💼',
+        defaultPriority: 1, // Low priority: Restricted API access
     },
     {
         id: 'youtube',
@@ -333,6 +361,7 @@ export const SOURCES: SourceConfig[] = [
         requiresKey: true,
         apiKeyEnvVar: 'YOUTUBE_API_KEY',
         icon: '📺',
+        defaultPriority: 4, // Good priority: Requires key but API is stable
     },
 
     // =====================
@@ -349,6 +378,7 @@ export const SOURCES: SourceConfig[] = [
         requiresKey: false,
         icon: '📰',
         relevanceFilter: true,
+        defaultPriority: 4, // Good priority: Major tech news, reliable RSS
     },
     {
         id: 'techcrunch-ai',
@@ -361,6 +391,7 @@ export const SOURCES: SourceConfig[] = [
         requiresKey: false,
         icon: '💚',
         relevanceFilter: true,
+        defaultPriority: 4, // Good priority: Leading tech news, reliable RSS
     },
     {
         id: 'venturebeat-ai',
@@ -373,6 +404,7 @@ export const SOURCES: SourceConfig[] = [
         requiresKey: false,
         icon: '🟣',
         relevanceFilter: true,
+        defaultPriority: 4, // Good priority: Enterprise AI news, reliable RSS
     },
     {
         id: 'mit-tech-review',
@@ -385,6 +417,7 @@ export const SOURCES: SourceConfig[] = [
         requiresKey: false,
         icon: '🎓',
         relevanceFilter: true,
+        defaultPriority: 5, // High priority: High-quality analysis, reliable RSS
     },
     {
         id: 'ars-technica-ai',
@@ -397,6 +430,7 @@ export const SOURCES: SourceConfig[] = [
         requiresKey: false,
         icon: '🔧',
         relevanceFilter: true,
+        defaultPriority: 4, // Good priority: Technical news coverage, reliable RSS
     },
     {
         id: 'wired-ai',
@@ -409,6 +443,7 @@ export const SOURCES: SourceConfig[] = [
         requiresKey: false,
         icon: '📡',
         relevanceFilter: true,
+        defaultPriority: 4, // Good priority: Quality tech journalism, reliable RSS
     },
 
     // =====================
@@ -423,6 +458,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🤖',
+        defaultPriority: 4, // Good priority: High-quality ML community, reliable API
     },
     {
         id: 'reddit-localllama',
@@ -433,6 +469,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🦙',
+        defaultPriority: 4, // Good priority: Active LLM community, reliable API
     },
     {
         id: 'hackernews',
@@ -443,6 +480,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🟧',
+        defaultPriority: 5, // High priority: High-quality tech discussions, excellent API
     },
     {
         id: 'reddit-chatgpt',
@@ -453,6 +491,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '💬',
+        defaultPriority: 3, // Medium priority: Popular but variable quality
     },
     {
         id: 'reddit-stablediffusion',
@@ -463,6 +502,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🖼️',
+        defaultPriority: 3, // Medium priority: Active but niche community
     },
     {
         id: 'reddit-artificial',
@@ -473,6 +513,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🤖',
+        defaultPriority: 3, // Medium priority: General AI community, mixed quality
     },
 
     // =====================
@@ -488,6 +529,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '📬',
+        defaultPriority: 5, // High priority: Quality curation, reliable Substack RSS
     },
     {
         id: 'the-batch',
@@ -499,6 +541,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: false, // Disabled - no RSS feed available (custom Next.js site)
         requiresKey: false,
         icon: '📧',
+        defaultPriority: 1, // Low priority: No RSS feed available
     },
     {
         id: 'bens-bites',
@@ -511,6 +554,7 @@ export const SOURCES: SourceConfig[] = [
         requiresKey: false,
         icon: '🍪',
         relevanceFilter: true,
+        defaultPriority: 1, // Low priority: Feed returns 404
     },
     {
         id: 'the-rundown-ai',
@@ -523,6 +567,7 @@ export const SOURCES: SourceConfig[] = [
         requiresKey: false,
         icon: '🏃',
         relevanceFilter: true,
+        defaultPriority: 1, // Low priority: Domain no longer active
     },
     {
         id: 'latent-space',
@@ -534,6 +579,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🌌',
+        defaultPriority: 5, // High priority: Excellent AI content, reliable RSS
     },
     {
         id: 'simon-willison',
@@ -545,6 +591,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🔧',
+        defaultPriority: 5, // High priority: High-quality insights, reliable Atom feed
     },
     {
         id: 'ahead-of-ai',
@@ -556,6 +603,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🧪',
+        defaultPriority: 5, // High priority: Expert analysis, reliable RSS
     },
     {
         id: 'interconnects',
@@ -567,6 +615,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🔗',
+        defaultPriority: 4, // Good priority: Quality AI analysis, reliable RSS
     },
 
     // =====================
@@ -581,6 +630,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🏆',
+        defaultPriority: 5, // High priority: Essential LLM benchmark, stable scraping
     },
     {
         id: 'open-llm-leaderboard',
@@ -591,6 +641,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '📊',
+        defaultPriority: 5, // High priority: Official HF leaderboard, reliable API
     },
     {
         id: 'artificial-analysis',
@@ -601,6 +652,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '📈',
+        defaultPriority: 4, // Good priority: Valuable benchmarks, scraping method
     },
 ];
 
@@ -631,6 +683,18 @@ export function getSourceById(id: string): SourceConfig | undefined {
 
 export function getAllCategories(): SourceCategory[] {
     return [...new Set(SOURCES.map((s) => s.category))];
+}
+
+/**
+ * Get categories that have at least one enabled source
+ * Filters out empty categories from the UI
+ */
+export function getActiveCategoriesFiltered(enabledIds: string[]): SourceCategory[] {
+    const enabledSet = new Set(enabledIds);
+    const categoriesWithEnabledSources = SOURCES
+        .filter(s => enabledSet.has(s.id))
+        .map(s => s.category);
+    return [...new Set(categoriesWithEnabledSources)];
 }
 
 export function getAllSources(): SourceConfig[] {

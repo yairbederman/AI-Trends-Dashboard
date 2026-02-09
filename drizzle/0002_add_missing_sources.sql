@@ -25,7 +25,7 @@ VALUES ('kling', true, 3, NULL)
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO sources (id, enabled, priority, last_fetched_at)
-VALUES ('pika', true, 3, NULL)
+VALUES ('pika', false, 3, NULL)
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO sources (id, enabled, priority, last_fetched_at)

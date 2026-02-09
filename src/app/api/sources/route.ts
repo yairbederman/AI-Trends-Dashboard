@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
-import { SOURCES, getAllCategories } from '@/lib/config/sources';
+import { SOURCES, getActiveCategoriesFiltered } from '@/lib/config/sources';
 import {
     getSourceQualityBaseline,
     getSourceEngagementType,
     SOURCE_QUALITY_TIERS,
 } from '@/lib/scoring/engagement-config';
+import { getEnabledSourceIds } from '@/lib/db/actions';
 
 /**
  * Get quality tier number (1-4) from baseline value
@@ -30,7 +31,11 @@ function getQualityTierLabel(tier: number): string {
 }
 
 export async function GET() {
-    const categories = getAllCategories();
+    // Get enabled source IDs from database
+    const enabledSourceIds = await getEnabledSourceIds();
+
+    // Only show categories that have at least one enabled source
+    const categories = getActiveCategoriesFiltered(enabledSourceIds);
 
     const categorizedSources = categories.map((category) => ({
         category,
