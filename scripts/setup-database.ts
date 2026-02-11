@@ -178,6 +178,18 @@ async function setupDatabase() {
             ON CONFLICT (key) DO NOTHING;
         `);
 
+        await db.execute(sql`
+            INSERT INTO settings (key, value)
+            VALUES ('customSources', '[]')
+            ON CONFLICT (key) DO NOTHING;
+        `);
+
+        await db.execute(sql`
+            INSERT INTO settings (key, value)
+            VALUES ('deletedSources', '[]')
+            ON CONFLICT (key) DO NOTHING;
+        `);
+
         console.log('✅ Migration 1: Default settings initialized');
 
         // Migration 2: Add sources

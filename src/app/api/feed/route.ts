@@ -12,6 +12,7 @@ import {
     getSourceFreshness,
     updateSourceLastFetched,
     getCachedContentBySourceIds,
+    getCustomSources,
 } from '@/lib/db/actions';
 import { scoreItemsByFeedMode } from '@/lib/scoring';
 import { getBulkVelocities, cleanupOldSnapshots } from '@/lib/db/engagement-tracker';
@@ -68,9 +69,10 @@ export async function GET(request: Request) {
         const dbTimeRange = await getSetting<TimeRange>('timeRange', '24h');
         const timeRange = queryTimeRange || dbTimeRange;
 
-        // 1. Determine target source IDs
+        // 1. Determine target source IDs (including custom sources)
         const enabledSourceIds = await getEnabledSourceIds();
-        let targetSources = getEnabledSourcesFiltered(enabledSourceIds);
+        const customSources = await getCustomSources();
+        let targetSources = getEnabledSourcesFiltered(enabledSourceIds, customSources);
 
         if (category) {
             targetSources = targetSources.filter((s) => s.category === category);

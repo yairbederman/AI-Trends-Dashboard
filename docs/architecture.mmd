@@ -8,6 +8,7 @@ flowchart TD
         Feed["/api/feed"]
         Settings["/api/settings"]
         Sources["/api/sources"]
+        Detect["/api/sources/detect<br/>RSS auto-detection"]
     end
 
     subgraph Cache["Caching"]
@@ -45,6 +46,7 @@ flowchart TD
     SWR --> Feed
     UI --> Settings
     UI --> Sources
+    UI --> Detect
 
     Feed --> MemCache
     MemCache --> DBCache

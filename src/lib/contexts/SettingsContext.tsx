@@ -2,12 +2,12 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { SOURCES } from '@/lib/config/sources';
-import { TimeRange } from '@/types';
+import { TimeRange, CustomSourceConfig } from '@/types';
 import { YouTubeChannelConfig } from '@/lib/config/youtube-channels';
 import { SubredditConfig } from '@/lib/config/subreddit-sources';
 
-function getAllSourceIds(): string[] {
-    return SOURCES.map((s) => s.id);
+function getAllSourceIds(customSources: CustomSourceConfig[] = []): string[] {
+    return [...SOURCES.map((s) => s.id), ...customSources.map(cs => cs.id)];
 }
 
 interface SettingsContextValue {
@@ -35,6 +35,12 @@ interface SettingsContextValue {
     // Custom subreddits
     customSubreddits: SubredditConfig[];
     setCustomSubreddits: (subreddits: SubredditConfig[]) => void;
+    // Custom sources
+    customSources: CustomSourceConfig[];
+    deletedSources: string[];
+    addCustomSource: (source: CustomSourceConfig) => void;
+    deleteSource: (sourceId: string, isCustom: boolean) => void;
+    restoreSource: (sourceId: string) => void;
     // Sync state
     isSyncing: boolean;
     syncError: string | null;
@@ -50,6 +56,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     const [boostKeywords, setBoostKeywordsState] = useState<string[]>([]);
     const [youtubeChannels, setYouTubeChannelsState] = useState<YouTubeChannelConfig[]>([]);
     const [customSubreddits, setCustomSubredditsState] = useState<SubredditConfig[]>([]);
+    const [customSources, setCustomSourcesState] = useState<CustomSourceConfig[]>([]);
+    const [deletedSources, setDeletedSourcesState] = useState<string[]>([]);
     const [hydrated, setHydrated] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
     const [syncError, setSyncError] = useState<string | null>(null);
@@ -80,6 +88,14 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
                     // Load custom subreddits
                     if (data.customSubreddits) {
                         setCustomSubredditsState(data.customSubreddits);
+                    }
+                    // Load custom sources
+                    if (data.customSources) {
+                        setCustomSourcesState(data.customSources);
+                    }
+                    // Load deleted sources
+                    if (data.deletedSources) {
+                        setDeletedSourcesState(data.deletedSources);
                     }
                 }
             } catch (error) {
@@ -211,23 +227,23 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     }, [syncSetting]);
 
     const enableAll = useCallback(() => {
-        const allIds = getAllSourceIds();
+        const allIds = getAllSourceIds(customSources);
         const previousState = new Set(enabledSources);
         setEnabledSources(new Set(allIds));
 
         syncSetting('ENABLE_ALL', { sourceIds: allIds }, () => {
             setEnabledSources(previousState);
         });
-    }, [enabledSources, syncSetting]);
+    }, [enabledSources, customSources, syncSetting]);
 
     const disableAll = useCallback(() => {
         const previousState = new Set(enabledSources);
         setEnabledSources(new Set());
 
-        syncSetting('DISABLE_ALL', { sourceIds: getAllSourceIds() }, () => {
+        syncSetting('DISABLE_ALL', { sourceIds: getAllSourceIds(customSources) }, () => {
             setEnabledSources(previousState);
         });
-    }, [enabledSources, syncSetting]);
+    }, [enabledSources, customSources, syncSetting]);
 
     const isSourceEnabled = useCallback((sourceId: string) => enabledSources.has(sourceId), [enabledSources]);
 
@@ -279,6 +295,62 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         });
     }, [customSubreddits, syncSetting]);
 
+    const addCustomSource = useCallback((source: CustomSourceConfig) => {
+        const oldCustomSources = customSources;
+        const oldEnabledSources = new Set(enabledSources);
+        setCustomSourcesState(prev => [...prev, source]);
+        setEnabledSources(prev => {
+            const next = new Set(prev);
+            next.add(source.id);
+            return next;
+        });
+
+        syncSetting('ADD_CUSTOM_SOURCE', { source }, () => {
+            setCustomSourcesState(oldCustomSources);
+            setEnabledSources(oldEnabledSources);
+        });
+    }, [customSources, enabledSources, syncSetting]);
+
+    const deleteSource = useCallback((sourceId: string, isCustom: boolean) => {
+        const oldCustomSources = customSources;
+        const oldDeletedSources = deletedSources;
+        const oldEnabledSources = new Set(enabledSources);
+
+        if (isCustom) {
+            setCustomSourcesState(prev => prev.filter(s => s.id !== sourceId));
+        } else {
+            setDeletedSourcesState(prev => [...prev, sourceId]);
+        }
+        setEnabledSources(prev => {
+            const next = new Set(prev);
+            next.delete(sourceId);
+            return next;
+        });
+
+        syncSetting('DELETE_SOURCE', { sourceId, isCustom }, () => {
+            setCustomSourcesState(oldCustomSources);
+            setDeletedSourcesState(oldDeletedSources);
+            setEnabledSources(oldEnabledSources);
+        });
+    }, [customSources, deletedSources, enabledSources, syncSetting]);
+
+    const restoreSource = useCallback((sourceId: string) => {
+        const oldDeletedSources = deletedSources;
+        const oldEnabledSources = new Set(enabledSources);
+
+        setDeletedSourcesState(prev => prev.filter(id => id !== sourceId));
+        setEnabledSources(prev => {
+            const next = new Set(prev);
+            next.add(sourceId);
+            return next;
+        });
+
+        syncSetting('RESTORE_SOURCE', { sourceId }, () => {
+            setDeletedSourcesState(oldDeletedSources);
+            setEnabledSources(oldEnabledSources);
+        });
+    }, [deletedSources, enabledSources, syncSetting]);
+
     if (!hydrated) {
         return null;
     }
@@ -306,6 +378,11 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
                 setYouTubeChannels,
                 customSubreddits,
                 setCustomSubreddits,
+                customSources,
+                deletedSources,
+                addCustomSource,
+                deleteSource,
+                restoreSource,
                 isSyncing,
                 syncError,
             }}

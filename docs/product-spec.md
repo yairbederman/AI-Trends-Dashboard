@@ -2,7 +2,7 @@
 
 ## What It Is
 
-A real-time AI content aggregation dashboard built with Next.js 16. It pulls from 40+ sources across AI labs, dev platforms, social media, news outlets, communities, newsletters, and leaderboards — scoring and ranking content using multi-algorithm feeds (Hot, Rising, Top). Users can configure custom YouTube channels and subreddits. A three-layer caching strategy (memory → database → external APIs) keeps the dashboard fast while minimizing external API calls.
+A real-time AI content aggregation dashboard built with Next.js 16. It pulls from 40+ sources across AI labs, dev platforms, social media, news outlets, communities, newsletters, and leaderboards — scoring and ranking content using multi-algorithm feeds (Hot, Rising, Top). Users can configure custom YouTube channels, subreddits, and add/delete RSS sources. A three-layer caching strategy (memory → database → external APIs) keeps the dashboard fast while minimizing external API calls.
 
 ## Who It's For
 
@@ -70,6 +70,9 @@ Scoring uses percentile-based ranking, quality ratios, source-specific baselines
 - Time range preferences
 - Custom YouTube channels (add/remove via @handle or channel ID)
 - Custom subreddits (add/remove, fetched via Reddit public JSON API)
+- Add custom RSS sources (URL auto-detection via `/api/sources/detect`)
+- Delete/hide sources (predefined sources can be restored, custom sources are permanently removed)
+- Deleted sources section with restore functionality
 
 ### Engagement Velocity Tracking
 - Hourly engagement snapshots
@@ -96,7 +99,7 @@ src/
 │   ├── api/
 │   │   ├── feed/            # Main aggregation endpoint
 │   │   ├── settings/        # Settings CRUD
-│   │   ├── sources/         # Source management
+│   │   ├── sources/         # Source management + RSS feed detection
 │   │   └── youtube/         # YouTube channel resolution
 │   ├── settings/            # Settings page
 │   ├── layout.tsx           # Root layout

@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Check, X, RefreshCw, Moon, Sun, AlertCircle, Star, Sparkles, Plus, Trash2, ChevronDown, ChevronUp, Bot, Palette, Code2, Users, Newspaper, MessageSquare, Mail, Trophy, Pencil, Loader2 } from 'lucide-react';
+import { ArrowLeft, Check, X, RefreshCw, Moon, Sun, AlertCircle, Star, Sparkles, Plus, Trash2, ChevronDown, ChevronUp, Bot, Palette, Code2, Users, Newspaper, MessageSquare, Mail, Trophy, Pencil, Loader2, Undo2, Globe } from 'lucide-react';
 import Link from 'next/link';
-import { SourceCategory, CATEGORY_LABELS } from '@/types';
+import { SourceCategory, CATEGORY_LABELS, CustomSourceConfig } from '@/types';
 import { useSettings } from '@/lib/contexts/SettingsContext';
+import { SOURCES } from '@/lib/config/sources';
 
 interface SourceInfo {
     id: string;
@@ -14,6 +15,7 @@ interface SourceInfo {
     requiresKey: boolean;
     method: string;
     brokenReason?: string;
+    isCustom?: boolean;
     // Quality tier info
     qualityTier: number;
     qualityTierLabel: string;
@@ -66,6 +68,19 @@ export default function SettingsPage() {
     const [newSubreddit, setNewSubreddit] = useState('');
     const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
 
+    // Add Source form state
+    const [showAddSourceForm, setShowAddSourceForm] = useState(false);
+    const [addSourceUrl, setAddSourceUrl] = useState('');
+    const [addSourceName, setAddSourceName] = useState('');
+    const [addSourceFeedUrl, setAddSourceFeedUrl] = useState('');
+    const [addSourceCategory, setAddSourceCategory] = useState<SourceCategory>('news');
+    const [isDetectingFeed, setIsDetectingFeed] = useState(false);
+    const [detectError, setDetectError] = useState('');
+    const [feedDetected, setFeedDetected] = useState(false);
+
+    // Deleted sources section
+    const [showDeletedSources, setShowDeletedSources] = useState(false);
+
     // Smart header state
     const [isHeaderVisible, setIsHeaderVisible] = useState(true);
     const lastScrollY = useRef(0);
@@ -110,6 +125,11 @@ export default function SettingsPage() {
         setYouTubeChannels,
         customSubreddits,
         setCustomSubreddits,
+        customSources,
+        deletedSources,
+        addCustomSource,
+        deleteSource,
+        restoreSource,
         isSyncing,
         syncError,
     } = useSettings();
@@ -318,6 +338,89 @@ export default function SettingsPage() {
             e.preventDefault();
             handleAddSubreddit();
         }
+    };
+
+    const handleDetectFeed = async () => {
+        if (!addSourceUrl.trim() || isDetectingFeed) return;
+        setDetectError('');
+        setIsDetectingFeed(true);
+        setFeedDetected(false);
+
+        try {
+            const res = await fetch('/api/sources/detect', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: addSourceUrl.trim() }),
+            });
+            const data = await res.json();
+
+            if (!res.ok) {
+                setDetectError(data.error || 'Failed to detect feed');
+                return;
+            }
+
+            setAddSourceFeedUrl(data.feedUrl);
+            setAddSourceName(data.title || '');
+            setFeedDetected(true);
+        } catch {
+            setDetectError('Network error detecting feed');
+        } finally {
+            setIsDetectingFeed(false);
+        }
+    };
+
+    const handleAddSource = () => {
+        if (!addSourceName.trim() || !addSourceFeedUrl.trim()) return;
+
+        // Check for duplicate feed URL against predefined and custom sources
+        const normalizedFeedUrl = addSourceFeedUrl.trim().toLowerCase().replace(/\/+$/, '');
+        const predefinedDup = SOURCES.find(s => s.feedUrl?.toLowerCase().replace(/\/+$/, '') === normalizedFeedUrl);
+        if (predefinedDup) {
+            setDetectError(`This feed already exists as "${predefinedDup.name}"`);
+            return;
+        }
+        const customDup = customSources.find(s => s.feedUrl.toLowerCase().replace(/\/+$/, '') === normalizedFeedUrl);
+        if (customDup) {
+            setDetectError(`This feed already exists as "${customDup.name}"`);
+            return;
+        }
+
+        const id = `custom-${addSourceName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}`;
+
+        const source: CustomSourceConfig = {
+            id,
+            name: addSourceName.trim(),
+            url: addSourceUrl.trim(),
+            feedUrl: addSourceFeedUrl.trim(),
+            category: addSourceCategory,
+        };
+
+        addCustomSource(source);
+        resetAddSourceForm();
+    };
+
+    const resetAddSourceForm = () => {
+        setShowAddSourceForm(false);
+        setAddSourceUrl('');
+        setAddSourceName('');
+        setAddSourceFeedUrl('');
+        setAddSourceCategory('news');
+        setDetectError('');
+        setFeedDetected(false);
+    };
+
+    const handleDeleteSource = (sourceId: string, sourceName: string, isCustom: boolean) => {
+        const message = isCustom
+            ? `Delete "${sourceName}"? This is permanent.`
+            : `Hide "${sourceName}"? You can restore it from Deleted Sources.`;
+        if (window.confirm(message)) {
+            deleteSource(sourceId, isCustom);
+        }
+    };
+
+    const getDeletedSourceName = (id: string): string => {
+        const source = SOURCES.find(s => s.id === id);
+        return source?.name || id;
     };
 
     const toggleCollapse = (category: string) => {
@@ -685,6 +788,128 @@ export default function SettingsPage() {
                     </div>
                 </section>
 
+                {/* Add Custom Source */}
+                <section className="settings-section">
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <h2>
+                            <Globe size={18} style={{ display: 'inline', marginRight: '0.5rem' }} />
+                            Custom Sources
+                        </h2>
+                        {!showAddSourceForm && (
+                            <button
+                                className="add-keyword-btn"
+                                onClick={() => setShowAddSourceForm(true)}
+                            >
+                                <Plus size={16} />
+                                Add Source
+                            </button>
+                        )}
+                    </div>
+
+                    {showAddSourceForm && (
+                        <div className="add-source-form">
+                            <div className="keyword-input-row">
+                                <input
+                                    type="text"
+                                    value={addSourceUrl}
+                                    onChange={(e) => { setAddSourceUrl(e.target.value); setDetectError(''); }}
+                                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleDetectFeed(); } }}
+                                    placeholder="Enter website or feed URL"
+                                    className="keyword-input"
+                                    aria-label="Source URL"
+                                    autoFocus
+                                />
+                                <button
+                                    onClick={handleDetectFeed}
+                                    className="add-keyword-btn"
+                                    disabled={!addSourceUrl.trim() || isDetectingFeed}
+                                >
+                                    {isDetectingFeed ? (
+                                        <Loader2 size={16} className="spinning" />
+                                    ) : (
+                                        <RefreshCw size={16} />
+                                    )}
+                                    {isDetectingFeed ? 'Detecting...' : 'Detect Feed'}
+                                </button>
+                            </div>
+                            {detectError && (
+                                <p className="setting-hint" style={{ margin: 0, color: 'var(--error)' }}>
+                                    {detectError}
+                                </p>
+                            )}
+                            {feedDetected && (
+                                <div className="add-source-details">
+                                    <div className="keyword-input-row">
+                                        <input
+                                            type="text"
+                                            value={addSourceName}
+                                            onChange={(e) => setAddSourceName(e.target.value)}
+                                            placeholder="Source name"
+                                            className="keyword-input"
+                                            aria-label="Source name"
+                                        />
+                                    </div>
+                                    <div className="keyword-input-row">
+                                        <input
+                                            type="text"
+                                            value={addSourceFeedUrl}
+                                            onChange={(e) => setAddSourceFeedUrl(e.target.value)}
+                                            placeholder="Feed URL"
+                                            className="keyword-input"
+                                            aria-label="Feed URL"
+                                        />
+                                    </div>
+                                    <div className="keyword-input-row">
+                                        <select
+                                            value={addSourceCategory}
+                                            onChange={(e) => setAddSourceCategory(e.target.value as SourceCategory)}
+                                            className="priority-select"
+                                            style={{ flex: 1 }}
+                                            aria-label="Source category"
+                                        >
+                                            {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
+                                                <option key={key} value={key}>{label}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="keyword-input-row" style={{ justifyContent: 'flex-end' }}>
+                                        <button
+                                            onClick={resetAddSourceForm}
+                                            className="category-btn disable"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            onClick={handleAddSource}
+                                            className="add-keyword-btn"
+                                            disabled={!addSourceName.trim() || !addSourceFeedUrl.trim()}
+                                        >
+                                            <Plus size={16} />
+                                            Save Source
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                            {!feedDetected && !detectError && (
+                                <div className="keyword-input-row" style={{ justifyContent: 'flex-end' }}>
+                                    <button
+                                        onClick={resetAddSourceForm}
+                                        className="category-btn disable"
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {customSources.length === 0 && !showAddSourceForm && (
+                        <p className="setting-hint" style={{ margin: 0 }}>
+                            No custom sources added. Click &quot;Add Source&quot; to add an RSS feed.
+                        </p>
+                    )}
+                </section>
+
                 {/* Sources by Category */}
                 {categories.map((cat) => (
                     <section
@@ -733,6 +958,9 @@ export default function SettingsPage() {
                                         <div className="source-info">
                                             {(() => { const Icon = CATEGORY_ICONS[cat.category]; return <Icon size={20} className="source-icon" />; })()}
                                             <span className="source-name">{source.name}</span>
+                                            {source.isCustom && (
+                                                <span className="api-badge custom">Custom</span>
+                                            )}
                                             {source.brokenReason && (
                                                 <span className="api-badge broken" title={source.brokenReason}>
                                                     Broken
@@ -780,6 +1008,14 @@ export default function SettingsPage() {
                                                     <X size={18} />
                                                 )}
                                             </button>
+                                            <button
+                                                className="delete-btn"
+                                                onClick={() => handleDeleteSource(source.id, source.name, !!source.isCustom)}
+                                                aria-label={`Delete ${source.name}`}
+                                                title={source.isCustom ? 'Delete source permanently' : 'Hide source'}
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
                                         </div>
                                     </div>
                                 ))}
@@ -787,6 +1023,46 @@ export default function SettingsPage() {
                         )}
                     </section>
                 ))}
+
+                {/* Deleted Sources Section */}
+                {deletedSources.length > 0 && (
+                    <section className="settings-section deleted-sources-section">
+                        <button
+                            className="category-title-btn"
+                            onClick={() => setShowDeletedSources(!showDeletedSources)}
+                            aria-expanded={showDeletedSources}
+                        >
+                            {showDeletedSources ? (
+                                <ChevronUp size={20} className="category-chevron" />
+                            ) : (
+                                <ChevronDown size={20} className="category-chevron" />
+                            )}
+                            <h2>Deleted Sources ({deletedSources.length})</h2>
+                        </button>
+                        {showDeletedSources && (
+                            <div className="source-list">
+                                {deletedSources.map((id) => (
+                                    <div key={id} className="source-item disabled">
+                                        <div className="source-info">
+                                            <Trash2 size={20} className="source-icon" style={{ opacity: 0.4 }} />
+                                            <span className="source-name" style={{ opacity: 0.6 }}>{getDeletedSourceName(id)}</span>
+                                        </div>
+                                        <div className="source-actions">
+                                            <button
+                                                className="add-keyword-btn"
+                                                onClick={() => restoreSource(id)}
+                                                aria-label={`Restore ${getDeletedSourceName(id)}`}
+                                            >
+                                                <Undo2 size={16} />
+                                                Restore
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </section>
+                )}
             </main>
         </div>
     );

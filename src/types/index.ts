@@ -30,6 +30,14 @@ export interface SourceConfig {
   brokenReason?: string;
 }
 
+export interface CustomSourceConfig {
+  id: string;
+  name: string;
+  url: string;
+  feedUrl: string;
+  category: SourceCategory;
+}
+
 export interface EngagementMetrics {
   // Reddit, Hacker News
   upvotes?: number;

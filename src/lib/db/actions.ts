@@ -2,7 +2,7 @@ import { db } from './index';
 import { settings, sources, contentItems } from './schema';
 import { eq, inArray, gte, and, desc, sql } from 'drizzle-orm';
 import { SOURCES, getSourceById } from '@/lib/config/sources';
-import { ContentItem, TimeRange } from '@/types';
+import { ContentItem, CustomSourceConfig, TimeRange } from '@/types';
 import { YouTubeChannelConfig, DEFAULT_YOUTUBE_CHANNELS } from '@/lib/config/youtube-channels';
 import { SubredditConfig, DEFAULT_SUBREDDITS } from '@/lib/config/subreddit-sources';
 import { recordEngagementSnapshotsBatch } from './engagement-tracker';
@@ -53,6 +53,24 @@ export async function updateSetting(key: string, value: unknown): Promise<void> 
     }
 }
 
+// === Custom Source Actions ===
+
+export async function getCustomSources(): Promise<CustomSourceConfig[]> {
+    return getSetting<CustomSourceConfig[]>('customSources', []);
+}
+
+export async function setCustomSources(sources: CustomSourceConfig[]): Promise<void> {
+    await updateSetting('customSources', sources);
+}
+
+export async function getDeletedSourceIds(): Promise<string[]> {
+    return getSetting<string[]>('deletedSources', []);
+}
+
+export async function setDeletedSourceIds(ids: string[]): Promise<void> {
+    await updateSetting('deletedSources', ids);
+}
+
 // === Source Actions ===
 
 export async function getEnabledSourceIds(): Promise<string[]> {
@@ -62,12 +80,31 @@ export async function getEnabledSourceIds(): Promise<string[]> {
         console.log('Successfully fetched sources:', dbSources.length);
         const dbSourceMap = new Map(dbSources.map(s => [s.id, s.enabled]));
 
-        return SOURCES.filter(s => {
+        // Get custom sources and deleted source IDs
+        const customSources = await getCustomSources();
+        const deletedIds = await getDeletedSourceIds();
+        const deletedSet = new Set(deletedIds);
+
+        // Predefined sources: enabled per DB or default, minus deleted
+        const predefinedIds = SOURCES.filter(s => {
+            if (deletedSet.has(s.id)) return false;
             if (dbSourceMap.has(s.id)) {
                 return dbSourceMap.get(s.id);
             }
             return s.enabled;
         }).map(s => s.id);
+
+        // Custom sources: enabled per DB or default enabled
+        const customIds = customSources
+            .filter(cs => {
+                if (dbSourceMap.has(cs.id)) {
+                    return dbSourceMap.get(cs.id);
+                }
+                return true; // Custom sources enabled by default
+            })
+            .map(cs => cs.id);
+
+        return [...predefinedIds, ...customIds];
 
     } catch (error) {
         console.error('Failed to get enabled sources - Full error:', error);

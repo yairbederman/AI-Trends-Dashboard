@@ -13,8 +13,13 @@ import {
     setYouTubeChannels,
     getCustomSubreddits,
     setCustomSubreddits,
+    getCustomSources,
+    setCustomSources,
+    getDeletedSourceIds,
+    setDeletedSourceIds,
 } from '@/lib/db/actions';
-import { TimeRange } from '@/types';
+import { TimeRange, CustomSourceConfig, SourceCategory } from '@/types';
+import { SOURCES } from '@/lib/config/sources';
 import { feedCache, settingsCache } from '@/lib/cache/memory-cache';
 
 // Validation helpers
@@ -61,6 +66,8 @@ export async function GET() {
         const boostKeywords = await getBoostKeywords();
         const youtubeChannels = await getYouTubeChannels();
         const customSubreddits = await getCustomSubreddits();
+        const customSources = await getCustomSources();
+        const deletedSources = await getDeletedSourceIds();
 
         return NextResponse.json({
             theme,
@@ -70,6 +77,8 @@ export async function GET() {
             boostKeywords,
             youtubeChannels,
             customSubreddits,
+            customSources,
+            deletedSources,
         });
     } catch (error) {
         console.error('Failed to fetch settings:', error);
@@ -230,6 +239,101 @@ export async function POST(request: Request) {
                     }))
                     .filter((s: { name: string }) => s.name.length > 0);
                 await setCustomSubreddits(subreddits);
+                break;
+            }
+
+            case 'ADD_CUSTOM_SOURCE': {
+                const source = payload.source as Partial<CustomSourceConfig> | undefined;
+                if (!source || !source.id || !source.name || !source.url || !source.feedUrl || !source.category) {
+                    return NextResponse.json(
+                        { error: 'Invalid source. Must have id, name, url, feedUrl, and category' },
+                        { status: 400 }
+                    );
+                }
+                const validCategories: SourceCategory[] = ['ai-labs', 'dev-platforms', 'social', 'news', 'community', 'newsletters', 'leaderboards'];
+                if (!validCategories.includes(source.category)) {
+                    return NextResponse.json(
+                        { error: `Invalid category. Must be one of: ${validCategories.join(', ')}` },
+                        { status: 400 }
+                    );
+                }
+                const existing = await getCustomSources();
+                if (existing.some(s => s.id === source.id)) {
+                    return NextResponse.json(
+                        { error: 'A source with this ID already exists' },
+                        { status: 400 }
+                    );
+                }
+                // Check for duplicate feed URL against predefined + custom sources
+                const normalizedFeedUrl = source.feedUrl.trim().toLowerCase().replace(/\/+$/, '');
+                const predefinedDup = SOURCES.find(s => s.feedUrl?.toLowerCase().replace(/\/+$/, '') === normalizedFeedUrl);
+                if (predefinedDup) {
+                    return NextResponse.json(
+                        { error: `This feed already exists as "${predefinedDup.name}"` },
+                        { status: 409 }
+                    );
+                }
+                const customDup = existing.find(s => s.feedUrl.toLowerCase().replace(/\/+$/, '') === normalizedFeedUrl);
+                if (customDup) {
+                    return NextResponse.json(
+                        { error: `This feed already exists as "${customDup.name}"` },
+                        { status: 409 }
+                    );
+                }
+                const newCustomSource: CustomSourceConfig = {
+                    id: source.id,
+                    name: source.name.trim(),
+                    url: source.url.trim(),
+                    feedUrl: source.feedUrl.trim(),
+                    category: source.category,
+                };
+                await setCustomSources([...existing, newCustomSource]);
+                // Create a sources DB row so it appears as enabled
+                await toggleSourceEnabled(newCustomSource.id, true);
+                break;
+            }
+
+            case 'DELETE_SOURCE': {
+                if (!isValidSourceId(payload.sourceId)) {
+                    return NextResponse.json(
+                        { error: 'Invalid sourceId' },
+                        { status: 400 }
+                    );
+                }
+                const sourceId = payload.sourceId as string;
+                const isCustom = payload.isCustom === true;
+
+                if (isCustom) {
+                    // Remove from customSources
+                    const currentCustom = await getCustomSources();
+                    await setCustomSources(currentCustom.filter(s => s.id !== sourceId));
+                    // Disable in DB sources table
+                    await toggleSourceEnabled(sourceId, false);
+                } else {
+                    // Add to deletedSources
+                    const currentDeleted = await getDeletedSourceIds();
+                    if (!currentDeleted.includes(sourceId)) {
+                        await setDeletedSourceIds([...currentDeleted, sourceId]);
+                    }
+                    // Disable in DB
+                    await toggleSourceEnabled(sourceId, false);
+                }
+                break;
+            }
+
+            case 'RESTORE_SOURCE': {
+                if (!isValidSourceId(payload.sourceId)) {
+                    return NextResponse.json(
+                        { error: 'Invalid sourceId' },
+                        { status: 400 }
+                    );
+                }
+                const restoreId = payload.sourceId as string;
+                // Remove from deletedSources
+                const currentDeletedList = await getDeletedSourceIds();
+                await setDeletedSourceIds(currentDeletedList.filter(id => id !== restoreId));
+                // Re-enable in DB
+                await toggleSourceEnabled(restoreId, true);
                 break;
             }
 

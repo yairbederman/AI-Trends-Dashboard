@@ -1,4 +1,4 @@
-import { SourceConfig, SourceCategory } from '@/types';
+import { SourceConfig, SourceCategory, CustomSourceConfig } from '@/types';
 
 // All data sources configuration
 // Sources without API keys are enabled by default
@@ -632,6 +632,37 @@ export function getSourcesByCategory(category: SourceCategory): SourceConfig[] {
 }
 
 /**
+ * Convert a CustomSourceConfig to a full SourceConfig
+ */
+export function customToSourceConfig(custom: CustomSourceConfig): SourceConfig {
+    return {
+        id: custom.id,
+        name: custom.name,
+        url: custom.url,
+        feedUrl: custom.feedUrl,
+        category: custom.category,
+        method: 'rss',
+        enabled: true,
+        requiresKey: false,
+        defaultPriority: 3,
+        icon: '🔗',
+    };
+}
+
+/**
+ * Get the effective sources list: static SOURCES + custom, minus deleted
+ */
+export function getEffectiveSources(
+    customSources: CustomSourceConfig[],
+    deletedIds: string[]
+): SourceConfig[] {
+    const deletedSet = new Set(deletedIds);
+    const predefined = SOURCES.filter(s => !deletedSet.has(s.id));
+    const custom = customSources.map(customToSourceConfig);
+    return [...predefined, ...custom];
+}
+
+/**
  * Get enabled sources from static config (fallback only)
  * For user-specific enabled sources, use getEnabledSourcesFromDb()
  */
@@ -641,10 +672,18 @@ export function getEnabledSources(): SourceConfig[] {
 
 /**
  * Get enabled sources based on database settings
+ * Optionally includes custom sources in the lookup pool
  */
-export function getEnabledSourcesFiltered(enabledIds: string[]): SourceConfig[] {
+export function getEnabledSourcesFiltered(
+    enabledIds: string[],
+    customSources?: CustomSourceConfig[]
+): SourceConfig[] {
     const enabledSet = new Set(enabledIds);
-    return SOURCES.filter((s) => enabledSet.has(s.id));
+    const predefined = SOURCES.filter((s) => enabledSet.has(s.id));
+    const custom = (customSources || [])
+        .filter(cs => enabledSet.has(cs.id))
+        .map(customToSourceConfig);
+    return [...predefined, ...custom];
 }
 
 export function getSourceById(id: string): SourceConfig | undefined {
@@ -659,9 +698,15 @@ export function getAllCategories(): SourceCategory[] {
  * Get categories that have at least one enabled source
  * Filters out empty categories from the UI
  */
-export function getActiveCategoriesFiltered(enabledIds: string[]): SourceCategory[] {
+export function getActiveCategoriesFiltered(
+    enabledIds: string[],
+    customSources?: CustomSourceConfig[]
+): SourceCategory[] {
     const enabledSet = new Set(enabledIds);
-    const categoriesWithEnabledSources = SOURCES
+    const allSources = customSources
+        ? [...SOURCES, ...customSources.map(customToSourceConfig)]
+        : SOURCES;
+    const categoriesWithEnabledSources = allSources
         .filter(s => enabledSet.has(s.id))
         .map(s => s.category);
     return [...new Set(categoriesWithEnabledSources)];

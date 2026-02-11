@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
-import { SOURCES, getActiveCategoriesFiltered } from '@/lib/config/sources';
+import { SOURCES, getActiveCategoriesFiltered, getEffectiveSources } from '@/lib/config/sources';
 import {
     getSourceQualityBaseline,
     getSourceEngagementType,
     SOURCE_QUALITY_TIERS,
 } from '@/lib/scoring/engagement-config';
-import { getEnabledSourceIds } from '@/lib/db/actions';
+import { getEnabledSourceIds, getCustomSources, getDeletedSourceIds } from '@/lib/db/actions';
 
 /**
  * Get quality tier number (1-4) from baseline value
@@ -33,16 +33,23 @@ function getQualityTierLabel(tier: number): string {
 export async function GET() {
     // Get enabled source IDs from database
     const enabledSourceIds = await getEnabledSourceIds();
+    const customSources = await getCustomSources();
+    const deletedIds = await getDeletedSourceIds();
+
+    // Build the effective source list
+    const effectiveSources = getEffectiveSources(customSources, deletedIds);
+    const customSourceIds = new Set(customSources.map(cs => cs.id));
 
     // Only show categories that have at least one enabled source
-    const categories = getActiveCategoriesFiltered(enabledSourceIds);
+    const categories = getActiveCategoriesFiltered(enabledSourceIds, customSources);
 
     const categorizedSources = categories.map((category) => ({
         category,
-        sources: SOURCES.filter((s) => s.category === category).map((s) => {
+        sources: effectiveSources.filter((s) => s.category === category).map((s) => {
             const qualityBaseline = getSourceQualityBaseline(s.id);
             const engagementType = getSourceEngagementType(s.id);
-            const qualityTier = getQualityTierNumber(qualityBaseline);
+            const qualityTier = customSourceIds.has(s.id) ? 3 : getQualityTierNumber(qualityBaseline);
+            const isCustom = customSourceIds.has(s.id);
 
             return {
                 id: s.id,
@@ -52,9 +59,10 @@ export async function GET() {
                 requiresKey: s.requiresKey,
                 method: s.method,
                 brokenReason: s.brokenReason,
+                isCustom,
                 // Quality tier info
                 qualityTier,
-                qualityTierLabel: getQualityTierLabel(qualityTier),
+                qualityTierLabel: isCustom ? 'Custom' : getQualityTierLabel(qualityTier),
                 qualityBaseline,
                 engagementType,
                 hasEngagementMetrics: engagementType !== 'rss',
@@ -64,7 +72,7 @@ export async function GET() {
 
     return NextResponse.json({
         categories: categorizedSources,
-        totalSources: SOURCES.length,
-        enabledSources: SOURCES.filter((s) => s.enabled).length,
+        totalSources: effectiveSources.length,
+        enabledSources: effectiveSources.filter((s) => s.enabled).length,
     });
 }
