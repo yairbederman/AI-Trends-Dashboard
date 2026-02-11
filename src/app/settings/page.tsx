@@ -78,6 +78,8 @@ export default function SettingsPage() {
     const [detectError, setDetectError] = useState('');
     const [feedDetected, setFeedDetected] = useState(false);
 
+    // General settings collapse
+    const [showGeneralSettings, setShowGeneralSettings] = useState(false);
     // Deleted sources section
     const [showDeletedSources, setShowDeletedSources] = useState(false);
 
@@ -511,281 +513,284 @@ export default function SettingsPage() {
             )}
 
             <main className="settings-main" id="main-content" role="main">
-                {/* Global Settings */}
-                <section className="settings-section">
-                    <h2>Global Settings</h2>
-
-                    <div className="setting-row">
-                        <div className="setting-label">
-                            <span>Theme</span>
-                            <span className="setting-hint">Choose your preferred appearance</span>
-                        </div>
-                        <div className="theme-toggle">
-                            <button
-                                className={`theme-btn ${theme === 'dark' ? 'active' : ''}`}
-                                onClick={() => setTheme('dark')}
-                            >
-                                <Moon size={16} />
-                                Dark
-                            </button>
-                            <button
-                                className={`theme-btn ${theme === 'light' ? 'active' : ''}`}
-                                onClick={() => setTheme('light')}
-                            >
-                                <Sun size={16} />
-                                Light
-                            </button>
-                        </div>
+                {/* General Settings — collapsible */}
+                <section className={`settings-section ${!showGeneralSettings ? 'collapsed' : ''}`}>
+                    <div className="category-header">
+                        <button
+                            className="category-title-btn"
+                            onClick={() => setShowGeneralSettings(!showGeneralSettings)}
+                            aria-expanded={showGeneralSettings}
+                        >
+                            {showGeneralSettings ? (
+                                <ChevronUp size={20} className="category-chevron" />
+                            ) : (
+                                <ChevronDown size={20} className="category-chevron" />
+                            )}
+                            <h2>General Settings</h2>
+                            <span className="category-count">
+                                {boostKeywords.length} keywords, {youtubeChannels.length} channels, {customSubreddits.length} subs
+                            </span>
+                        </button>
                     </div>
 
-                    <div className="setting-row">
-                        <div className="setting-label">
-                            <span>All Sources</span>
-                            <span className="setting-hint">
-                                {enabledSources.size} of {categories.reduce((sum, c) => sum + c.sources.length, 0)} sources enabled
-                            </span>
-                        </div>
-                        <div className="global-toggle">
-                            <button
-                                className="category-btn enable"
-                                onClick={enableAll}
-                            >
-                                Enable All
-                            </button>
-                            <button
-                                className="category-btn disable"
-                                onClick={disableAll}
-                            >
-                                Disable All
-                            </button>
-                        </div>
-                    </div>
-                </section>
-
-                {/* Ranking Settings */}
-                <section className="settings-section">
-                    <h2>
-                        <Sparkles size={18} style={{ display: 'inline', marginRight: '0.5rem' }} />
-                        Ranking & Prioritization
-                    </h2>
-
-                    <div className="setting-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '1rem' }}>
-                        <div className="setting-label">
-                            <span>Boost Keywords</span>
-                            <span className="setting-hint">
-                                Content matching these keywords will be ranked higher
-                            </span>
-                        </div>
-                        <div className="keyword-input-row">
-                            <input
-                                type="text"
-                                value={newKeyword}
-                                onChange={(e) => setNewKeyword(e.target.value)}
-                                onKeyDown={handleKeywordKeyDown}
-                                placeholder="Enter keyword (e.g., Claude, GPT-5)"
-                                className="keyword-input"
-                                aria-label="Add boost keyword"
-                            />
-                            <button
-                                onClick={handleAddKeyword}
-                                className="add-keyword-btn"
-                                disabled={!newKeyword.trim()}
-                                aria-label="Add keyword"
-                            >
-                                <Plus size={16} />
-                                Add
-                            </button>
-                        </div>
-                        {boostKeywords.length > 0 && (
-                            <div className="keywords-list">
-                                {boostKeywords.map((keyword) => (
-                                    <span key={keyword} className="keyword-chip">
-                                        {keyword}
-                                        <button
-                                            onClick={() => handleRemoveKeyword(keyword)}
-                                            className="remove-keyword-btn"
-                                            aria-label={`Remove ${keyword}`}
-                                        >
-                                            <X size={12} />
-                                        </button>
-                                    </span>
-                                ))}
+                    {showGeneralSettings && (
+                        <div className="general-settings-body">
+                            {/* Theme & Sources */}
+                            <div className="setting-row">
+                                <div className="setting-label">
+                                    <span>Theme</span>
+                                    <span className="setting-hint">Choose your preferred appearance</span>
+                                </div>
+                                <div className="theme-toggle">
+                                    <button
+                                        className={`theme-btn ${theme === 'dark' ? 'active' : ''}`}
+                                        onClick={() => setTheme('dark')}
+                                    >
+                                        <Moon size={16} />
+                                        Dark
+                                    </button>
+                                    <button
+                                        className={`theme-btn ${theme === 'light' ? 'active' : ''}`}
+                                        onClick={() => setTheme('light')}
+                                    >
+                                        <Sun size={16} />
+                                        Light
+                                    </button>
+                                </div>
                             </div>
-                        )}
-                        {boostKeywords.length === 0 && (
-                            <p className="setting-hint" style={{ margin: 0 }}>
-                                No boost keywords configured. Add keywords to prioritize specific content.
-                            </p>
-                        )}
-                    </div>
-                </section>
 
-                {/* YouTube Channels */}
-                <section className="settings-section">
-                    <h2>
-                        <span style={{ display: 'inline', marginRight: '0.5rem' }}>📺</span>
-                        YouTube Channels
-                    </h2>
+                            <div className="setting-row">
+                                <div className="setting-label">
+                                    <span>All Sources</span>
+                                    <span className="setting-hint">
+                                        {enabledSources.size} of {categories.reduce((sum, c) => sum + c.sources.length, 0)} sources enabled
+                                    </span>
+                                </div>
+                                <div className="global-toggle">
+                                    <button
+                                        className="category-btn enable"
+                                        onClick={enableAll}
+                                    >
+                                        Enable All
+                                    </button>
+                                    <button
+                                        className="category-btn disable"
+                                        onClick={disableAll}
+                                    >
+                                        Disable All
+                                    </button>
+                                </div>
+                            </div>
 
-                    <div className="setting-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '1rem' }}>
-                        <div className="setting-label">
-                            <span>Monitored Channels</span>
-                            <span className="setting-hint">
-                                Videos from these channels are fetched via RSS (no API quota cost). Add a @handle, channel URL, or ID.
-                            </span>
-                        </div>
-                        <div className="keyword-input-row">
-                            <input
-                                type="text"
-                                value={newChannel}
-                                onChange={(e) => { setNewChannel(e.target.value); setChannelError(''); }}
-                                onKeyDown={handleChannelKeyDown}
-                                placeholder="@handle, channel URL, or ID (e.g., @Fireship)"
-                                className="keyword-input"
-                                aria-label="Add YouTube channel"
-                            />
-                            <button
-                                onClick={handleAddChannel}
-                                className="add-keyword-btn"
-                                disabled={!parseChannelInput(newChannel) || isResolvingChannel}
-                                aria-label="Add channel"
-                            >
-                                {isResolvingChannel ? (
-                                    <Loader2 size={16} className="spinning" />
-                                ) : (
-                                    <Plus size={16} />
+                            {/* Boost Keywords */}
+                            <div className="settings-subsection">
+                                <h3>
+                                    <Sparkles size={16} style={{ display: 'inline', marginRight: '0.4rem' }} />
+                                    Boost Keywords
+                                </h3>
+                                <span className="setting-hint">
+                                    Content matching these keywords will be ranked higher
+                                </span>
+                                <div className="keyword-input-row">
+                                    <input
+                                        type="text"
+                                        value={newKeyword}
+                                        onChange={(e) => setNewKeyword(e.target.value)}
+                                        onKeyDown={handleKeywordKeyDown}
+                                        placeholder="Enter keyword (e.g., Claude, GPT-5)"
+                                        className="keyword-input"
+                                        aria-label="Add boost keyword"
+                                    />
+                                    <button
+                                        onClick={handleAddKeyword}
+                                        className="add-keyword-btn"
+                                        disabled={!newKeyword.trim()}
+                                        aria-label="Add keyword"
+                                    >
+                                        <Plus size={16} />
+                                        Add
+                                    </button>
+                                </div>
+                                {boostKeywords.length > 0 && (
+                                    <div className="keywords-list">
+                                        {boostKeywords.map((keyword) => (
+                                            <span key={keyword} className="keyword-chip">
+                                                {keyword}
+                                                <button
+                                                    onClick={() => handleRemoveKeyword(keyword)}
+                                                    className="remove-keyword-btn"
+                                                    aria-label={`Remove ${keyword}`}
+                                                >
+                                                    <X size={12} />
+                                                </button>
+                                            </span>
+                                        ))}
+                                    </div>
                                 )}
-                                {isResolvingChannel ? 'Resolving...' : 'Add'}
-                            </button>
-                        </div>
-                        {channelError && (
-                            <p className="setting-hint" style={{ margin: 0, color: 'var(--error)' }}>
-                                {channelError}
-                            </p>
-                        )}
-                        {youtubeChannels.length > 0 && (
-                            <div className="keywords-list">
-                                {youtubeChannels.map((channel) => (
-                                    editingChannelId === channel.channelId ? (
-                                        <div key={channel.channelId} className="channel-edit-row">
-                                            <input
-                                                type="text"
-                                                value={editChannelValue}
-                                                onChange={(e) => { setEditChannelValue(e.target.value); setEditChannelError(''); }}
-                                                onKeyDown={handleEditKeyDown}
-                                                className="keyword-input"
-                                                autoFocus
-                                                aria-label="Edit channel"
-                                            />
-                                            <button
-                                                onClick={saveEditChannel}
-                                                className="add-keyword-btn"
-                                                disabled={!parseChannelInput(editChannelValue) || isResolvingEdit}
-                                                aria-label="Save channel"
-                                            >
-                                                {isResolvingEdit ? (
-                                                    <Loader2 size={14} className="spinning" />
-                                                ) : (
-                                                    <Check size={14} />
-                                                )}
-                                            </button>
-                                            <button
-                                                onClick={cancelEditChannel}
-                                                className="channel-edit-btn"
-                                                aria-label="Cancel edit"
-                                            >
-                                                <X size={14} />
-                                            </button>
-                                            {editChannelError && (
-                                                <span style={{ color: 'var(--error)', fontSize: '0.75rem' }}>{editChannelError}</span>
-                                            )}
-                                        </div>
-                                    ) : (
-                                        <span key={channel.channelId} className="keyword-chip" title={`youtube.com/channel/${channel.channelId}`}>
-                                            {channel.name}
-                                            <button
-                                                onClick={() => startEditChannel(channel.channelId)}
-                                                className="channel-edit-btn"
-                                                aria-label={`Edit ${channel.name}`}
-                                            >
-                                                <Pencil size={12} />
-                                            </button>
-                                            <button
-                                                onClick={() => handleRemoveChannel(channel.channelId)}
-                                                className="remove-keyword-btn"
-                                                aria-label={`Remove ${channel.name}`}
-                                            >
-                                                <X size={12} />
-                                            </button>
-                                        </span>
-                                    )
-                                ))}
+                                {boostKeywords.length === 0 && (
+                                    <p className="setting-hint" style={{ margin: 0 }}>
+                                        No boost keywords configured.
+                                    </p>
+                                )}
                             </div>
-                        )}
-                        {youtubeChannels.length === 0 && (
-                            <p className="setting-hint" style={{ margin: 0 }}>
-                                No YouTube channels configured. Add channels to monitor their latest videos.
-                            </p>
-                        )}
-                    </div>
-                </section>
 
-                {/* Subreddits */}
-                <section className="settings-section">
-                    <h2>
-                        <span style={{ display: 'inline', marginRight: '0.5rem' }}>🔴</span>
-                        Subreddits
-                    </h2>
-
-                    <div className="setting-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '1rem' }}>
-                        <div className="setting-label">
-                            <span>Monitored Subreddits</span>
-                            <span className="setting-hint">
-                                Posts from these subreddits are fetched via Reddit&apos;s public JSON API. Add a subreddit name (with or without r/ prefix).
-                            </span>
-                        </div>
-                        <div className="keyword-input-row">
-                            <input
-                                type="text"
-                                value={newSubreddit}
-                                onChange={(e) => setNewSubreddit(e.target.value)}
-                                onKeyDown={handleSubredditKeyDown}
-                                placeholder="Subreddit name (e.g., ClaudeAI or r/ClaudeAI)"
-                                className="keyword-input"
-                                aria-label="Add subreddit"
-                            />
-                            <button
-                                onClick={handleAddSubreddit}
-                                className="add-keyword-btn"
-                                disabled={!newSubreddit.trim().replace(/^r\//, '')}
-                                aria-label="Add subreddit"
-                            >
-                                <Plus size={16} />
-                                Add
-                            </button>
-                        </div>
-                        {customSubreddits.length > 0 && (
-                            <div className="keywords-list">
-                                {customSubreddits.map((sub) => (
-                                    <span key={sub.name} className="keyword-chip">
-                                        r/{sub.name}
-                                        <button
-                                            onClick={() => handleRemoveSubreddit(sub.name)}
-                                            className="remove-keyword-btn"
-                                            aria-label={`Remove r/${sub.name}`}
-                                        >
-                                            <X size={12} />
-                                        </button>
-                                    </span>
-                                ))}
+                            {/* YouTube Channels */}
+                            <div className="settings-subsection">
+                                <h3>
+                                    <span style={{ marginRight: '0.4rem' }}>📺</span>
+                                    YouTube Channels
+                                </h3>
+                                <span className="setting-hint">
+                                    Add a @handle, channel URL, or ID.
+                                </span>
+                                <div className="keyword-input-row">
+                                    <input
+                                        type="text"
+                                        value={newChannel}
+                                        onChange={(e) => { setNewChannel(e.target.value); setChannelError(''); }}
+                                        onKeyDown={handleChannelKeyDown}
+                                        placeholder="@handle, channel URL, or ID (e.g., @Fireship)"
+                                        className="keyword-input"
+                                        aria-label="Add YouTube channel"
+                                    />
+                                    <button
+                                        onClick={handleAddChannel}
+                                        className="add-keyword-btn"
+                                        disabled={!parseChannelInput(newChannel) || isResolvingChannel}
+                                        aria-label="Add channel"
+                                    >
+                                        {isResolvingChannel ? (
+                                            <Loader2 size={16} className="spinning" />
+                                        ) : (
+                                            <Plus size={16} />
+                                        )}
+                                        {isResolvingChannel ? 'Resolving...' : 'Add'}
+                                    </button>
+                                </div>
+                                {channelError && (
+                                    <p className="setting-hint" style={{ margin: 0, color: 'var(--error)' }}>
+                                        {channelError}
+                                    </p>
+                                )}
+                                {youtubeChannels.length > 0 && (
+                                    <div className="keywords-list">
+                                        {youtubeChannels.map((channel) => (
+                                            editingChannelId === channel.channelId ? (
+                                                <div key={channel.channelId} className="channel-edit-row">
+                                                    <input
+                                                        type="text"
+                                                        value={editChannelValue}
+                                                        onChange={(e) => { setEditChannelValue(e.target.value); setEditChannelError(''); }}
+                                                        onKeyDown={handleEditKeyDown}
+                                                        className="keyword-input"
+                                                        autoFocus
+                                                        aria-label="Edit channel"
+                                                    />
+                                                    <button
+                                                        onClick={saveEditChannel}
+                                                        className="add-keyword-btn"
+                                                        disabled={!parseChannelInput(editChannelValue) || isResolvingEdit}
+                                                        aria-label="Save channel"
+                                                    >
+                                                        {isResolvingEdit ? (
+                                                            <Loader2 size={14} className="spinning" />
+                                                        ) : (
+                                                            <Check size={14} />
+                                                        )}
+                                                    </button>
+                                                    <button
+                                                        onClick={cancelEditChannel}
+                                                        className="channel-edit-btn"
+                                                        aria-label="Cancel edit"
+                                                    >
+                                                        <X size={14} />
+                                                    </button>
+                                                    {editChannelError && (
+                                                        <span style={{ color: 'var(--error)', fontSize: '0.75rem' }}>{editChannelError}</span>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <span key={channel.channelId} className="keyword-chip" title={`youtube.com/channel/${channel.channelId}`}>
+                                                    {channel.name}
+                                                    <button
+                                                        onClick={() => startEditChannel(channel.channelId)}
+                                                        className="channel-edit-btn"
+                                                        aria-label={`Edit ${channel.name}`}
+                                                    >
+                                                        <Pencil size={12} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleRemoveChannel(channel.channelId)}
+                                                        className="remove-keyword-btn"
+                                                        aria-label={`Remove ${channel.name}`}
+                                                    >
+                                                        <X size={12} />
+                                                    </button>
+                                                </span>
+                                            )
+                                        ))}
+                                    </div>
+                                )}
+                                {youtubeChannels.length === 0 && (
+                                    <p className="setting-hint" style={{ margin: 0 }}>
+                                        No YouTube channels configured.
+                                    </p>
+                                )}
                             </div>
-                        )}
-                        {customSubreddits.length === 0 && (
-                            <p className="setting-hint" style={{ margin: 0 }}>
-                                No subreddits configured. Add subreddits to monitor their latest posts.
-                            </p>
-                        )}
-                    </div>
+
+                            {/* Subreddits */}
+                            <div className="settings-subsection">
+                                <h3>
+                                    <span style={{ marginRight: '0.4rem' }}>🔴</span>
+                                    Subreddits
+                                </h3>
+                                <span className="setting-hint">
+                                    Add a subreddit name (with or without r/ prefix).
+                                </span>
+                                <div className="keyword-input-row">
+                                    <input
+                                        type="text"
+                                        value={newSubreddit}
+                                        onChange={(e) => setNewSubreddit(e.target.value)}
+                                        onKeyDown={handleSubredditKeyDown}
+                                        placeholder="Subreddit name (e.g., ClaudeAI or r/ClaudeAI)"
+                                        className="keyword-input"
+                                        aria-label="Add subreddit"
+                                    />
+                                    <button
+                                        onClick={handleAddSubreddit}
+                                        className="add-keyword-btn"
+                                        disabled={!newSubreddit.trim().replace(/^r\//, '')}
+                                        aria-label="Add subreddit"
+                                    >
+                                        <Plus size={16} />
+                                        Add
+                                    </button>
+                                </div>
+                                {customSubreddits.length > 0 && (
+                                    <div className="keywords-list">
+                                        {customSubreddits.map((sub) => (
+                                            <span key={sub.name} className="keyword-chip">
+                                                r/{sub.name}
+                                                <button
+                                                    onClick={() => handleRemoveSubreddit(sub.name)}
+                                                    className="remove-keyword-btn"
+                                                    aria-label={`Remove r/${sub.name}`}
+                                                >
+                                                    <X size={12} />
+                                                </button>
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+                                {customSubreddits.length === 0 && (
+                                    <p className="setting-hint" style={{ margin: 0 }}>
+                                        No subreddits configured.
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </section>
 
                 {/* Add Custom Source */}
