@@ -2,7 +2,7 @@ import { db } from './index';
 import { settings, sources, contentItems } from './schema';
 import { eq, inArray, gte, and, desc, sql } from 'drizzle-orm';
 import { SOURCES, getSourceById } from '@/lib/config/sources';
-import { ContentItem, CustomSourceConfig, TimeRange } from '@/types';
+import { ContentItem, CustomSourceConfig, TimeRange, SourceHealthMap } from '@/types';
 import { YouTubeChannelConfig, DEFAULT_YOUTUBE_CHANNELS } from '@/lib/config/youtube-channels';
 import { SubredditConfig, DEFAULT_SUBREDDITS } from '@/lib/config/subreddit-sources';
 import { recordEngagementSnapshotsBatch } from './engagement-tracker';
@@ -491,4 +491,16 @@ export async function getCustomSubreddits(): Promise<SubredditConfig[]> {
 
 export async function setCustomSubreddits(subreddits: SubredditConfig[]): Promise<void> {
     await updateSetting('customSubreddits', subreddits);
+}
+
+// === Source Health Actions ===
+
+export async function getSourceHealth(): Promise<SourceHealthMap> {
+    return getSetting<SourceHealthMap>('sourceHealth', {});
+}
+
+export async function updateSourceHealth(health: SourceHealthMap): Promise<void> {
+    // Invalidate cache before writing so next read gets fresh data
+    settingsCache.invalidate('setting:sourceHealth');
+    await updateSetting('sourceHealth', health);
 }

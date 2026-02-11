@@ -7,6 +7,13 @@ import { SourceCategory, CATEGORY_LABELS, CustomSourceConfig } from '@/types';
 import { useSettings } from '@/lib/contexts/SettingsContext';
 import { SOURCES } from '@/lib/config/sources';
 
+interface SourceHealthInfo {
+    lastSuccessAt: string | null;
+    consecutiveFailures: number;
+    lastError: string | null;
+    lastItemCount: number;
+}
+
 interface SourceInfo {
     id: string;
     name: string;
@@ -22,6 +29,8 @@ interface SourceInfo {
     qualityBaseline: number;
     engagementType: string;
     hasEngagementMetrics: boolean;
+    // Health info
+    health?: SourceHealthInfo;
 }
 
 interface CategoryData {
@@ -984,6 +993,30 @@ export default function SettingsPage() {
                                                 )}
                                             </span>
                                             <span className="method-badge">{source.method.toUpperCase()}</span>
+                                            {source.health && source.health.consecutiveFailures >= 3 && (
+                                                <span
+                                                    className="api-badge broken"
+                                                    title={`Failing: ${source.health.lastError || 'Unknown error'}${source.health.lastSuccessAt ? `\nLast success: ${new Date(source.health.lastSuccessAt).toLocaleDateString()}` : '\nNever succeeded'}`}
+                                                >
+                                                    Failing
+                                                </span>
+                                            )}
+                                            {source.health && source.health.consecutiveFailures >= 1 && source.health.consecutiveFailures < 3 && (
+                                                <span
+                                                    className="api-badge needs-key"
+                                                    title={`Unstable: ${source.health.lastError || 'Unknown error'}`}
+                                                >
+                                                    Unstable
+                                                </span>
+                                            )}
+                                            {source.health && source.health.consecutiveFailures === 0 && source.health.lastSuccessAt && (
+                                                <span
+                                                    className="api-badge has-key"
+                                                    title={`OK: ${source.health.lastItemCount} items on ${new Date(source.health.lastSuccessAt).toLocaleDateString()}`}
+                                                >
+                                                    OK
+                                                </span>
+                                            )}
                                         </div>
                                         <div className="source-actions">
                                             <div className="priority-selector" title="Source priority">

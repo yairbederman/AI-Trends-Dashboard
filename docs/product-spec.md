@@ -45,9 +45,17 @@ User Request
 ## Workflows / Features
 
 ### Content Aggregation
-- Fetches from 40+ sources via 6 adapter types (RSS, HackerNews, Reddit, YouTube, GitHub, HuggingFace)
+- Fetches from 40+ sources via 7 adapter types (RSS, HackerNews, Reddit, YouTube, GitHub, HuggingFace, Anthropic scrape)
+- Anthropic adapter uses cheerio DOM parser (not regex) for resilient HTML parsing
 - Per-source freshness tracking — only stale sources are refetched
 - Batch upsert operations for performance
+
+### Source Health Monitoring
+- Tracks per-source health after each fetch cycle (stored in `settings.sourceHealth`)
+- Records: last fetch time, last success time, item count, consecutive failures, last error
+- Sources with 3+ consecutive failures trigger `console.warn`
+- Settings UI shows health badges: **OK** (green), **Unstable** (amber, 1-2 failures), **Failing** (red, 3+ failures)
+- Tooltips show error details and last success date
 
 ### Feed Modes (Multi-Algorithm Scoring)
 1. **Hot** — 50% engagement + 30% recency + 20% velocity
@@ -109,7 +117,7 @@ src/
 │   ├── dashboard/           # Dashboard-specific components
 │   └── ui/                  # Reusable UI (shadcn/ui-based)
 ├── lib/
-│   ├── adapters/            # Source adapters (RSS, HN, Reddit, YouTube, GitHub, HF)
+│   ├── adapters/            # Source adapters (RSS, HN, Reddit, YouTube, GitHub, HF, Anthropic)
 │   ├── cache/               # In-memory feed cache
 │   ├── config/              # Source configurations + user-configurable lists (YouTube channels, subreddits)
 │   ├── contexts/            # React contexts

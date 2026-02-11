@@ -7,7 +7,7 @@ flowchart TD
     subgraph API["API Layer · Next.js Route Handlers"]
         Feed["/api/feed"]
         Settings["/api/settings"]
-        Sources["/api/sources"]
+        Sources["/api/sources<br/>+ health data"]
         Detect["/api/sources/detect<br/>RSS auto-detection"]
     end
 
@@ -23,6 +23,7 @@ flowchart TD
         YT[YouTube Adapter<br/>custom channels]
         GH[GitHub Adapter]
         HF[HuggingFace Adapter]
+        Anth[Anthropic Adapter<br/>cheerio DOM parser]
     end
 
     subgraph Scoring["Scoring Engine"]
@@ -38,9 +39,11 @@ flowchart TD
         YTAPI[YouTube API v3]
         GHTrending[GitHub Trending]
         HFAPI[HuggingFace API]
+        AnthNews[Anthropic /news]
     end
 
     DB[(Supabase<br/>PostgreSQL)]
+    Health[Source Health<br/>settings KV store]
 
     UI --> SWR
     SWR --> Feed
@@ -58,11 +61,15 @@ flowchart TD
     YT --> YTAPI
     GH --> GHTrending
     HF --> HFAPI
+    Anth --> AnthNews
 
     Adapters -->|batch upsert| DB
+    Adapters -->|record health| Health
     DBCache -->|read cached| DB
     Settings --> DB
     Sources --> DB
+    Sources -->|read health| Health
+    Health --> DB
 
     DB --> Scoring
     Scoring --> Feed

@@ -5,7 +5,7 @@ import {
     getSourceEngagementType,
     SOURCE_QUALITY_TIERS,
 } from '@/lib/scoring/engagement-config';
-import { getEnabledSourceIds, getCustomSources, getDeletedSourceIds } from '@/lib/db/actions';
+import { getEnabledSourceIds, getCustomSources, getDeletedSourceIds, getSourceHealth } from '@/lib/db/actions';
 
 /**
  * Get quality tier number (1-4) from baseline value
@@ -39,6 +39,7 @@ export async function GET() {
     // Build the effective source list
     const effectiveSources = getEffectiveSources(customSources, deletedIds);
     const customSourceIds = new Set(customSources.map(cs => cs.id));
+    const healthMap = await getSourceHealth();
 
     // Only show categories that have at least one enabled source
     const categories = getActiveCategoriesFiltered(enabledSourceIds, customSources);
@@ -50,6 +51,8 @@ export async function GET() {
             const engagementType = getSourceEngagementType(s.id);
             const qualityTier = customSourceIds.has(s.id) ? 3 : getQualityTierNumber(qualityBaseline);
             const isCustom = customSourceIds.has(s.id);
+
+            const health = healthMap[s.id];
 
             return {
                 id: s.id,
@@ -66,6 +69,13 @@ export async function GET() {
                 qualityBaseline,
                 engagementType,
                 hasEngagementMetrics: engagementType !== 'rss',
+                // Health info
+                health: health ? {
+                    lastSuccessAt: health.lastSuccessAt,
+                    consecutiveFailures: health.consecutiveFailures,
+                    lastError: health.lastError,
+                    lastItemCount: health.lastItemCount,
+                } : undefined,
             };
         }),
     }));

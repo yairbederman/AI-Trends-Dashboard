@@ -190,6 +190,12 @@ async function setupDatabase() {
             ON CONFLICT (key) DO NOTHING;
         `);
 
+        await db.execute(sql`
+            INSERT INTO settings (key, value)
+            VALUES ('sourceHealth', '{}')
+            ON CONFLICT (key) DO NOTHING;
+        `);
+
         console.log('✅ Migration 1: Default settings initialized');
 
         // Migration 2: Add sources
@@ -224,7 +230,7 @@ async function setupDatabase() {
 
         // Priority 5 (Highest - Most reliable)
         const priority5Sources = [
-            'deepmind-blog',
+            'anthropic-blog', 'deepmind-blog',
             'huggingface', 'arxiv-cs-ai', 'arxiv-cs-cl',
             'mit-tech-review', 'hackernews',
             'import-ai', 'latent-space', 'simon-willison', 'ahead-of-ai', 'one-useful-thing', 'pragmatic-engineer',
@@ -261,7 +267,7 @@ async function setupDatabase() {
 
         // Priority 1 (Low - broken/disabled)
         const priority1Sources = [
-            'anthropic-blog', 'meta-ai-blog', 'mistral-ai',
+            'meta-ai-blog', 'mistral-ai',
             'papers-with-code', 'llamaindex-blog',
             'twitter', 'linkedin',
             'the-batch', 'bens-bites', 'the-rundown-ai'

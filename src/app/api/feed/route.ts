@@ -13,7 +13,10 @@ import {
     updateSourceLastFetched,
     getCachedContentBySourceIds,
     getCustomSources,
+    getSourceHealth,
+    updateSourceHealth,
 } from '@/lib/db/actions';
+import { SourceHealthRecord } from '@/types';
 import { scoreItemsByFeedMode } from '@/lib/scoring';
 import { getBulkVelocities, cleanupOldSnapshots } from '@/lib/db/engagement-tracker';
 import { feedCache } from '@/lib/cache/memory-cache';
@@ -143,6 +146,57 @@ export async function GET(request: Request) {
             if (successfulSourceIds.length > 0) {
                 await updateSourceLastFetched(successfulSourceIds);
             }
+
+            // Record source health (fire-and-forget)
+            getSourceHealth().then(currentHealth => {
+                const now = new Date().toISOString();
+
+                results.forEach((result, index) => {
+                    const sourceId = adapterPairs[index].source.id;
+                    const prev = currentHealth[sourceId] || {
+                        lastFetchAt: now,
+                        lastSuccessAt: null,
+                        lastItemCount: 0,
+                        consecutiveFailures: 0,
+                        lastError: null,
+                    } satisfies SourceHealthRecord;
+
+                    if (result.status === 'fulfilled' && result.value.length > 0) {
+                        currentHealth[sourceId] = {
+                            lastFetchAt: now,
+                            lastSuccessAt: now,
+                            lastItemCount: result.value.length,
+                            consecutiveFailures: 0,
+                            lastError: null,
+                        };
+                    } else if (result.status === 'fulfilled') {
+                        currentHealth[sourceId] = {
+                            lastFetchAt: now,
+                            lastSuccessAt: prev.lastSuccessAt,
+                            lastItemCount: prev.lastItemCount,
+                            consecutiveFailures: prev.consecutiveFailures + 1,
+                            lastError: 'Returned 0 items',
+                        };
+                    } else {
+                        currentHealth[sourceId] = {
+                            lastFetchAt: now,
+                            lastSuccessAt: prev.lastSuccessAt,
+                            lastItemCount: prev.lastItemCount,
+                            consecutiveFailures: prev.consecutiveFailures + 1,
+                            lastError: result.reason?.message || 'Unknown error',
+                        };
+                    }
+                });
+
+                // Warn about persistently failing sources
+                for (const [id, health] of Object.entries(currentHealth)) {
+                    if (health.consecutiveFailures >= 3) {
+                        console.warn(`Source ${id} has ${health.consecutiveFailures} consecutive failures: ${health.lastError}`);
+                    }
+                }
+
+                return updateSourceHealth(currentHealth);
+            }).catch(err => console.error('Failed to update source health:', err));
         }
 
         // 6. Query ALL items from DB (fresh cached + newly cached)

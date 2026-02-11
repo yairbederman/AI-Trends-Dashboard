@@ -87,6 +87,18 @@ export interface MetricPoint {
   recordedAt: Date;
 }
 
+// === Source Health Monitoring ===
+
+export interface SourceHealthRecord {
+  lastFetchAt: string;           // ISO timestamp of last fetch attempt
+  lastSuccessAt: string | null;  // last fetch with items > 0
+  lastItemCount: number;         // items returned on last success
+  consecutiveFailures: number;   // resets to 0 on success
+  lastError: string | null;      // error from last failure
+}
+
+export type SourceHealthMap = Record<string, SourceHealthRecord>;
+
 export type TimeRange = '1h' | '12h' | '24h' | '48h' | '7d';
 
 export type FeedMode = 'hot' | 'rising' | 'top';
