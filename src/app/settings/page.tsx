@@ -62,6 +62,7 @@ export default function SettingsPage() {
     const [editChannelValue, setEditChannelValue] = useState('');
     const [isResolvingEdit, setIsResolvingEdit] = useState(false);
     const [editChannelError, setEditChannelError] = useState('');
+    const [newSubreddit, setNewSubreddit] = useState('');
     const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
 
     // Smart header state
@@ -106,6 +107,8 @@ export default function SettingsPage() {
         setBoostKeywords,
         youtubeChannels,
         setYouTubeChannels,
+        customSubreddits,
+        setCustomSubreddits,
         isSyncing,
         syncError,
     } = useSettings();
@@ -294,6 +297,25 @@ export default function SettingsPage() {
             saveEditChannel();
         } else if (e.key === 'Escape') {
             cancelEditChannel();
+        }
+    };
+
+    const handleAddSubreddit = () => {
+        const name = newSubreddit.trim().replace(/^r\//, '');
+        if (name && !customSubreddits.some(s => s.name.toLowerCase() === name.toLowerCase())) {
+            setCustomSubreddits([...customSubreddits, { name }]);
+            setNewSubreddit('');
+        }
+    };
+
+    const handleRemoveSubreddit = (name: string) => {
+        setCustomSubreddits(customSubreddits.filter(s => s.name !== name));
+    };
+
+    const handleSubredditKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            handleAddSubreddit();
         }
     };
 
@@ -599,6 +621,64 @@ export default function SettingsPage() {
                         {youtubeChannels.length === 0 && (
                             <p className="setting-hint" style={{ margin: 0 }}>
                                 No YouTube channels configured. Add channels to monitor their latest videos.
+                            </p>
+                        )}
+                    </div>
+                </section>
+
+                {/* Subreddits */}
+                <section className="settings-section">
+                    <h2>
+                        <span style={{ display: 'inline', marginRight: '0.5rem' }}>🔴</span>
+                        Subreddits
+                    </h2>
+
+                    <div className="setting-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '1rem' }}>
+                        <div className="setting-label">
+                            <span>Monitored Subreddits</span>
+                            <span className="setting-hint">
+                                Posts from these subreddits are fetched via Reddit&apos;s public JSON API. Add a subreddit name (with or without r/ prefix).
+                            </span>
+                        </div>
+                        <div className="keyword-input-row">
+                            <input
+                                type="text"
+                                value={newSubreddit}
+                                onChange={(e) => setNewSubreddit(e.target.value)}
+                                onKeyDown={handleSubredditKeyDown}
+                                placeholder="Subreddit name (e.g., ClaudeAI or r/ClaudeAI)"
+                                className="keyword-input"
+                                aria-label="Add subreddit"
+                            />
+                            <button
+                                onClick={handleAddSubreddit}
+                                className="add-keyword-btn"
+                                disabled={!newSubreddit.trim().replace(/^r\//, '')}
+                                aria-label="Add subreddit"
+                            >
+                                <Plus size={16} />
+                                Add
+                            </button>
+                        </div>
+                        {customSubreddits.length > 0 && (
+                            <div className="keywords-list">
+                                {customSubreddits.map((sub) => (
+                                    <span key={sub.name} className="keyword-chip">
+                                        r/{sub.name}
+                                        <button
+                                            onClick={() => handleRemoveSubreddit(sub.name)}
+                                            className="remove-keyword-btn"
+                                            aria-label={`Remove r/${sub.name}`}
+                                        >
+                                            <X size={12} />
+                                        </button>
+                                    </span>
+                                ))}
+                            </div>
+                        )}
+                        {customSubreddits.length === 0 && (
+                            <p className="setting-hint" style={{ margin: 0 }}>
+                                No subreddits configured. Add subreddits to monitor their latest posts.
                             </p>
                         )}
                     </div>

@@ -2,7 +2,7 @@
 
 ## What It Is
 
-A real-time AI content aggregation dashboard built with Next.js 16. It pulls from 40+ sources across AI labs, dev platforms, social media, news outlets, communities, newsletters, and leaderboards — scoring and ranking content using multi-algorithm feeds (Hot, Rising, Top). A three-layer caching strategy (memory → database → external APIs) keeps the dashboard fast while minimizing external API calls.
+A real-time AI content aggregation dashboard built with Next.js 16. It pulls from 40+ sources across AI labs, dev platforms, social media, news outlets, communities, newsletters, and leaderboards — scoring and ranking content using multi-algorithm feeds (Hot, Rising, Top). Users can configure custom YouTube channels and subreddits. A three-layer caching strategy (memory → database → external APIs) keeps the dashboard fast while minimizing external API calls.
 
 ## Who It's For
 
@@ -68,6 +68,8 @@ Scoring uses percentile-based ranking, quality ratios, source-specific baselines
 - Adjust source priorities (1–5)
 - Theme selection (light/dark/system)
 - Time range preferences
+- Custom YouTube channels (add/remove via @handle or channel ID)
+- Custom subreddits (add/remove, fetched via Reddit public JSON API)
 
 ### Engagement Velocity Tracking
 - Hourly engagement snapshots
@@ -106,7 +108,7 @@ src/
 ├── lib/
 │   ├── adapters/            # Source adapters (RSS, HN, Reddit, YouTube, GitHub, HF)
 │   ├── cache/               # In-memory feed cache
-│   ├── config/              # Source configurations (40+ sources)
+│   ├── config/              # Source configurations + user-configurable lists (YouTube channels, subreddits)
 │   ├── contexts/            # React contexts
 │   ├── db/
 │   │   ├── schema/          # Drizzle ORM table definitions

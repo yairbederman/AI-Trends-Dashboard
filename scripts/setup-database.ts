@@ -141,6 +141,25 @@ async function setupDatabase() {
 
         await db.execute(sql`
             INSERT INTO settings (key, value)
+            VALUES ('customSubreddits', '[
+              {"name":"MachineLearning"},
+              {"name":"LocalLLaMA"},
+              {"name":"ChatGPT"},
+              {"name":"StableDiffusion"},
+              {"name":"artificial"},
+              {"name":"ClaudeAI"},
+              {"name":"singularity"},
+              {"name":"ExperiencedDevs"},
+              {"name":"OpenAI"},
+              {"name":"coding"},
+              {"name":"startups"},
+              {"name":"AgentBased"}
+            ]')
+            ON CONFLICT (key) DO NOTHING;
+        `);
+
+        await db.execute(sql`
+            INSERT INTO settings (key, value)
             VALUES ('youtubeChannels', '[
               {"channelId":"UCsBjURrPoezykLs9EqgamOA","name":"Fireship"},
               {"channelId":"UChpleBmo18P08aKCIgti38g","name":"Matt Wolfe"},
@@ -163,6 +182,7 @@ async function setupDatabase() {
 
         // Migration 2: Add sources
         const sourcesToAdd = [
+            { id: 'reddit-custom', enabled: true },
             { id: 'youtube', enabled: true },
             { id: 'twitter', enabled: false },
             { id: 'linkedin', enabled: false },
@@ -211,7 +231,7 @@ async function setupDatabase() {
             'langchain-blog', 'wandb-blog', 'youtube',
             'verge-ai', 'techcrunch-ai', 'venturebeat-ai', 'ars-technica-ai', 'wired-ai',
             'forbes-ai', 'mit-sloan-review', 'mckinsey-ai', 'hbr',
-            'reddit-ml', 'reddit-localllama',
+            'reddit-custom', 'reddit-ml', 'reddit-localllama',
             'interconnects', 'artificial-analysis'
         ];
 

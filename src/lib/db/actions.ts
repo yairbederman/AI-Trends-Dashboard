@@ -4,6 +4,7 @@ import { eq, inArray, gte, and, desc, sql } from 'drizzle-orm';
 import { SOURCES, getSourceById } from '@/lib/config/sources';
 import { ContentItem, TimeRange } from '@/types';
 import { YouTubeChannelConfig, DEFAULT_YOUTUBE_CHANNELS } from '@/lib/config/youtube-channels';
+import { SubredditConfig, DEFAULT_SUBREDDITS } from '@/lib/config/subreddit-sources';
 import { recordEngagementSnapshotsBatch } from './engagement-tracker';
 import { isSourceStale } from './cache-config';
 import { settingsCache } from '@/lib/cache/memory-cache';
@@ -443,4 +444,14 @@ export async function getYouTubeChannels(): Promise<YouTubeChannelConfig[]> {
 
 export async function setYouTubeChannels(channels: YouTubeChannelConfig[]): Promise<void> {
     await updateSetting('youtubeChannels', channels);
+}
+
+// === Custom Subreddit Actions ===
+
+export async function getCustomSubreddits(): Promise<SubredditConfig[]> {
+    return getSetting<SubredditConfig[]>('customSubreddits', DEFAULT_SUBREDDITS);
+}
+
+export async function setCustomSubreddits(subreddits: SubredditConfig[]): Promise<void> {
+    await updateSetting('customSubreddits', subreddits);
 }

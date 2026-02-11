@@ -11,6 +11,8 @@ import {
     setBoostKeywords,
     getYouTubeChannels,
     setYouTubeChannels,
+    getCustomSubreddits,
+    setCustomSubreddits,
 } from '@/lib/db/actions';
 import { TimeRange } from '@/types';
 import { feedCache, settingsCache } from '@/lib/cache/memory-cache';
@@ -58,6 +60,7 @@ export async function GET() {
         const priorities = await getAllSourcePriorities();
         const boostKeywords = await getBoostKeywords();
         const youtubeChannels = await getYouTubeChannels();
+        const customSubreddits = await getCustomSubreddits();
 
         return NextResponse.json({
             theme,
@@ -66,6 +69,7 @@ export async function GET() {
             priorities: Object.fromEntries(priorities),
             boostKeywords,
             youtubeChannels,
+            customSubreddits,
         });
     } catch (error) {
         console.error('Failed to fetch settings:', error);
@@ -206,6 +210,26 @@ export async function POST(request: Request) {
                         name: ch.name.trim(),
                     }));
                 await setYouTubeChannels(channels);
+                break;
+            }
+
+            case 'SET_CUSTOM_SUBREDDITS': {
+                if (!Array.isArray(payload.subreddits)) {
+                    return NextResponse.json(
+                        { error: 'Invalid subreddits. Must be an array of {name}' },
+                        { status: 400 }
+                    );
+                }
+                const subreddits = payload.subreddits
+                    .filter((s: unknown) =>
+                        typeof s === 'object' && s !== null &&
+                        typeof (s as Record<string, unknown>).name === 'string'
+                    )
+                    .map((s: { name: string }) => ({
+                        name: s.name.trim().replace(/^r\//, ''),
+                    }))
+                    .filter((s: { name: string }) => s.name.length > 0);
+                await setCustomSubreddits(subreddits);
                 break;
             }
 

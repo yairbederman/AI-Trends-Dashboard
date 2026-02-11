@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useEffect, useCallback, ReactNode 
 import { SOURCES } from '@/lib/config/sources';
 import { TimeRange } from '@/types';
 import { YouTubeChannelConfig } from '@/lib/config/youtube-channels';
+import { SubredditConfig } from '@/lib/config/subreddit-sources';
 
 function getAllSourceIds(): string[] {
     return SOURCES.map((s) => s.id);
@@ -31,6 +32,9 @@ interface SettingsContextValue {
     // YouTube channels
     youtubeChannels: YouTubeChannelConfig[];
     setYouTubeChannels: (channels: YouTubeChannelConfig[]) => void;
+    // Custom subreddits
+    customSubreddits: SubredditConfig[];
+    setCustomSubreddits: (subreddits: SubredditConfig[]) => void;
     // Sync state
     isSyncing: boolean;
     syncError: string | null;
@@ -45,6 +49,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     const [priorities, setPriorities] = useState<Map<string, number>>(new Map());
     const [boostKeywords, setBoostKeywordsState] = useState<string[]>([]);
     const [youtubeChannels, setYouTubeChannelsState] = useState<YouTubeChannelConfig[]>([]);
+    const [customSubreddits, setCustomSubredditsState] = useState<SubredditConfig[]>([]);
     const [hydrated, setHydrated] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
     const [syncError, setSyncError] = useState<string | null>(null);
@@ -71,6 +76,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
                     // Load YouTube channels
                     if (data.youtubeChannels) {
                         setYouTubeChannelsState(data.youtubeChannels);
+                    }
+                    // Load custom subreddits
+                    if (data.customSubreddits) {
+                        setCustomSubredditsState(data.customSubreddits);
                     }
                 }
             } catch (error) {
@@ -261,6 +270,15 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         });
     }, [youtubeChannels, syncSetting]);
 
+    const setCustomSubreddits = useCallback((subreddits: SubredditConfig[]) => {
+        const oldSubreddits = customSubreddits;
+        setCustomSubredditsState(subreddits);
+
+        syncSetting('SET_CUSTOM_SUBREDDITS', { subreddits }, () => {
+            setCustomSubredditsState(oldSubreddits);
+        });
+    }, [customSubreddits, syncSetting]);
+
     if (!hydrated) {
         return null;
     }
@@ -286,6 +304,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
                 setBoostKeywords,
                 youtubeChannels,
                 setYouTubeChannels,
+                customSubreddits,
+                setCustomSubreddits,
                 isSyncing,
                 syncError,
             }}

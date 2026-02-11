@@ -430,6 +430,17 @@ export const SOURCES: SourceConfig[] = [
     // COMMUNITY
     // =====================
     {
+        id: 'reddit-custom',
+        name: 'Reddit (Custom Subreddits)',
+        category: 'community',
+        url: 'https://www.reddit.com',
+        method: 'api',
+        enabled: true,
+        requiresKey: false,
+        icon: '🔴',
+        defaultPriority: 4, // Good priority: User-configured subreddit list
+    },
+    {
         id: 'reddit-ml',
         name: 'r/MachineLearning',
         category: 'community',

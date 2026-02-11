@@ -1,5 +1,6 @@
 import { ContentItem, SourceConfig } from '@/types';
 import { BaseAdapter, AdapterOptions, createContentId } from './base';
+import { getCustomSubreddits } from '@/lib/db/actions';
 
 interface RedditPost {
     data: {
@@ -14,6 +15,7 @@ interface RedditPost {
         num_comments: number;
         thumbnail?: string;
         link_flair_text?: string;
+        subreddit: string;
     };
 }
 
@@ -25,7 +27,9 @@ interface RedditResponse {
 
 /**
  * Reddit JSON API Adapter
- * Fetches posts from specified subreddits
+ * Fetches posts from specified subreddits.
+ * For the 'reddit-custom' source, fetches from user-configured subreddits.
+ * For individual reddit-* sources, fetches from the URL-specified subreddit.
  */
 export class RedditAdapter extends BaseAdapter {
     constructor(public source: SourceConfig) {
@@ -39,7 +43,46 @@ export class RedditAdapter extends BaseAdapter {
     }
 
     async fetch(options?: AdapterOptions): Promise<ContentItem[]> {
-        const subreddit = this.getSubreddit();
+        // For the custom source, fetch from all user-configured subreddits
+        if (this.source.id === 'reddit-custom') {
+            return this.fetchCustomSubreddits();
+        }
+
+        // For individual reddit sources, fetch single subreddit
+        return this.fetchSubreddit(this.getSubreddit());
+    }
+
+    private async fetchCustomSubreddits(): Promise<ContentItem[]> {
+        let subreddits;
+        try {
+            subreddits = await getCustomSubreddits();
+        } catch (error) {
+            console.warn('Failed to load custom subreddits from settings:', error);
+            return [];
+        }
+
+        if (subreddits.length === 0) return [];
+
+        const fetchPromises = subreddits.map(async (sub) => {
+            try {
+                return await this.fetchSubreddit(sub.name);
+            } catch (error) {
+                console.warn(`Reddit fetch failed for r/${sub.name}:`, error instanceof Error ? error.message : error);
+                return [];
+            }
+        });
+
+        const results = await Promise.allSettled(fetchPromises);
+        const allItems: ContentItem[] = [];
+        for (const result of results) {
+            if (result.status === 'fulfilled') {
+                allItems.push(...result.value);
+            }
+        }
+        return allItems;
+    }
+
+    private async fetchSubreddit(subreddit: string): Promise<ContentItem[]> {
         const url = `https://old.reddit.com/r/${subreddit}/hot.json?limit=50&raw_json=1`;
 
         try {
@@ -66,7 +109,10 @@ export class RedditAdapter extends BaseAdapter {
                 publishedAt: new Date(post.data.created_utc * 1000),
                 fetchedAt: new Date(),
                 author: post.data.author,
-                tags: post.data.link_flair_text ? [post.data.link_flair_text] : [],
+                tags: [
+                    ...(post.data.link_flair_text ? [post.data.link_flair_text] : []),
+                    `r/${post.data.subreddit || subreddit}`,
+                ],
                 engagement: {
                     upvotes: post.data.score,
                     comments: post.data.num_comments,
