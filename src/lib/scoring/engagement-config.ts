@@ -40,8 +40,6 @@ export const SOURCE_QUALITY_MAP: Record<string, number> = {
     'stability-ai': SOURCE_QUALITY_TIERS.TIER_1_OFFICIAL,
     'aws-ai-blog': SOURCE_QUALITY_TIERS.TIER_1_OFFICIAL,
     'apple-ml': SOURCE_QUALITY_TIERS.TIER_1_OFFICIAL,
-    'runway': SOURCE_QUALITY_TIERS.TIER_1_OFFICIAL,
-    'elevenlabs': SOURCE_QUALITY_TIERS.TIER_1_OFFICIAL,
 
     // ===== TIER 2: Major News & Academic (0.45) =====
     // Established tech journalism, peer-reviewed research
@@ -72,13 +70,11 @@ export const SOURCE_QUALITY_MAP: Record<string, number> = {
     'interconnects': SOURCE_QUALITY_TIERS.TIER_3_QUALITY,
     'bens-bites': SOURCE_QUALITY_TIERS.TIER_3_QUALITY,
     'the-rundown-ai': SOURCE_QUALITY_TIERS.TIER_3_QUALITY,
+    'one-useful-thing': SOURCE_QUALITY_TIERS.TIER_3_QUALITY,
+    'pragmatic-engineer': SOURCE_QUALITY_TIERS.TIER_3_QUALITY,
 
     // ===== TIER 4: Unimplemented/Lower Signal (0.25) =====
     // Scrape adapters not implemented, leaderboards (data not content)
-    'suno': SOURCE_QUALITY_TIERS.TIER_4_OTHER,
-    'kling': SOURCE_QUALITY_TIERS.TIER_4_OTHER,
-    'pika': SOURCE_QUALITY_TIERS.TIER_4_OTHER,
-    'midjourney': SOURCE_QUALITY_TIERS.TIER_4_OTHER,
     'lmsys-arena': SOURCE_QUALITY_TIERS.TIER_4_OTHER,
     'open-llm-leaderboard': SOURCE_QUALITY_TIERS.TIER_4_OTHER,
     'artificial-analysis': SOURCE_QUALITY_TIERS.TIER_4_OTHER,

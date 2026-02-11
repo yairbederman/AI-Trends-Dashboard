@@ -26,6 +26,8 @@ export interface SourceConfig {
   defaultPriority?: number;
   // If true, items are filtered for AI relevance (for general-topic feeds)
   relevanceFilter?: boolean;
+  // Reason why the source is broken/unavailable (shown in settings UI)
+  brokenReason?: string;
 }
 
 export interface EngagementMetrics {

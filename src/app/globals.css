@@ -1951,6 +1951,12 @@ a {
   color: var(--warning);
 }
 
+.api-badge.broken {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  cursor: help;
+}
+
 .method-badge {
   font-size: 0.6rem;
   padding: 0.15rem 0.4rem;

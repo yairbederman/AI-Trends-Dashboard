@@ -186,10 +186,6 @@ async function setupDatabase() {
             { id: 'youtube', enabled: true },
             { id: 'twitter', enabled: false },
             { id: 'linkedin', enabled: false },
-            { id: 'midjourney', enabled: true },
-            { id: 'kling', enabled: true },
-            { id: 'pika', enabled: false },
-            { id: 'suno', enabled: true },
             { id: 'lmsys-arena', enabled: true },
             { id: 'open-llm-leaderboard', enabled: true },
             { id: 'artificial-analysis', enabled: true },
@@ -216,8 +212,8 @@ async function setupDatabase() {
 
         // Priority 5 (Highest - Most reliable)
         const priority5Sources = [
-            'openai-blog', 'google-ai-blog', 'deepmind-blog',
-            'github-trending', 'huggingface', 'arxiv-cs-ai', 'arxiv-cs-cl',
+            'deepmind-blog',
+            'huggingface', 'arxiv-cs-ai', 'arxiv-cs-cl',
             'mit-tech-review', 'hackernews',
             'import-ai', 'latent-space', 'simon-willison', 'ahead-of-ai', 'one-useful-thing', 'pragmatic-engineer',
             'lmsys-arena', 'open-llm-leaderboard'
@@ -229,6 +225,7 @@ async function setupDatabase() {
 
         // Priority 4 (Good reliability)
         const priority4Sources = [
+            'openai-blog',
             'microsoft-ai', 'nvidia-ai', 'cohere-blog', 'stability-ai', 'aws-ai-blog', 'apple-ml',
             'langchain-blog', 'wandb-blog', 'youtube',
             'verge-ai', 'techcrunch-ai', 'venturebeat-ai', 'ars-technica-ai', 'wired-ai',
@@ -237,23 +234,22 @@ async function setupDatabase() {
             'interconnects', 'artificial-analysis'
         ];
 
-        for (const sourceId of priority4Sources) {
-            await db.execute(sql`UPDATE sources SET priority = 4 WHERE id = ${sourceId}`);
-        }
-
-        // Priority 3 (Medium - stays at default)
+        // Priority 3 (Medium)
         const priority3Sources = [
-            'kling', 'midjourney'
+            'google-ai-blog', 'github-trending'
         ];
 
         for (const sourceId of priority3Sources) {
             await db.execute(sql`UPDATE sources SET priority = 3 WHERE id = ${sourceId}`);
         }
 
+        for (const sourceId of priority4Sources) {
+            await db.execute(sql`UPDATE sources SET priority = 4 WHERE id = ${sourceId}`);
+        }
+
         // Priority 1 (Low - broken/disabled)
         const priority1Sources = [
             'anthropic-blog', 'meta-ai-blog', 'mistral-ai',
-            'runway', 'elevenlabs', 'suno', 'pika',
             'papers-with-code', 'llamaindex-blog',
             'twitter', 'linkedin',
             'the-batch', 'bens-bites', 'the-rundown-ai'

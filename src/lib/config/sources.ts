@@ -18,7 +18,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🤖',
-        defaultPriority: 5, // High priority: Leading AI lab, reliable RSS feed
+        defaultPriority: 4, // Good priority: Leading AI lab, reliable RSS feed
     },
     {
         id: 'google-ai-blog',
@@ -30,7 +30,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🔵',
-        defaultPriority: 5, // High priority: Major AI lab, stable RSS feed
+        defaultPriority: 4, // Good priority: Major AI lab, stable RSS feed
     },
     {
         id: 'anthropic-blog',
@@ -39,10 +39,11 @@ export const SOURCES: SourceConfig[] = [
         url: 'https://www.anthropic.com/news',
         feedUrl: 'https://www.anthropic.com/rss.xml',
         method: 'rss',
-        enabled: false, // Disabled - RSS feed returns 404, requires scraping
+        enabled: false,
         requiresKey: false,
         icon: '🟠',
-        defaultPriority: 1, // Low priority: RSS feed broken (404)
+        defaultPriority: 1,
+        brokenReason: 'RSS feed returns 404',
     },
     {
         id: 'meta-ai-blog',
@@ -51,10 +52,11 @@ export const SOURCES: SourceConfig[] = [
         url: 'https://ai.meta.com/blog/',
         feedUrl: 'https://ai.meta.com/blog/rss/',
         method: 'rss',
-        enabled: false, // Disabled - no RSS feed available (custom React site, no feed endpoint)
+        enabled: false,
         requiresKey: false,
         icon: '📘',
-        defaultPriority: 1, // Low priority: No RSS feed available
+        defaultPriority: 1,
+        brokenReason: 'No RSS feed available',
     },
     {
         id: 'deepmind-blog',
@@ -99,10 +101,11 @@ export const SOURCES: SourceConfig[] = [
         url: 'https://mistral.ai/news/',
         feedUrl: 'https://mistral.ai/feed/',
         method: 'rss',
-        enabled: false, // Disabled - no RSS feed available (Next.js site, no feed endpoint)
+        enabled: false,
         requiresKey: false,
         icon: '🌀',
-        defaultPriority: 1, // Low priority: No RSS feed available
+        defaultPriority: 1,
+        brokenReason: 'No RSS feed available',
     },
     {
         id: 'cohere-blog',
@@ -166,7 +169,7 @@ export const SOURCES: SourceConfig[] = [
         requiresKey: false, // Works without key, better with
         apiKeyEnvVar: 'GITHUB_TOKEN',
         icon: '🐙',
-        defaultPriority: 5, // High priority: Essential developer platform, reliable API
+        defaultPriority: 3, // Medium priority: Essential developer platform, reliable API
     },
     {
         id: 'huggingface',
@@ -186,10 +189,11 @@ export const SOURCES: SourceConfig[] = [
         url: 'https://huggingface.co/papers',
         feedUrl: 'https://paperswithcode.com/rss',
         method: 'rss',
-        enabled: false, // Disabled - site redirects to HuggingFace papers, no RSS feed
+        enabled: false,
         requiresKey: false,
         icon: '📄',
-        defaultPriority: 1, // Low priority: Site redirected, no RSS feed
+        defaultPriority: 1,
+        brokenReason: 'Site redirects to HuggingFace papers',
     },
     {
         id: 'langchain-blog',
@@ -210,10 +214,11 @@ export const SOURCES: SourceConfig[] = [
         url: 'https://www.llamaindex.ai/blog',
         feedUrl: 'https://www.llamaindex.ai/blog/rss.xml',
         method: 'rss',
-        enabled: false, // Disabled - no RSS feed available (Astro site, no feed endpoint)
+        enabled: false,
         requiresKey: false,
         icon: '🦙',
-        defaultPriority: 1, // Low priority: No RSS feed available
+        defaultPriority: 1,
+        brokenReason: 'No RSS feed available',
     },
     {
         id: 'wandb-blog',
@@ -474,10 +479,11 @@ export const SOURCES: SourceConfig[] = [
         url: 'https://www.deeplearning.ai/the-batch/',
         feedUrl: 'https://www.deeplearning.ai/the-batch/feed/',
         method: 'rss',
-        enabled: false, // Disabled - no RSS feed available (custom Next.js site)
+        enabled: false,
         requiresKey: false,
         icon: '📧',
-        defaultPriority: 1, // Low priority: No RSS feed available
+        defaultPriority: 1,
+        brokenReason: 'No RSS feed available',
     },
     {
         id: 'bens-bites',
@@ -486,11 +492,12 @@ export const SOURCES: SourceConfig[] = [
         url: 'https://bensbites.beehiiv.com',
         feedUrl: 'https://bensbites.beehiiv.com/feed',
         method: 'rss',
-        enabled: false, // Disabled - Beehiiv feed returns 404
+        enabled: false,
         requiresKey: false,
         icon: '🍪',
         relevanceFilter: true,
-        defaultPriority: 1, // Low priority: Feed returns 404
+        defaultPriority: 1,
+        brokenReason: 'Feed returns 404',
     },
     {
         id: 'the-rundown-ai',
@@ -499,11 +506,12 @@ export const SOURCES: SourceConfig[] = [
         url: 'https://therundownai.com',
         feedUrl: 'https://therundownai.com/feed',
         method: 'rss',
-        enabled: false, // Disabled - domain is no longer active (for sale)
+        enabled: false,
         requiresKey: false,
         icon: '🏃',
         relevanceFilter: true,
-        defaultPriority: 1, // Low priority: Domain no longer active
+        defaultPriority: 1,
+        brokenReason: 'Domain no longer active',
     },
     {
         id: 'latent-space',

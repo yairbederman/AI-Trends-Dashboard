@@ -13,6 +13,7 @@ interface SourceInfo {
     enabled: boolean;
     requiresKey: boolean;
     method: string;
+    brokenReason?: string;
     // Quality tier info
     qualityTier: number;
     qualityTierLabel: string;
@@ -732,6 +733,11 @@ export default function SettingsPage() {
                                         <div className="source-info">
                                             {(() => { const Icon = CATEGORY_ICONS[cat.category]; return <Icon size={20} className="source-icon" />; })()}
                                             <span className="source-name">{source.name}</span>
+                                            {source.brokenReason && (
+                                                <span className="api-badge broken" title={source.brokenReason}>
+                                                    Broken
+                                                </span>
+                                            )}
                                             {source.requiresKey && (
                                                 <span className={`api-badge ${source.enabled ? 'has-key' : 'needs-key'}`}>
                                                     {source.enabled ? 'API Key ✓' : 'Needs API Key'}
@@ -765,7 +771,7 @@ export default function SettingsPage() {
                                             <button
                                                 className="toggle-btn"
                                                 onClick={() => toggleSource(source.id)}
-                                                disabled={source.requiresKey && !source.enabled}
+                                                disabled={!!source.brokenReason || (source.requiresKey && !source.enabled)}
                                                 aria-label={enabledSources.has(source.id) ? `Disable ${source.name}` : `Enable ${source.name}`}
                                             >
                                                 {enabledSources.has(source.id) ? (

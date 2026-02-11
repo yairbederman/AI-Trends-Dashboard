@@ -51,6 +51,7 @@ export async function GET() {
                 enabled: s.enabled,
                 requiresKey: s.requiresKey,
                 method: s.method,
+                brokenReason: s.brokenReason,
                 // Quality tier info
                 qualityTier,
                 qualityTierLabel: getQualityTierLabel(qualityTier),
