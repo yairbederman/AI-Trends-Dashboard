@@ -553,6 +553,32 @@ export const SOURCES: SourceConfig[] = [
         icon: '🔗',
         defaultPriority: 4, // Good priority: Quality AI analysis, reliable RSS
     },
+    {
+        id: 'one-useful-thing',
+        name: 'One Useful Thing (Ethan Mollick)',
+        category: 'newsletters',
+        url: 'https://www.oneusefulthing.org',
+        feedUrl: 'https://www.oneusefulthing.org/feed',
+        method: 'rss',
+        enabled: true,
+        requiresKey: false,
+        icon: '💡',
+        relevanceFilter: true,
+        defaultPriority: 5, // High priority: Wharton professor on AI in workplace, highly aligned
+    },
+    {
+        id: 'pragmatic-engineer',
+        name: 'The Pragmatic Engineer (Gergely Orosz)',
+        category: 'newsletters',
+        url: 'https://newsletter.pragmaticengineer.com',
+        feedUrl: 'https://newsletter.pragmaticengineer.com/feed',
+        method: 'rss',
+        enabled: true,
+        requiresKey: false,
+        icon: '⚙️',
+        relevanceFilter: true,
+        defaultPriority: 5, // High priority: Eng leadership + AI impact, highly aligned audience
+    },
 
     // =====================
     // LEADERBOARDS

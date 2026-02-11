@@ -197,6 +197,8 @@ async function setupDatabase() {
             { id: 'mit-sloan-review', enabled: true },
             { id: 'mckinsey-ai', enabled: true },
             { id: 'hbr', enabled: true },
+            { id: 'one-useful-thing', enabled: true },
+            { id: 'pragmatic-engineer', enabled: true },
         ];
 
         for (const source of sourcesToAdd) {
@@ -217,7 +219,7 @@ async function setupDatabase() {
             'openai-blog', 'google-ai-blog', 'deepmind-blog',
             'github-trending', 'huggingface', 'arxiv-cs-ai', 'arxiv-cs-cl',
             'mit-tech-review', 'hackernews',
-            'import-ai', 'latent-space', 'simon-willison', 'ahead-of-ai',
+            'import-ai', 'latent-space', 'simon-willison', 'ahead-of-ai', 'one-useful-thing', 'pragmatic-engineer',
             'lmsys-arena', 'open-llm-leaderboard'
         ];
 
