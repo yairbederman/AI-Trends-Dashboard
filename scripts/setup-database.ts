@@ -173,6 +173,10 @@ async function setupDatabase() {
             { id: 'lmsys-arena', enabled: true },
             { id: 'open-llm-leaderboard', enabled: true },
             { id: 'artificial-analysis', enabled: true },
+            { id: 'forbes-ai', enabled: true },
+            { id: 'mit-sloan-review', enabled: true },
+            { id: 'mckinsey-ai', enabled: true },
+            { id: 'hbr', enabled: true },
         ];
 
         for (const source of sourcesToAdd) {
@@ -206,6 +210,7 @@ async function setupDatabase() {
             'microsoft-ai', 'nvidia-ai', 'cohere-blog', 'stability-ai', 'aws-ai-blog', 'apple-ml',
             'langchain-blog', 'wandb-blog', 'youtube',
             'verge-ai', 'techcrunch-ai', 'venturebeat-ai', 'ars-technica-ai', 'wired-ai',
+            'forbes-ai', 'mit-sloan-review', 'mckinsey-ai', 'hbr',
             'reddit-ml', 'reddit-localllama',
             'interconnects', 'artificial-analysis'
         ];

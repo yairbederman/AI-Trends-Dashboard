@@ -1,0 +1,66 @@
+flowchart TD
+    subgraph Client["Client Layer"]
+        UI[Dashboard UI<br/>React + Framer Motion]
+        SWR[SWR Cache<br/>5min revalidation]
+    end
+
+    subgraph API["API Layer · Next.js Route Handlers"]
+        Feed["/api/feed"]
+        Settings["/api/settings"]
+        Sources["/api/sources"]
+    end
+
+    subgraph Cache["Caching"]
+        MemCache[Memory Cache<br/>60s TTL]
+        DBCache[DB Freshness Check<br/>5–60min per category]
+    end
+
+    subgraph Adapters["Source Adapters"]
+        RSS[RSS Adapter]
+        HN[HackerNews Adapter]
+        Reddit[Reddit Adapter]
+        YT[YouTube Adapter]
+        GH[GitHub Adapter]
+        HF[HuggingFace Adapter]
+    end
+
+    subgraph Scoring["Scoring Engine"]
+        Hot[Hot Mode<br/>50/30/20]
+        Rising[Rising Mode<br/>70/20/10]
+        Top[Top Mode<br/>engagement]
+    end
+
+    subgraph External["External Sources"]
+        RSSFeeds[30+ RSS Feeds]
+        HNAPI[HN Firebase API]
+        RedditJSON[Reddit JSON]
+        YTAPI[YouTube API v3]
+        GHTrending[GitHub Trending]
+        HFAPI[HuggingFace API]
+    end
+
+    DB[(Supabase<br/>PostgreSQL)]
+
+    UI --> SWR
+    SWR --> Feed
+    UI --> Settings
+    UI --> Sources
+
+    Feed --> MemCache
+    MemCache --> DBCache
+    DBCache --> Adapters
+
+    RSS --> RSSFeeds
+    HN --> HNAPI
+    Reddit --> RedditJSON
+    YT --> YTAPI
+    GH --> GHTrending
+    HF --> HFAPI
+
+    Adapters -->|batch upsert| DB
+    DBCache -->|read cached| DB
+    Settings --> DB
+    Sources --> DB
+
+    DB --> Scoring
+    Scoring --> Feed

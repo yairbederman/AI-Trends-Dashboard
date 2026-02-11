@@ -373,6 +373,58 @@ export const SOURCES: SourceConfig[] = [
         relevanceFilter: true,
         defaultPriority: 4, // Good priority: Quality tech journalism, reliable RSS
     },
+    {
+        id: 'forbes-ai',
+        name: 'Forbes AI',
+        category: 'news',
+        url: 'https://www.forbes.com/innovation/ai/',
+        feedUrl: 'https://www.forbes.com/innovation/ai/feed/',
+        method: 'rss',
+        enabled: true,
+        requiresKey: false,
+        icon: '💰',
+        relevanceFilter: true,
+        defaultPriority: 4, // Good priority: Major business publication, AI-specific feed
+    },
+    {
+        id: 'mit-sloan-review',
+        name: 'MIT Sloan Management Review',
+        category: 'news',
+        url: 'https://sloanreview.mit.edu',
+        feedUrl: 'http://feeds.feedburner.com/mitsmr',
+        method: 'rss',
+        enabled: true,
+        requiresKey: false,
+        icon: '🎓',
+        relevanceFilter: true,
+        defaultPriority: 4, // Good priority: Prestigious management research, reliable RSS
+    },
+    {
+        id: 'mckinsey-ai',
+        name: 'McKinsey AI',
+        category: 'news',
+        url: 'https://www.mckinsey.com/capabilities/quantumblack/our-insights',
+        feedUrl: 'https://www.mckinsey.com/insights/rss',
+        method: 'rss',
+        enabled: true,
+        requiresKey: false,
+        icon: '📊',
+        relevanceFilter: true,
+        defaultPriority: 4, // Good priority: Top consulting firm AI insights, reliable RSS
+    },
+    {
+        id: 'hbr',
+        name: 'Harvard Business Review',
+        category: 'news',
+        url: 'https://hbr.org',
+        feedUrl: 'http://feeds.harvardbusiness.org/harvardbusiness',
+        method: 'rss',
+        enabled: true,
+        requiresKey: false,
+        icon: '📕',
+        relevanceFilter: true,
+        defaultPriority: 4, // Good priority: Premier business publication, reliable Atom feed
+    },
 
     // =====================
     // COMMUNITY

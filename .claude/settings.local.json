@@ -112,7 +112,15 @@
       "Bash(fi)",
       "Bash(npm run db:setup:*)",
       "mcp__plugin_playwright_playwright__browser_run_code",
-      "Bash(exit:*)"
+      "Bash(exit:*)",
+      "Bash(npx vercel env ls:*)",
+      "Bash(npx vercel project ls:*)",
+      "Bash(npx vercel inspect:*)",
+      "Bash(npx vercel link:*)",
+      "Bash(npx:*)",
+      "Bash(git diff:*)",
+      "Bash(firecrawl search:*)",
+      "Bash(firecrawl scrape:*)"
     ]
   }
 }

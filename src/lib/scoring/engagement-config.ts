@@ -54,6 +54,10 @@ export const SOURCE_QUALITY_MAP: Record<string, number> = {
     'arxiv-cs-ai': SOURCE_QUALITY_TIERS.TIER_2_NEWS,
     'arxiv-cs-cl': SOURCE_QUALITY_TIERS.TIER_2_NEWS,
     'papers-with-code': SOURCE_QUALITY_TIERS.TIER_2_NEWS,
+    'forbes-ai': SOURCE_QUALITY_TIERS.TIER_2_NEWS,
+    'mit-sloan-review': SOURCE_QUALITY_TIERS.TIER_2_NEWS,
+    'mckinsey-ai': SOURCE_QUALITY_TIERS.TIER_2_NEWS,
+    'hbr': SOURCE_QUALITY_TIERS.TIER_2_NEWS,
 
     // ===== TIER 3: Quality Blogs & Newsletters (0.35) =====
     // Expert curation, established dev platforms
