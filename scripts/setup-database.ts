@@ -231,7 +231,7 @@ async function setupDatabase() {
             'langchain-blog', 'wandb-blog', 'youtube',
             'verge-ai', 'techcrunch-ai', 'venturebeat-ai', 'ars-technica-ai', 'wired-ai',
             'forbes-ai', 'mit-sloan-review', 'mckinsey-ai', 'hbr',
-            'reddit-custom', 'reddit-ml', 'reddit-localllama',
+            'reddit-custom',
             'interconnects', 'artificial-analysis'
         ];
 
@@ -241,8 +241,7 @@ async function setupDatabase() {
 
         // Priority 3 (Medium - stays at default)
         const priority3Sources = [
-            'kling', 'midjourney',
-            'reddit-chatgpt', 'reddit-stablediffusion', 'reddit-artificial'
+            'kling', 'midjourney'
         ];
 
         for (const sourceId of priority3Sources) {

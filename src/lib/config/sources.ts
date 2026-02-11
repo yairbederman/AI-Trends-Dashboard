@@ -441,28 +441,6 @@ export const SOURCES: SourceConfig[] = [
         defaultPriority: 4, // Good priority: User-configured subreddit list
     },
     {
-        id: 'reddit-ml',
-        name: 'r/MachineLearning',
-        category: 'community',
-        url: 'https://www.reddit.com/r/MachineLearning/',
-        method: 'api',
-        enabled: true,
-        requiresKey: false,
-        icon: '🤖',
-        defaultPriority: 4, // Good priority: High-quality ML community, reliable API
-    },
-    {
-        id: 'reddit-localllama',
-        name: 'r/LocalLLaMA',
-        category: 'community',
-        url: 'https://www.reddit.com/r/LocalLLaMA/',
-        method: 'api',
-        enabled: true,
-        requiresKey: false,
-        icon: '🦙',
-        defaultPriority: 4, // Good priority: Active LLM community, reliable API
-    },
-    {
         id: 'hackernews',
         name: 'Hacker News',
         category: 'community',
@@ -472,39 +450,6 @@ export const SOURCES: SourceConfig[] = [
         requiresKey: false,
         icon: '🟧',
         defaultPriority: 5, // High priority: High-quality tech discussions, excellent API
-    },
-    {
-        id: 'reddit-chatgpt',
-        name: 'r/ChatGPT',
-        category: 'community',
-        url: 'https://www.reddit.com/r/ChatGPT/',
-        method: 'api',
-        enabled: true,
-        requiresKey: false,
-        icon: '💬',
-        defaultPriority: 3, // Medium priority: Popular but variable quality
-    },
-    {
-        id: 'reddit-stablediffusion',
-        name: 'r/StableDiffusion',
-        category: 'community',
-        url: 'https://www.reddit.com/r/StableDiffusion/',
-        method: 'api',
-        enabled: true,
-        requiresKey: false,
-        icon: '🖼️',
-        defaultPriority: 3, // Medium priority: Active but niche community
-    },
-    {
-        id: 'reddit-artificial',
-        name: 'r/artificial',
-        category: 'community',
-        url: 'https://www.reddit.com/r/artificial/',
-        method: 'api',
-        enabled: true,
-        requiresKey: false,
-        icon: '🤖',
-        defaultPriority: 3, // Medium priority: General AI community, mixed quality
     },
 
     // =====================
