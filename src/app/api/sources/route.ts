@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
-import { SOURCES, getActiveCategoriesFiltered, getEffectiveSources } from '@/lib/config/sources';
 import {
     getSourceQualityBaseline,
     getSourceEngagementType,
     SOURCE_QUALITY_TIERS,
 } from '@/lib/scoring/engagement-config';
-import { getEnabledSourceIds, getCustomSources, getDeletedSourceIds, getSourceHealth } from '@/lib/db/actions';
+import { getSourceHealth } from '@/lib/db/actions';
+import { getEffectiveSourceList } from '@/lib/config/resolve';
 
 /**
  * Get quality tier number (1-4) from baseline value
@@ -31,26 +31,15 @@ function getQualityTierLabel(tier: number): string {
 }
 
 export async function GET() {
-    // Get enabled source IDs from database
-    const enabledSourceIds = await getEnabledSourceIds();
-    const customSources = await getCustomSources();
-    const deletedIds = await getDeletedSourceIds();
-
-    // Build the effective source list
-    const effectiveSources = getEffectiveSources(customSources, deletedIds);
-    const customSourceIds = new Set(customSources.map(cs => cs.id));
+    const sourceList = await getEffectiveSourceList();
     const healthMap = await getSourceHealth();
 
-    // Only show categories that have at least one enabled source
-    const categories = getActiveCategoriesFiltered(enabledSourceIds, customSources);
-
-    const categorizedSources = categories.map((category) => ({
+    const categorizedSources = sourceList.activeCategories.map((category) => ({
         category,
-        sources: effectiveSources.filter((s) => s.category === category).map((s) => {
+        sources: sourceList.all.filter((s) => s.category === category).map((s) => {
             const qualityBaseline = getSourceQualityBaseline(s.id);
             const engagementType = getSourceEngagementType(s.id);
-            const qualityTier = customSourceIds.has(s.id) ? 3 : getQualityTierNumber(qualityBaseline);
-            const isCustom = customSourceIds.has(s.id);
+            const qualityTier = s.isCustom ? 3 : getQualityTierNumber(qualityBaseline);
 
             const health = healthMap[s.id];
 
@@ -58,14 +47,14 @@ export async function GET() {
                 id: s.id,
                 name: s.name,
                 icon: s.icon,
-                enabled: s.enabled,
+                enabled: s.isEnabled,
                 requiresKey: s.requiresKey,
                 method: s.method,
                 brokenReason: s.brokenReason,
-                isCustom,
+                isCustom: s.isCustom,
                 // Quality tier info
                 qualityTier,
-                qualityTierLabel: isCustom ? 'Custom' : getQualityTierLabel(qualityTier),
+                qualityTierLabel: s.isCustom ? 'Custom' : getQualityTierLabel(qualityTier),
                 qualityBaseline,
                 engagementType,
                 hasEngagementMetrics: engagementType !== 'rss',
@@ -82,7 +71,7 @@ export async function GET() {
 
     return NextResponse.json({
         categories: categorizedSources,
-        totalSources: effectiveSources.length,
-        enabledSources: effectiveSources.filter((s) => s.enabled).length,
+        totalSources: sourceList.all.length,
+        enabledSources: sourceList.enabled.length,
     });
 }

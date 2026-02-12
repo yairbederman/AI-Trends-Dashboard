@@ -120,7 +120,18 @@
       "Bash(npx:*)",
       "Bash(git diff:*)",
       "Bash(firecrawl search:*)",
-      "Bash(firecrawl scrape:*)"
+      "Bash(firecrawl scrape:*)",
+      "mcp__plugin_context7_context7__resolve-library-id",
+      "mcp__plugin_context7_context7__query-docs",
+      "Bash(where:*)",
+      "Bash(mmdc:*)",
+      "Bash(cmd.exe /c \"taskkill /PID 80228 /F\")",
+      "Bash(\"C:\\\\My Projects\\\\AI-Trends-Dashboard\\\\_test_anthropic.ts\" << 'ENDOFSCRIPT'\nconst cheerio = require\\('cheerio'\\);\n\nasync function test\\(\\) {\n  const res = await fetch\\('https://www.anthropic.com/news', {\n    headers: { 'User-Agent': 'AI-Trends-Dashboard/1.0', 'Accept': 'text/html' }\n  }\\);\n  const html = await res.text\\(\\);\n  console.log\\('HTML length:', html.length\\);\n\n  const $ = cheerio.load\\(html\\);\n  const seen = new Set\\(\\);\n  const articles: any[] = [];\n\n  $\\('a[href]'\\).each\\(\\(_: any, el: any\\) => {\n    const href = $\\(el\\).attr\\('href'\\) || '';\n    if \\(!/^\\(https:\\\\/\\\\/www\\\\.anthropic\\\\.com\\)?\\\\/news\\\\/[a-z0-9]/.test\\(href\\)\\) return;\n    const url = href.startsWith\\('/'\\) ? 'https://www.anthropic.com' + href : href;\n    if \\(seen.has\\(url\\)\\) return;\n    seen.add\\(url\\);\n\n    const $el = $\\(el\\);\n    const $heading = $el.find\\('h2, h3, h4, h5, h6'\\).first\\(\\);\n    let title = $heading.length ? $heading.text\\(\\).trim\\(\\) : '';\n    if \\(!title\\) {\n      const $titleSpan = $el.find\\('[class*=\"title\"]'\\).first\\(\\);\n      title = $titleSpan.length ? $titleSpan.text\\(\\).trim\\(\\) : '';\n    }\n\n    const textContent = $el.text\\(\\);\n    const dateMatch = textContent.match\\(/\\(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec\\)\\\\s+\\\\d{1,2},\\\\s+\\\\d{4}/\\);\n\n    articles.push\\({\n      url: url.substring\\(0, 60\\),\n      title: title ? title.substring\\(0, 60\\) : '\\(no title\\)',\n      date: dateMatch ? dateMatch[0] : '\\(no date\\)',\n    }\\);\n  }\\);\n\n  console.log\\('Total articles found:', articles.length\\);\n  console.log\\('With titles:', articles.filter\\(\\(a: any\\) => a.title !== '\\(no title\\)'\\).length\\);\n  console.log\\('With dates:', articles.filter\\(\\(a: any\\) => a.date !== '\\(no date\\)'\\).length\\);\n  console.log\\('With both:', articles.filter\\(\\(a: any\\) => a.title !== '\\(no title\\)' && a.date !== '\\(no date\\)'\\).length\\);\n  console.log\\('\\\\nFirst 5 articles:'\\);\n  articles.slice\\(0, 5\\).forEach\\(\\(a: any, i: number\\) => console.log\\(i + 1, a\\)\\);\n\n  if \\(articles.filter\\(\\(a: any\\) => a.title !== '\\(no title\\)' && a.date !== '\\(no date\\)'\\).length === 0\\) {\n    console.log\\('\\\\n--- REGRESSION DETECTED ---'\\);\n    console.log\\('No articles with both title AND date found.'\\);\n    console.log\\('\\\\nAll links found:'\\);\n    articles.forEach\\(\\(a: any, i: number\\) => console.log\\(i + 1, a\\)\\);\n  }\n}\n\ntest\\(\\).catch\\(console.error\\);\nENDOFSCRIPT)",
+      "mcp__claude_ai_Vercel__list_deployments",
+      "mcp__claude_ai_Vercel__get_project",
+      "mcp__claude_ai_Vercel__search_vercel_documentation",
+      "mcp__claude_ai_Mermaid_Chart__validate_and_render_mermaid_diagram",
+      "mcp__plugin_playwright_playwright__browser_tabs"
     ]
   }
 }

@@ -51,14 +51,13 @@ const SettingsContext = createContext<SettingsContextValue | undefined>(undefine
 export function SettingsProvider({ children }: { children: ReactNode }) {
     const [theme, setThemeState] = useState<'dark' | 'light'>('dark');
     const [timeRange, setTimeRangeState] = useState<TimeRange>('24h');
-    const [enabledSources, setEnabledSources] = useState<Set<string>>(new Set());
+    const [enabledSources, setEnabledSources] = useState<Set<string>>(new Set(getAllSourceIds()));
     const [priorities, setPriorities] = useState<Map<string, number>>(new Map());
     const [boostKeywords, setBoostKeywordsState] = useState<string[]>([]);
     const [youtubeChannels, setYouTubeChannelsState] = useState<YouTubeChannelConfig[]>([]);
     const [customSubreddits, setCustomSubredditsState] = useState<SubredditConfig[]>([]);
     const [customSources, setCustomSourcesState] = useState<CustomSourceConfig[]>([]);
     const [deletedSources, setDeletedSourcesState] = useState<string[]>([]);
-    const [hydrated, setHydrated] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
     const [syncError, setSyncError] = useState<string | null>(null);
 
@@ -102,7 +101,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
                 console.error('Failed to load settings:', error);
                 setEnabledSources(new Set(getAllSourceIds()));
             } finally {
-                setHydrated(true);
+                // Settings loaded (or failed with defaults)
             }
         };
 
@@ -350,10 +349,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
             setEnabledSources(oldEnabledSources);
         });
     }, [deletedSources, enabledSources, syncSetting]);
-
-    if (!hydrated) {
-        return null;
-    }
 
     return (
         <SettingsContext.Provider

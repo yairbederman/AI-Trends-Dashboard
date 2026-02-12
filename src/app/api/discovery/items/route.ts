@@ -1,14 +1,9 @@
 import { NextResponse } from 'next/server';
 import { checkRateLimit } from '@vercel/firewall';
-import { getEnabledSourcesFiltered, getSourceById } from '@/lib/config/sources';
+import { getSourceById } from '@/lib/config/sources';
 import { ContentItem, TimeRange, SourceCategory, SourceConfig } from '@/types';
-import {
-    getEnabledSourceIds,
-    getCachedContentBySourceIds,
-    getCustomSources,
-    getAllSourcePriorities,
-    getBoostKeywords,
-} from '@/lib/db/actions';
+import { getCachedContentBySourceIds } from '@/lib/db/actions';
+import { getEffectiveConfig, getEffectiveSourceList } from '@/lib/config/resolve';
 import { scoreAndSortItems } from '@/lib/scoring';
 import { feedCache } from '@/lib/cache/memory-cache';
 import { ensureSourcesFresh } from '@/lib/fetching/ensure-fresh';
@@ -131,11 +126,9 @@ export async function GET(request: Request) {
 
     try {
         // 2. Resolve sources per category
-        const enabledSourceIds = await getEnabledSourceIds();
-        const customSources = await getCustomSources();
-        const allEnabledSources = getEnabledSourcesFiltered(enabledSourceIds, customSources);
+        const sourceList = await getEffectiveSourceList();
 
-        const targetSources = allEnabledSources.filter(s =>
+        const targetSources = sourceList.enabled.filter(s =>
             internalCategories.has(s.category)
         );
         const targetSourceIds = targetSources.map(s => s.id);
@@ -171,10 +164,9 @@ export async function GET(request: Request) {
         // 4. Query & score items
         const allItems = await getCachedContentBySourceIds(targetSourceIds, timeRange);
 
-        const [priorities, boostKeywords] = await Promise.all([
-            getAllSourcePriorities(),
-            getBoostKeywords(),
-        ]);
+        const config = await getEffectiveConfig();
+        const priorities = config.priorities;
+        const boostKeywords = config.boostKeywords;
 
         const scoredItems = scoreAndSortItems(allItems, {
             priorities,

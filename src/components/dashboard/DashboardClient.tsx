@@ -10,7 +10,7 @@ import { InsightCharts } from '@/components/dashboard/InsightCharts';
 import { CategoryHighlights } from '@/components/dashboard/CategoryHighlights';
 import { TimeRangeDropdown } from './TimeRangeDropdown';
 import { FeedModeSelector } from './FeedModeSelector';
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { DashboardSkeleton } from '@/components/dashboard/DashboardSkeleton';
 import { useSettings } from '@/lib/contexts/SettingsContext';
 import { Settings, Sparkles, TrendingUp, AlertTriangle, Activity, Crown, Hash, Rocket } from 'lucide-react';
 import { SOURCES } from '@/lib/config/sources';
@@ -28,6 +28,7 @@ interface FeedResponse {
     items: ContentItem[];
     fetchedAt: string;
     cached?: boolean;
+    staleRefreshing?: boolean;
     failures?: { source: string; error: string }[];
 }
 
@@ -330,6 +331,7 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
     }, [items, sourceMap, sourceToCategory]);
 
     const hasFailures = data?.failures && data.failures.length > 0;
+    const isStaleRefreshing = data?.staleRefreshing === true;
 
     return (
         <div className="dashboard">
@@ -365,6 +367,12 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
             </header>
 
             <main id="main-content" className="dashboard-main" role="main" aria-label="AI Trends Content">
+                {isStaleRefreshing && (
+                    <div className="info-banner" role="status" aria-live="polite">
+                        <Activity size={16} aria-hidden="true" />
+                        <span>Updating sources in background...</span>
+                    </div>
+                )}
                 {hasFailures && (
                     <div className="warning-banner" role="alert" aria-live="polite">
                         <AlertTriangle size={16} aria-hidden="true" />
@@ -381,7 +389,7 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
                         </button>
                     </div>
                 ) : isLoading ? (
-                    <LoadingSpinner message="Loading feed..." />
+                    <DashboardSkeleton />
                 ) : items.length === 0 ? (
                     <div className="empty-state" role="status">
                         <div className="empty-state-icon">

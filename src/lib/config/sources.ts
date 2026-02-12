@@ -649,6 +649,7 @@ export function customToSourceConfig(custom: CustomSourceConfig): SourceConfig {
 
 /**
  * Get the effective sources list: static SOURCES + custom, minus deleted
+ * @deprecated Use `getEffectiveSourceList()` from `@/lib/config/resolve` instead.
  */
 export function getEffectiveSources(
     customSources: CustomSourceConfig[],
@@ -671,6 +672,7 @@ export function getEnabledSources(): SourceConfig[] {
 /**
  * Get enabled sources based on database settings
  * Optionally includes custom sources in the lookup pool
+ * @deprecated Use `getEffectiveSourceList().enabled` from `@/lib/config/resolve` instead.
  */
 export function getEnabledSourcesFiltered(
     enabledIds: string[],
@@ -695,6 +697,7 @@ export function getAllCategories(): SourceCategory[] {
 /**
  * Get categories that have at least one enabled source
  * Filters out empty categories from the UI
+ * @deprecated Use `getEffectiveSourceList().activeCategories` from `@/lib/config/resolve` instead.
  */
 export function getActiveCategoriesFiltered(
     enabledIds: string[],

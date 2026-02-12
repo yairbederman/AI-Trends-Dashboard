@@ -47,6 +47,7 @@ User Request
 ### Content Aggregation
 - Fetches from 40+ sources via 7 adapter types (RSS, HackerNews, Reddit, YouTube, GitHub, HuggingFace, Anthropic scrape)
 - Anthropic adapter uses cheerio DOM parser (not regex) for resilient HTML parsing
+- Shared freshness module (`src/lib/fetching/ensure-fresh.ts`) — used by both feed and discovery endpoints
 - Per-source freshness tracking — only stale sources are refetched
 - Batch upsert operations for performance
 
@@ -59,12 +60,16 @@ User Request
 
 ### Discovery API
 - `GET /api/discovery/items` — multi-category, paginated content view with standardized response shape
+- Versioned alias at `GET /api/v1/discovery/items` (thin re-export)
 - Required params: `categories` (comma-separated), `timeRange` (1h/12h/24h/48h/7d)
-- Optional params: `limit` (default 100), `offset` (default 0)
+- Optional params: `limit` (default 100), `offset` (default 0), `search` (text filter on title/description/tags)
 - Accepts `social-blogs` as alias for internal `social` category
 - Valid categories: `news`, `newsletters`, `social-blogs`, `ai-labs`, `dev-platforms`, `community`, `leaderboards`
 - Returns `meta` (totalItems, returnedItems, offset, limit, timeRange, per-category counts) + `items` array
-- Uses same freshness/caching/scoring pipeline as the feed endpoint
+- CORS enabled (`Access-Control-Allow-Origin: *`) with `OPTIONS` preflight handler for cross-origin access
+- Rate limited via Vercel Firewall (`@vercel/firewall`) with graceful fallback when rule is unconfigured
+- HTTP cache headers: `Cache-Control: public, s-maxage=300, stale-while-revalidate=60` for CDN/edge caching
+- Uses shared freshness/caching/scoring pipeline (via `ensureSourcesFresh`) with the feed endpoint
 - Designed for both dashboard frontend and external service consumption
 
 ### Feed Modes (Multi-Algorithm Scoring)
@@ -108,6 +113,7 @@ Scoring uses percentile-based ranking, quality ratios, source-specific baselines
 | GitHub Trending | Web scraping | No |
 | HuggingFace API | Content API | No |
 | 30+ RSS/Atom feeds | Content feeds | No |
+| Vercel Firewall | Rate limiting | No (runs at edge) |
 
 ## File Map
 
@@ -116,6 +122,7 @@ src/
 ├── app/
 │   ├── api/
 │   │   ├── discovery/items/ # Multi-category paginated discovery endpoint
+│   │   ├── v1/discovery/items/ # Versioned alias (re-exports canonical route)
 │   │   ├── feed/            # Main aggregation endpoint
 │   │   ├── settings/        # Settings CRUD
 │   │   ├── sources/         # Source management + RSS feed detection
@@ -131,6 +138,7 @@ src/
 │   ├── adapters/            # Source adapters (RSS, HN, Reddit, YouTube, GitHub, HF, Anthropic)
 │   ├── cache/               # In-memory feed cache
 │   ├── config/              # Source configurations + user-configurable lists (YouTube channels, subreddits)
+│   ├── fetching/            # Shared freshness check + fetch orchestration (ensureSourcesFresh)
 │   ├── contexts/            # React contexts
 │   ├── db/
 │   │   ├── schema/          # Drizzle ORM table definitions

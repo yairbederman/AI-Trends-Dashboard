@@ -1,14 +1,13 @@
 import { NextResponse } from 'next/server';
-import { getEnabledSourcesFiltered } from '@/lib/config/sources';
 import { TimeRange, FeedMode } from '@/types';
 import {
-    getEnabledSourceIds,
     getSetting,
     updateSetting,
     cleanOldContent,
     getCachedContentBySourceIds,
-    getCustomSources,
+    getSourceFreshness,
 } from '@/lib/db/actions';
+import { getEffectiveConfig, getEffectiveSourceList } from '@/lib/config/resolve';
 import { scoreItemsByFeedMode } from '@/lib/scoring';
 import { getBulkVelocities, cleanupOldSnapshots } from '@/lib/db/engagement-tracker';
 import { feedCache } from '@/lib/cache/memory-cache';
@@ -56,14 +55,15 @@ export async function GET(request: Request) {
     const feedMode = (searchParams.get('mode') as FeedMode) || 'hot';
 
     try {
-        // Get user's time range setting from DB, with query param override
-        const dbTimeRange = await getSetting<TimeRange>('timeRange', '24h');
-        const timeRange = queryTimeRange || dbTimeRange;
+        // Fetch config and source list in parallel
+        const [config, sourceList] = await Promise.all([
+            getEffectiveConfig(),
+            getEffectiveSourceList(),
+        ]);
+        const timeRange = queryTimeRange || config.timeRange;
 
         // 1. Determine target source IDs (including custom sources)
-        const enabledSourceIds = await getEnabledSourceIds();
-        const customSources = await getCustomSources();
-        let targetSources = getEnabledSourcesFiltered(enabledSourceIds, customSources);
+        let targetSources = sourceList.enabled;
 
         if (category) {
             targetSources = targetSources.filter((s) => s.category === category);
@@ -82,11 +82,34 @@ export async function GET(request: Request) {
             return NextResponse.json(memoryCached);
         }
 
-        // 2. Ensure data freshness (fetch stale sources, cache results, update health)
-        const { staleCount, failures } = await ensureSourcesFresh(targetSources, targetSourceIds, timeRange);
+        // 2. Query existing DB content and check freshness in parallel
+        const [existingItems, freshness] = await Promise.all([
+            getCachedContentBySourceIds(targetSourceIds, timeRange),
+            getSourceFreshness(targetSourceIds),
+        ]);
 
-        // 3. Query ALL items from DB (fresh cached + newly cached)
-        const allItems = await getCachedContentBySourceIds(targetSourceIds, timeRange);
+        let staleRefreshing = false;
+        let failures: { source: string; error: string }[] = [];
+
+        if (freshness.stale.length > 0 && existingItems.length > 0) {
+            // Stale-while-revalidate: return existing data now, refresh in background
+            staleRefreshing = true;
+            ensureSourcesFresh(targetSources, targetSourceIds, timeRange)
+                .then(() => {
+                    // Invalidate memory cache so next request gets fresh data
+                    feedCache.clear();
+                })
+                .catch(err => console.error('Background source refresh failed:', err));
+        } else if (freshness.stale.length > 0) {
+            // No existing content (first-ever visit) — must block on fetch
+            const result = await ensureSourcesFresh(targetSources, targetSourceIds, timeRange);
+            failures = result.failures;
+        }
+
+        // 3. Use existing items or re-query if we did a blocking fetch
+        const allItems = (freshness.stale.length > 0 && existingItems.length === 0)
+            ? await getCachedContentBySourceIds(targetSourceIds, timeRange)
+            : existingItems;
 
         // Get velocities for Hot/Rising modes
         const velocities = (feedMode === 'hot' || feedMode === 'rising')
@@ -101,13 +124,16 @@ export async function GET(request: Request) {
             count: scoredItems.length,
             items: scoredItems,
             fetchedAt: new Date().toISOString(),
-            cached: staleCount === 0,
+            cached: freshness.stale.length === 0,
+            staleRefreshing,
             mode: feedMode,
             failures: failures.length > 0 ? failures : undefined,
         };
 
-        // Store in memory cache
-        feedCache.set(memoryCacheKey, response);
+        // Store in memory cache (skip if background refresh is in progress)
+        if (!staleRefreshing) {
+            feedCache.set(memoryCacheKey, response);
+        }
 
         return NextResponse.json(response);
     } catch (error) {

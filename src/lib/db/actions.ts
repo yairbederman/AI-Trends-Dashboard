@@ -116,6 +116,34 @@ export async function getEnabledSourceIds(): Promise<string[]> {
     }
 }
 
+/**
+ * Pure computation of enabled source IDs from already-fetched data.
+ * Avoids redundant DB queries when callers already have these values.
+ */
+export function computeEnabledSourceIds(
+    dbSources: { id: string; enabled: boolean | null }[],
+    customSrcs: CustomSourceConfig[],
+    deletedIds: string[],
+): string[] {
+    const dbSourceMap = new Map(dbSources.map(s => [s.id, s.enabled]));
+    const deletedSet = new Set(deletedIds);
+
+    const predefinedIds = SOURCES.filter(s => {
+        if (deletedSet.has(s.id)) return false;
+        if (dbSourceMap.has(s.id)) return dbSourceMap.get(s.id);
+        return s.enabled;
+    }).map(s => s.id);
+
+    const customIds = customSrcs
+        .filter(cs => {
+            if (dbSourceMap.has(cs.id)) return dbSourceMap.get(cs.id);
+            return true;
+        })
+        .map(cs => cs.id);
+
+    return [...predefinedIds, ...customIds];
+}
+
 export async function toggleSourceEnabled(sourceId: string, enabled: boolean): Promise<void> {
     try {
         const [existing] = await db.select().from(sources).where(eq(sources.id, sourceId));

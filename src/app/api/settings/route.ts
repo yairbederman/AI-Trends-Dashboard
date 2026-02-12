@@ -1,23 +1,18 @@
 import { NextResponse } from 'next/server';
 import {
-    getSetting,
     updateSetting,
-    getEnabledSourceIds,
     toggleSourceEnabled,
     setCategoryEnabled,
-    getAllSourcePriorities,
     setSourcePriority,
-    getBoostKeywords,
     setBoostKeywords,
-    getYouTubeChannels,
     setYouTubeChannels,
-    getCustomSubreddits,
     setCustomSubreddits,
     getCustomSources,
     setCustomSources,
     getDeletedSourceIds,
     setDeletedSourceIds,
 } from '@/lib/db/actions';
+import { getEffectiveConfig } from '@/lib/config/resolve';
 import { TimeRange, CustomSourceConfig, SourceCategory } from '@/types';
 import { SOURCES } from '@/lib/config/sources';
 import { feedCache, settingsCache } from '@/lib/cache/memory-cache';
@@ -59,26 +54,18 @@ function validatePayload(body: unknown): body is SettingsPayload {
 
 export async function GET() {
     try {
-        const theme = await getSetting('theme', 'dark');
-        const timeRange = await getSetting('timeRange', '24h');
-        const enabledSources = await getEnabledSourceIds();
-        const priorities = await getAllSourcePriorities();
-        const boostKeywords = await getBoostKeywords();
-        const youtubeChannels = await getYouTubeChannels();
-        const customSubreddits = await getCustomSubreddits();
-        const customSources = await getCustomSources();
-        const deletedSources = await getDeletedSourceIds();
+        const config = await getEffectiveConfig();
 
         return NextResponse.json({
-            theme,
-            timeRange,
-            enabledSources,
-            priorities: Object.fromEntries(priorities),
-            boostKeywords,
-            youtubeChannels,
-            customSubreddits,
-            customSources,
-            deletedSources,
+            theme: config.theme,
+            timeRange: config.timeRange,
+            enabledSources: config.enabledSourceIds,
+            priorities: Object.fromEntries(config.priorities),
+            boostKeywords: config.boostKeywords,
+            youtubeChannels: config.youtubeChannels,
+            customSubreddits: config.customSubreddits,
+            customSources: config.customSources,
+            deletedSources: config.deletedSourceIds,
         });
     } catch (error) {
         console.error('Failed to fetch settings:', error);

@@ -4,17 +4,27 @@ flowchart TD
         SWR[SWR Cache<br/>5min revalidation]
     end
 
+    subgraph ExtConsumers["External Consumers"]
+        ThirdParty[Third-party Services<br/>CORS enabled]
+    end
+
     subgraph API["API Layer · Next.js Route Handlers"]
         Feed["/api/feed"]
-        Discovery["/api/discovery/items<br/>multi-category paginated"]
+        Discovery["/api/discovery/items<br/>rate limited · search · paginated"]
+        V1["/api/v1/discovery/items<br/>versioned alias"]
         Settings["/api/settings"]
         Sources["/api/sources<br/>+ health data"]
         Detect["/api/sources/detect<br/>RSS auto-detection"]
     end
 
     subgraph Cache["Caching"]
-        MemCache[Memory Cache<br/>60s TTL]
+        MemCache[Memory Cache<br/>5min TTL]
+        CDNCache[CDN Cache<br/>s-maxage=300]
         DBCache[DB Freshness Check<br/>5–60min per category]
+    end
+
+    subgraph Fetching["Shared Fetching Layer"]
+        EnsureFresh[ensureSourcesFresh<br/>stale-only refetch + health tracking]
     end
 
     subgraph Adapters["Source Adapters"]
@@ -53,10 +63,16 @@ flowchart TD
     UI --> Sources
     UI --> Detect
 
+    ThirdParty -->|CORS| Discovery
+    ThirdParty -->|CORS| V1
+    V1 -.->|re-export| Discovery
+
     Feed --> MemCache
-    Discovery --> MemCache
+    Discovery --> CDNCache
+    CDNCache --> MemCache
     MemCache --> DBCache
-    DBCache --> Adapters
+    DBCache --> EnsureFresh
+    EnsureFresh --> Adapters
 
     RSS --> RSSFeeds
     HN --> HNAPI
@@ -66,8 +82,8 @@ flowchart TD
     HF --> HFAPI
     Anth --> AnthNews
 
-    Adapters -->|batch upsert| DB
-    Adapters -->|record health| Health
+    EnsureFresh -->|batch upsert| DB
+    EnsureFresh -->|record health| Health
     DBCache -->|read cached| DB
     Settings --> DB
     Sources --> DB

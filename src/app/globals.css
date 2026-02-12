@@ -2704,6 +2704,30 @@ a {
   flex-shrink: 0;
 }
 
+.info-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 1rem;
+  margin-bottom: 1rem;
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid var(--accent-primary, #3b82f6);
+  border-radius: 8px;
+  color: var(--accent-primary, #3b82f6);
+  font-size: 0.8rem;
+  opacity: 0.85;
+}
+
+.info-banner svg {
+  flex-shrink: 0;
+  animation: info-spin 1.5s linear infinite;
+}
+
+@keyframes info-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 /* =====================
    SKELETON LOADING
    ===================== */
