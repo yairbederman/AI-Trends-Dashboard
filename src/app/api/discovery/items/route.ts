@@ -1,26 +1,30 @@
 import { NextResponse } from 'next/server';
-import { getEnabledSourcesFiltered, getSourceById, SOURCES } from '@/lib/config/sources';
-import { createAdapter } from '@/lib/adapters';
-import { deduplicateItems } from '@/lib/adapters/base';
+import { checkRateLimit } from '@vercel/firewall';
+import { getEnabledSourcesFiltered, getSourceById } from '@/lib/config/sources';
 import { ContentItem, TimeRange, SourceCategory, SourceConfig } from '@/types';
 import {
     getEnabledSourceIds,
-    cacheContent,
-    getSourceFreshness,
-    updateSourceLastFetched,
     getCachedContentBySourceIds,
     getCustomSources,
-    getSourceHealth,
-    updateSourceHealth,
     getAllSourcePriorities,
     getBoostKeywords,
 } from '@/lib/db/actions';
-import { SourceHealthRecord } from '@/types';
 import { scoreAndSortItems } from '@/lib/scoring';
 import { feedCache } from '@/lib/cache/memory-cache';
+import { ensureSourcesFresh } from '@/lib/fetching/ensure-fresh';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+
+const CORS_HEADERS = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+};
+
+export function OPTIONS() {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+}
 
 // Valid API category names (superset of internal SourceCategory)
 const VALID_API_CATEGORIES = [
@@ -49,11 +53,25 @@ function internalCategoryToApi(cat: SourceCategory): ApiCategory {
 }
 
 export async function GET(request: Request) {
+    // Rate limit check (requires 'discovery-items' rule in Vercel Firewall dashboard)
+    try {
+        const { rateLimited } = await checkRateLimit('discovery-items', { request });
+        if (rateLimited) {
+            return NextResponse.json(
+                { error: 'Rate limit exceeded. Try again later.' },
+                { status: 429, headers: { ...CORS_HEADERS, 'Retry-After': '60' } }
+            );
+        }
+    } catch {
+        // Firewall rule not configured yet or running locally — skip silently
+    }
+
     const { searchParams } = new URL(request.url);
     const categoriesParam = searchParams.get('categories');
     const timeRangeParam = searchParams.get('timeRange');
     const limitParam = searchParams.get('limit');
     const offsetParam = searchParams.get('offset');
+    const searchQuery = searchParams.get('search')?.trim().toLowerCase() || null;
 
     // 1. Validate required params
     if (!categoriesParam) {
@@ -62,7 +80,7 @@ export async function GET(request: Request) {
                 error: 'Missing required parameter: categories',
                 validValues: [...VALID_API_CATEGORIES],
             },
-            { status: 400 }
+            { status: 400, headers: CORS_HEADERS }
         );
     }
 
@@ -72,7 +90,7 @@ export async function GET(request: Request) {
                 error: 'Missing required parameter: timeRange',
                 validValues: [...VALID_TIME_RANGES],
             },
-            { status: 400 }
+            { status: 400, headers: CORS_HEADERS }
         );
     }
 
@@ -87,7 +105,7 @@ export async function GET(request: Request) {
                 error: `Invalid categories: ${invalidCategories.join(', ')}`,
                 validValues: [...VALID_API_CATEGORIES],
             },
-            { status: 400 }
+            { status: 400, headers: CORS_HEADERS }
         );
     }
 
@@ -98,7 +116,7 @@ export async function GET(request: Request) {
                 error: `Invalid timeRange: ${timeRangeParam}`,
                 validValues: [...VALID_TIME_RANGES],
             },
-            { status: 400 }
+            { status: 400, headers: CORS_HEADERS }
         );
     }
 
@@ -143,105 +161,12 @@ export async function GET(request: Request) {
         const memoryCached = feedCache.get(memoryCacheKey);
         if (memoryCached) {
             const cached = memoryCached as { scoredItems: ContentItem[]; sourceMap: Record<string, SourceConfig> };
-            return buildResponse(
-                cached.scoredItems,
-                cached.sourceMap,
-                requestedCategories,
-                offset,
-                limit,
-                timeRange
-            );
+            const filtered = searchQuery ? filterBySearch(cached.scoredItems, searchQuery) : cached.scoredItems;
+            return buildResponse(filtered, cached.sourceMap, requestedCategories, offset, limit, timeRange);
         }
 
-        // 3. Ensure data freshness
-        const { stale } = await getSourceFreshness(targetSourceIds);
-
-        if (stale.length > 0) {
-            const staleSources = targetSources.filter(s => stale.includes(s.id));
-            const adapterPairs = staleSources
-                .map(source => ({ source, adapter: createAdapter(source) }))
-                .filter(
-                    (pair): pair is { source: typeof pair.source; adapter: NonNullable<typeof pair.adapter> } =>
-                        pair.adapter !== null
-                );
-
-            const results = await Promise.allSettled(
-                adapterPairs.map(({ adapter }) =>
-                    Promise.race([
-                        adapter.fetch({ timeRange }),
-                        new Promise<ContentItem[]>((_, reject) =>
-                            setTimeout(() => reject(new Error('Adapter timeout')), 10000)
-                        ),
-                    ])
-                )
-            );
-
-            const newItems: ContentItem[] = [];
-            results.forEach((result, index) => {
-                if (result.status === 'fulfilled') {
-                    newItems.push(...result.value);
-                } else {
-                    console.error(
-                        `Discovery: adapter ${adapterPairs[index].source.name} failed:`,
-                        result.reason
-                    );
-                }
-            });
-
-            const uniqueNewItems = deduplicateItems(newItems);
-            await cacheContent(uniqueNewItems);
-
-            const successfulSourceIds = adapterPairs
-                .filter((_, i) => results[i].status === 'fulfilled')
-                .map(p => p.source.id);
-            if (successfulSourceIds.length > 0) {
-                await updateSourceLastFetched(successfulSourceIds);
-            }
-
-            // Record source health (fire-and-forget)
-            getSourceHealth()
-                .then(currentHealth => {
-                    const now = new Date().toISOString();
-                    results.forEach((result, index) => {
-                        const sid = adapterPairs[index].source.id;
-                        const prev = currentHealth[sid] || {
-                            lastFetchAt: now,
-                            lastSuccessAt: null,
-                            lastItemCount: 0,
-                            consecutiveFailures: 0,
-                            lastError: null,
-                        } satisfies SourceHealthRecord;
-
-                        if (result.status === 'fulfilled' && result.value.length > 0) {
-                            currentHealth[sid] = {
-                                lastFetchAt: now,
-                                lastSuccessAt: now,
-                                lastItemCount: result.value.length,
-                                consecutiveFailures: 0,
-                                lastError: null,
-                            };
-                        } else if (result.status === 'fulfilled') {
-                            currentHealth[sid] = {
-                                lastFetchAt: now,
-                                lastSuccessAt: prev.lastSuccessAt,
-                                lastItemCount: prev.lastItemCount,
-                                consecutiveFailures: prev.consecutiveFailures + 1,
-                                lastError: 'Returned 0 items',
-                            };
-                        } else {
-                            currentHealth[sid] = {
-                                lastFetchAt: now,
-                                lastSuccessAt: prev.lastSuccessAt,
-                                lastItemCount: prev.lastItemCount,
-                                consecutiveFailures: prev.consecutiveFailures + 1,
-                                lastError: result.reason?.message || 'Unknown error',
-                            };
-                        }
-                    });
-                    return updateSourceHealth(currentHealth);
-                })
-                .catch(err => console.error('Failed to update source health:', err));
-        }
+        // 3. Ensure data freshness (fetch stale sources, cache results, update health)
+        await ensureSourcesFresh(targetSources, targetSourceIds, timeRange);
 
         // 4. Query & score items
         const allItems = await getCachedContentBySourceIds(targetSourceIds, timeRange);
@@ -261,7 +186,6 @@ export async function GET(request: Request) {
         for (const s of targetSources) {
             sourceMap[s.id] = s;
         }
-        // Also include sources from SOURCES that might appear in cached items
         for (const item of scoredItems) {
             if (!sourceMap[item.sourceId]) {
                 const cfg = getSourceById(item.sourceId);
@@ -269,10 +193,11 @@ export async function GET(request: Request) {
             }
         }
 
-        // Cache scored items for subsequent paginated requests
+        // Cache full scored items (search filtering applied on read)
         feedCache.set(memoryCacheKey, { scoredItems, sourceMap });
 
-        return buildResponse(scoredItems, sourceMap, requestedCategories, offset, limit, timeRange);
+        const filtered = searchQuery ? filterBySearch(scoredItems, searchQuery) : scoredItems;
+        return buildResponse(filtered, sourceMap, requestedCategories, offset, limit, timeRange);
     } catch (error) {
         console.error('Discovery API error:', error);
         return NextResponse.json(
@@ -280,7 +205,7 @@ export async function GET(request: Request) {
                 error: 'Internal server error',
                 details: error instanceof Error ? error.message : 'Unknown error',
             },
-            { status: 500 }
+            { status: 500, headers: CORS_HEADERS }
         );
     }
 }
@@ -293,7 +218,6 @@ function buildResponse(
     limit: number,
     timeRange: string
 ) {
-    // Count items per API category (before pagination)
     const categoryCounts: Record<string, number> = {};
     for (const cat of requestedCategories) {
         categoryCounts[cat] = 0;
@@ -308,10 +232,8 @@ function buildResponse(
         }
     }
 
-    // Paginate
     const paginated = scoredItems.slice(offset, offset + limit);
 
-    // Map to discovery item shape
     const items = paginated.map(item => {
         const cfg = sourceMap[item.sourceId];
         return {
@@ -328,15 +250,30 @@ function buildResponse(
         };
     });
 
-    return NextResponse.json({
-        meta: {
-            totalItems: scoredItems.length,
-            returnedItems: items.length,
-            offset,
-            limit,
-            timeRange,
-            categories: categoryCounts,
+    return NextResponse.json(
+        {
+            meta: {
+                totalItems: scoredItems.length,
+                returnedItems: items.length,
+                offset,
+                limit,
+                timeRange,
+                categories: categoryCounts,
+            },
+            items,
         },
-        items,
+        {
+            headers: {
+                ...CORS_HEADERS,
+                'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60',
+            },
+        }
+    );
+}
+
+function filterBySearch(items: ContentItem[], query: string): ContentItem[] {
+    return items.filter(item => {
+        const text = `${item.title} ${item.description || ''} ${item.tags?.join(' ') || ''}`.toLowerCase();
+        return text.includes(query);
     });
 }

@@ -1,25 +1,18 @@
 import { NextResponse } from 'next/server';
 import { getEnabledSourcesFiltered } from '@/lib/config/sources';
-import { createAdapter } from '@/lib/adapters';
-import { deduplicateItems } from '@/lib/adapters/base';
-import { ContentItem, TimeRange, FeedMode } from '@/types';
+import { TimeRange, FeedMode } from '@/types';
 import {
     getEnabledSourceIds,
     getSetting,
     updateSetting,
-    cacheContent,
     cleanOldContent,
-    getSourceFreshness,
-    updateSourceLastFetched,
     getCachedContentBySourceIds,
     getCustomSources,
-    getSourceHealth,
-    updateSourceHealth,
 } from '@/lib/db/actions';
-import { SourceHealthRecord } from '@/types';
 import { scoreItemsByFeedMode } from '@/lib/scoring';
 import { getBulkVelocities, cleanupOldSnapshots } from '@/lib/db/engagement-tracker';
 import { feedCache } from '@/lib/cache/memory-cache';
+import { ensureSourcesFresh } from '@/lib/fetching/ensure-fresh';
 import { db } from '@/lib/db';
 import { settings } from '@/lib/db/schema';
 import { sql } from 'drizzle-orm';
@@ -51,11 +44,6 @@ async function maybeRunCleanup() {
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
-
-interface AdapterFailure {
-    source: string;
-    error: string;
-}
 
 export async function GET(request: Request) {
     // Trigger cleanup if needed (runs in background, once per day)
@@ -94,112 +82,10 @@ export async function GET(request: Request) {
             return NextResponse.json(memoryCached);
         }
 
-        // 2. Check per-source freshness
-        const { stale, fresh } = await getSourceFreshness(targetSourceIds);
+        // 2. Ensure data freshness (fetch stale sources, cache results, update health)
+        const { staleCount, failures } = await ensureSourcesFresh(targetSources, targetSourceIds, timeRange);
 
-        let failures: AdapterFailure[] = [];
-
-        // 3. Fetch only stale sources
-        if (stale.length > 0) {
-            console.log(`Selective fetch: ${stale.length} stale, ${fresh.length} fresh of ${targetSourceIds.length} total`);
-
-            const staleSources = targetSources.filter(s => stale.includes(s.id));
-            const adapterPairs = staleSources
-                .map((source) => ({ source, adapter: createAdapter(source) }))
-                .filter((pair): pair is { source: typeof pair.source; adapter: NonNullable<typeof pair.adapter> } => pair.adapter !== null);
-
-            // 4. Fetch stale sources in parallel with 10s timeout per adapter
-            const results = await Promise.allSettled(
-                adapterPairs.map(({ adapter }) =>
-                    Promise.race([
-                        adapter.fetch({ timeRange }),
-                        new Promise<ContentItem[]>((_, reject) =>
-                            setTimeout(() => reject(new Error('Adapter timeout')), 10000)
-                        )
-                    ])
-                )
-            );
-
-            const newItems: ContentItem[] = [];
-
-            results.forEach((result, index) => {
-                if (result.status === 'fulfilled') {
-                    newItems.push(...result.value);
-                } else {
-                    const failure = {
-                        source: adapterPairs[index].source.name,
-                        error: result.reason?.message || 'Unknown error',
-                    };
-                    failures.push(failure);
-                    console.error(`Adapter ${failure.source} failed:`, result.reason);
-                }
-            });
-
-            // 5. Cache new items + update lastFetchedAt
-            const uniqueNewItems = deduplicateItems(newItems);
-            await cacheContent(uniqueNewItems);
-
-            // Update lastFetchedAt for successfully fetched sources
-            const successfulSourceIds = adapterPairs
-                .filter((_, i) => results[i].status === 'fulfilled')
-                .map(p => p.source.id);
-            if (successfulSourceIds.length > 0) {
-                await updateSourceLastFetched(successfulSourceIds);
-            }
-
-            // Record source health (fire-and-forget)
-            getSourceHealth().then(currentHealth => {
-                const now = new Date().toISOString();
-
-                results.forEach((result, index) => {
-                    const sourceId = adapterPairs[index].source.id;
-                    const prev = currentHealth[sourceId] || {
-                        lastFetchAt: now,
-                        lastSuccessAt: null,
-                        lastItemCount: 0,
-                        consecutiveFailures: 0,
-                        lastError: null,
-                    } satisfies SourceHealthRecord;
-
-                    if (result.status === 'fulfilled' && result.value.length > 0) {
-                        currentHealth[sourceId] = {
-                            lastFetchAt: now,
-                            lastSuccessAt: now,
-                            lastItemCount: result.value.length,
-                            consecutiveFailures: 0,
-                            lastError: null,
-                        };
-                    } else if (result.status === 'fulfilled') {
-                        currentHealth[sourceId] = {
-                            lastFetchAt: now,
-                            lastSuccessAt: prev.lastSuccessAt,
-                            lastItemCount: prev.lastItemCount,
-                            consecutiveFailures: prev.consecutiveFailures + 1,
-                            lastError: 'Returned 0 items',
-                        };
-                    } else {
-                        currentHealth[sourceId] = {
-                            lastFetchAt: now,
-                            lastSuccessAt: prev.lastSuccessAt,
-                            lastItemCount: prev.lastItemCount,
-                            consecutiveFailures: prev.consecutiveFailures + 1,
-                            lastError: result.reason?.message || 'Unknown error',
-                        };
-                    }
-                });
-
-                // Warn about persistently failing sources
-                for (const [id, health] of Object.entries(currentHealth)) {
-                    if (health.consecutiveFailures >= 3) {
-                        console.warn(`Source ${id} has ${health.consecutiveFailures} consecutive failures: ${health.lastError}`);
-                    }
-                }
-
-                return updateSourceHealth(currentHealth);
-            }).catch(err => console.error('Failed to update source health:', err));
-        }
-
-        // 6. Query ALL items from DB (fresh cached + newly cached)
+        // 3. Query ALL items from DB (fresh cached + newly cached)
         const allItems = await getCachedContentBySourceIds(targetSourceIds, timeRange);
 
         // Get velocities for Hot/Rising modes
@@ -215,7 +101,7 @@ export async function GET(request: Request) {
             count: scoredItems.length,
             items: scoredItems,
             fetchedAt: new Date().toISOString(),
-            cached: stale.length === 0,
+            cached: staleCount === 0,
             mode: feedMode,
             failures: failures.length > 0 ? failures : undefined,
         };
