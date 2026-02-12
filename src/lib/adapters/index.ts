@@ -5,6 +5,7 @@ import { RedditAdapter } from './reddit';
 import { YouTubeAdapter } from './youtube';
 import { GitHubAdapter } from './github';
 import { HuggingFaceAdapter } from './huggingface';
+import { AnthropicAdapter } from './anthropic';
 import { SourceConfig } from '@/types';
 
 /**
@@ -57,7 +58,9 @@ export function createAdapter(source: SourceConfig): SourceAdapter | null {
             return null;
 
         case 'scrape':
-            // Scraping adapters to be implemented
+            if (source.id === 'anthropic-blog') {
+                return new AnthropicAdapter(source);
+            }
             console.log(`Scrape adapter not yet implemented for: ${source.name}`);
             return null;
 
@@ -73,4 +76,5 @@ export { RedditAdapter } from './reddit';
 export { YouTubeAdapter } from './youtube';
 export { GitHubAdapter } from './github';
 export { HuggingFaceAdapter } from './huggingface';
+export { AnthropicAdapter } from './anthropic';
 export type { SourceAdapter } from './base';
