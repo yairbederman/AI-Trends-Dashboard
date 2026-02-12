@@ -24,8 +24,8 @@ AI practitioners, researchers, and enthusiasts who want a single view of what's 
 ```
 User Request
     → SWR (client cache, 5min revalidation)
-    → /api/feed route handler
-    → Memory Cache (60s TTL)
+    → /api/feed or /api/discovery/items route handler
+    → Memory Cache (5min TTL)
     → Database Cache (category-based TTL: 5min–60min)
     → Source Adapters (only stale sources fetched)
     → External APIs / RSS Feeds
@@ -56,6 +56,16 @@ User Request
 - Sources with 3+ consecutive failures trigger `console.warn`
 - Settings UI shows health badges: **OK** (green), **Unstable** (amber, 1-2 failures), **Failing** (red, 3+ failures)
 - Tooltips show error details and last success date
+
+### Discovery API
+- `GET /api/discovery/items` — multi-category, paginated content view with standardized response shape
+- Required params: `categories` (comma-separated), `timeRange` (1h/12h/24h/48h/7d)
+- Optional params: `limit` (default 100), `offset` (default 0)
+- Accepts `social-blogs` as alias for internal `social` category
+- Valid categories: `news`, `newsletters`, `social-blogs`, `ai-labs`, `dev-platforms`, `community`, `leaderboards`
+- Returns `meta` (totalItems, returnedItems, offset, limit, timeRange, per-category counts) + `items` array
+- Uses same freshness/caching/scoring pipeline as the feed endpoint
+- Designed for both dashboard frontend and external service consumption
 
 ### Feed Modes (Multi-Algorithm Scoring)
 1. **Hot** — 50% engagement + 30% recency + 20% velocity
@@ -105,6 +115,7 @@ Scoring uses percentile-based ranking, quality ratios, source-specific baselines
 src/
 ├── app/
 │   ├── api/
+│   │   ├── discovery/items/ # Multi-category paginated discovery endpoint
 │   │   ├── feed/            # Main aggregation endpoint
 │   │   ├── settings/        # Settings CRUD
 │   │   ├── sources/         # Source management + RSS feed detection

@@ -6,6 +6,7 @@ flowchart TD
 
     subgraph API["API Layer · Next.js Route Handlers"]
         Feed["/api/feed"]
+        Discovery["/api/discovery/items<br/>multi-category paginated"]
         Settings["/api/settings"]
         Sources["/api/sources<br/>+ health data"]
         Detect["/api/sources/detect<br/>RSS auto-detection"]
@@ -47,11 +48,13 @@ flowchart TD
 
     UI --> SWR
     SWR --> Feed
+    SWR --> Discovery
     UI --> Settings
     UI --> Sources
     UI --> Detect
 
     Feed --> MemCache
+    Discovery --> MemCache
     MemCache --> DBCache
     DBCache --> Adapters
 
@@ -73,3 +76,4 @@ flowchart TD
 
     DB --> Scoring
     Scoring --> Feed
+    Scoring --> Discovery
