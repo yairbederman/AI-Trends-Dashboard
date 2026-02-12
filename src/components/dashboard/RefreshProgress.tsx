@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Check, X, Loader2 } from 'lucide-react';
 
 interface SourceEntry {
@@ -12,6 +12,7 @@ interface SourceEntry {
 
 interface RefreshStatusResponse {
     active: boolean;
+    done?: boolean;
     sources?: SourceEntry[];
     total?: number;
     completed?: number;
@@ -31,15 +32,30 @@ export function RefreshProgress({ initialSources, onComplete }: RefreshProgressP
     );
     const [percent, setPercent] = useState(0);
     const [done, setDone] = useState(false);
+    const completedRef = useRef(false);
+    const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     const poll = useCallback(async () => {
+        if (completedRef.current) return;
+
         try {
             const res = await fetch('/api/feed/refresh-status');
             if (!res.ok) return;
             const data: RefreshStatusResponse = await res.json();
 
-            if (!data.active) {
-                // Refresh finished
+            if (data.active && data.sources) {
+                setSources(data.sources);
+                if (data.percent !== undefined) setPercent(data.percent);
+
+                // Server reports refresh is done (session still alive for grace period)
+                if (data.done) {
+                    setPercent(100);
+                    setDone(true);
+                    completedRef.current = true;
+                    if (intervalRef.current) clearInterval(intervalRef.current);
+                }
+            } else if (!data.active) {
+                // Session expired or never started — mark as done
                 setSources(prev => prev.map(s =>
                     s.status === 'pending' || s.status === 'fetching'
                         ? { ...s, status: 'done' }
@@ -47,24 +63,23 @@ export function RefreshProgress({ initialSources, onComplete }: RefreshProgressP
                 ));
                 setPercent(100);
                 setDone(true);
-                return;
+                completedRef.current = true;
+                if (intervalRef.current) clearInterval(intervalRef.current);
             }
-
-            if (data.sources) setSources(data.sources);
-            if (data.percent !== undefined) setPercent(data.percent);
         } catch {
             // Silently ignore polling errors
         }
     }, []);
 
     useEffect(() => {
-        // Start polling immediately
         poll();
-        const interval = setInterval(poll, 1500);
-        return () => clearInterval(interval);
+        intervalRef.current = setInterval(poll, 1500);
+        return () => {
+            if (intervalRef.current) clearInterval(intervalRef.current);
+        };
     }, [poll]);
 
-    // When done, wait briefly then notify parent
+    // When done, wait briefly then notify parent exactly once
     useEffect(() => {
         if (!done) return;
         const timer = setTimeout(() => onComplete(), 2000);

@@ -10,15 +10,21 @@ export interface SourceRefreshEntry {
     status: 'pending' | 'fetching' | 'done' | 'failed';
 }
 
-export interface RefreshSession {
+interface RefreshSession {
     sources: Map<string, SourceRefreshEntry>;
     total: number;
     completed: number;
     startedAt: number;
+    completedAt: number | null;
 }
 
 let currentSession: RefreshSession | null = null;
 
+/**
+ * Must be called SYNCHRONOUSLY in the feed route before
+ * fire-and-forget `ensureSourcesFresh`, so the session exists
+ * by the time the client starts polling.
+ */
 export function startRefreshSession(
     sources: { id: string; name: string; icon?: string }[],
 ): void {
@@ -36,6 +42,7 @@ export function startRefreshSession(
         total: sources.length,
         completed: 0,
         startedAt: Date.now(),
+        completedAt: null,
     };
 }
 
@@ -62,12 +69,16 @@ export function markSourceFailed(sourceId: string): void {
     }
 }
 
+/** Mark session as finished. Keeps it readable for a grace period. */
 export function endRefreshSession(): void {
-    currentSession = null;
+    if (currentSession) {
+        currentSession.completedAt = Date.now();
+    }
 }
 
 export interface RefreshProgressSnapshot {
     active: true;
+    done: boolean;
     sources: SourceRefreshEntry[];
     total: number;
     completed: number;
@@ -77,8 +88,14 @@ export interface RefreshProgressSnapshot {
 export function getRefreshProgress(): RefreshProgressSnapshot | { active: false } {
     if (!currentSession) return { active: false };
 
-    // Auto-expire stale sessions (>90s)
-    if (Date.now() - currentSession.startedAt > 90_000) {
+    const now = Date.now();
+
+    // Auto-expire: 90s after start, or 10s after completion
+    if (now - currentSession.startedAt > 90_000) {
+        currentSession = null;
+        return { active: false };
+    }
+    if (currentSession.completedAt && now - currentSession.completedAt > 10_000) {
         currentSession = null;
         return { active: false };
     }
@@ -89,6 +106,7 @@ export function getRefreshProgress(): RefreshProgressSnapshot | { active: false 
 
     return {
         active: true,
+        done: currentSession.completedAt !== null,
         sources: [...currentSession.sources.values()],
         total: currentSession.total,
         completed: currentSession.completed,

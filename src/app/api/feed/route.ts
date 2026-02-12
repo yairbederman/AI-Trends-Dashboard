@@ -12,6 +12,7 @@ import { scoreItemsByFeedMode } from '@/lib/scoring';
 import { getBulkVelocities, cleanupOldSnapshots } from '@/lib/db/engagement-tracker';
 import { feedCache } from '@/lib/cache/memory-cache';
 import { ensureSourcesFresh } from '@/lib/fetching/ensure-fresh';
+import { startRefreshSession } from '@/lib/fetching/refresh-progress';
 import { db } from '@/lib/db';
 import { settings } from '@/lib/db/schema';
 import { sql } from 'drizzle-orm';
@@ -101,6 +102,8 @@ export async function GET(request: Request) {
         if (freshness.stale.length > 0 && existingItems.length > 0) {
             // Stale-while-revalidate: return existing data now, refresh in background
             staleRefreshing = true;
+            // Start session SYNCHRONOUSLY so it exists before client polls
+            startRefreshSession(refreshingSources);
             ensureSourcesFresh(targetSources, targetSourceIds, timeRange)
                 .then(() => {
                     // Invalidate memory cache so next request gets fresh data

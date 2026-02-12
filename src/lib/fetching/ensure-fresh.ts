@@ -9,7 +9,6 @@ import {
     updateSourceHealth,
 } from '@/lib/db/actions';
 import {
-    startRefreshSession,
     markSourceFetching,
     markSourceDone,
     markSourceFailed,
@@ -49,13 +48,6 @@ export async function ensureSourcesFresh(
             (pair): pair is { source: typeof pair.source; adapter: NonNullable<typeof pair.adapter> } =>
                 pair.adapter !== null
         );
-
-    // Start progress tracking session
-    startRefreshSession(adapterPairs.map(p => ({
-        id: p.source.id,
-        name: p.source.name,
-        icon: p.source.icon,
-    })));
 
     // Fetch stale sources in parallel with 10s timeout per adapter
     const results = await Promise.allSettled(

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import useSWR from 'swr';
 import { ContentItem, SourceCategory, TimeRange, FeedMode } from '@/types';
 import { ContentCard } from '@/components/dashboard/ContentCard';
@@ -59,6 +59,9 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
     const { isSourceEnabled } = useSettings();
     const [isHeaderVisible, setIsHeaderVisible] = useState(true);
     const lastScrollY = useRef(0);
+    // Prevents RefreshProgress from re-mounting after it completes
+    // (SWR keepPreviousData keeps old staleRefreshing=true during refetch)
+    const refreshDismissedRef = useRef(false);
 
     useEffect(() => {
         const handleScroll = () => {
@@ -84,6 +87,8 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
 
     // Build API URL with time range, category, and feed mode
     const apiUrl = useMemo(() => {
+        // Reset dismissal when feed params change (new request may trigger refresh)
+        refreshDismissedRef.current = false;
         const params = new URLSearchParams();
         params.set('timeRange', timeRange);
         params.set('mode', feedMode);
@@ -333,7 +338,12 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
     }, [items, sourceMap, sourceToCategory]);
 
     const hasFailures = data?.failures && data.failures.length > 0;
-    const isStaleRefreshing = data?.staleRefreshing === true;
+    const isStaleRefreshing = data?.staleRefreshing === true && !refreshDismissedRef.current;
+
+    const handleRefreshComplete = useCallback(() => {
+        refreshDismissedRef.current = true;
+        refreshData();
+    }, [refreshData]);
 
     return (
         <div className="dashboard">
@@ -372,7 +382,7 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
                 {isStaleRefreshing && data?.refreshingSources && data.refreshingSources.length > 0 && (
                     <RefreshProgress
                         initialSources={data.refreshingSources}
-                        onComplete={() => refreshData()}
+                        onComplete={handleRefreshComplete}
                     />
                 )}
                 {hasFailures && (
