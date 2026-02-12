@@ -2704,23 +2704,107 @@ a {
   flex-shrink: 0;
 }
 
-.info-banner {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.5rem 1rem;
+/* =====================
+   REFRESH PROGRESS
+   ===================== */
+
+.refresh-progress {
   margin-bottom: 1rem;
-  background: rgba(59, 130, 246, 0.08);
-  border: 1px solid var(--accent-primary, #3b82f6);
-  border-radius: 8px;
-  color: var(--accent-primary, #3b82f6);
+  padding: 0.75rem 1rem;
+  background: var(--bg-card, #1a1a2e);
+  border: 1px solid var(--border-color, #2a2a4a);
+  border-radius: 10px;
   font-size: 0.8rem;
-  opacity: 0.85;
 }
 
-.info-banner svg {
-  flex-shrink: 0;
-  animation: info-spin 1.5s linear infinite;
+.refresh-progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.refresh-progress-label {
+  color: var(--text-secondary, #a0a0b8);
+  font-weight: 500;
+}
+
+.refresh-progress-percent {
+  color: var(--accent-primary, #3b82f6);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.refresh-progress-bar {
+  height: 3px;
+  background: var(--bg-tertiary, #2a2a4a);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 0.6rem;
+}
+
+.refresh-progress-bar-fill {
+  height: 100%;
+  background: var(--accent-primary, #3b82f6);
+  border-radius: 2px;
+  transition: width 0.4s ease-out;
+}
+
+.refresh-progress-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.5rem;
+}
+
+.refresh-progress-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  line-height: 1.3;
+  color: var(--text-secondary, #a0a0b8);
+  transition: opacity 0.3s, color 0.3s;
+}
+
+.refresh-status-done {
+  color: var(--success, #22c55e);
+  opacity: 0.7;
+}
+
+.refresh-status-failed {
+  color: var(--error, #ef4444);
+  opacity: 0.8;
+}
+
+.refresh-status-fetching {
+  color: var(--accent-primary, #3b82f6);
+}
+
+.refresh-status-pending {
+  opacity: 0.5;
+}
+
+.refresh-icon-fetching {
+  animation: info-spin 1s linear infinite;
+}
+
+.refresh-icon-pending {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.3;
+}
+
+.refresh-source-icon {
+  font-size: 0.75rem;
+}
+
+.refresh-source-name {
+  white-space: nowrap;
 }
 
 @keyframes info-spin {

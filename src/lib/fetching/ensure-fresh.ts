@@ -8,6 +8,13 @@ import {
     getSourceHealth,
     updateSourceHealth,
 } from '@/lib/db/actions';
+import {
+    startRefreshSession,
+    markSourceFetching,
+    markSourceDone,
+    markSourceFailed,
+    endRefreshSession,
+} from './refresh-progress';
 
 export interface FreshnessResult {
     staleCount: number;
@@ -43,16 +50,30 @@ export async function ensureSourcesFresh(
                 pair.adapter !== null
         );
 
+    // Start progress tracking session
+    startRefreshSession(adapterPairs.map(p => ({
+        id: p.source.id,
+        name: p.source.name,
+        icon: p.source.icon,
+    })));
+
     // Fetch stale sources in parallel with 10s timeout per adapter
     const results = await Promise.allSettled(
-        adapterPairs.map(({ adapter }) =>
-            Promise.race([
+        adapterPairs.map(({ source, adapter }) => {
+            markSourceFetching(source.id);
+            return Promise.race([
                 adapter.fetch({ timeRange }),
                 new Promise<ContentItem[]>((_, reject) =>
                     setTimeout(() => reject(new Error('Adapter timeout')), 10000)
                 ),
-            ])
-        )
+            ]).then(items => {
+                markSourceDone(source.id);
+                return items;
+            }, err => {
+                markSourceFailed(source.id);
+                throw err;
+            });
+        })
     );
 
     const newItems: ContentItem[] = [];
@@ -78,6 +99,9 @@ export async function ensureSourcesFresh(
     if (successfulSourceIds.length > 0) {
         await updateSourceLastFetched(successfulSourceIds);
     }
+
+    // End progress tracking — all fetches complete
+    endRefreshSession();
 
     // Record source health (fire-and-forget)
     getSourceHealth()

@@ -91,6 +91,13 @@ export async function GET(request: Request) {
         let staleRefreshing = false;
         let failures: { source: string; error: string }[] = [];
 
+        // Build stale source name list for the client
+        const refreshingSources = freshness.stale.length > 0
+            ? targetSources
+                .filter(s => freshness.stale.includes(s.id))
+                .map(s => ({ id: s.id, name: s.name, icon: s.icon || '' }))
+            : [];
+
         if (freshness.stale.length > 0 && existingItems.length > 0) {
             // Stale-while-revalidate: return existing data now, refresh in background
             staleRefreshing = true;
@@ -126,6 +133,7 @@ export async function GET(request: Request) {
             fetchedAt: new Date().toISOString(),
             cached: freshness.stale.length === 0,
             staleRefreshing,
+            refreshingSources: staleRefreshing ? refreshingSources : undefined,
             mode: feedMode,
             failures: failures.length > 0 ? failures : undefined,
         };

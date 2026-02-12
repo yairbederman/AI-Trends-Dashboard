@@ -11,6 +11,7 @@ import { CategoryHighlights } from '@/components/dashboard/CategoryHighlights';
 import { TimeRangeDropdown } from './TimeRangeDropdown';
 import { FeedModeSelector } from './FeedModeSelector';
 import { DashboardSkeleton } from '@/components/dashboard/DashboardSkeleton';
+import { RefreshProgress } from '@/components/dashboard/RefreshProgress';
 import { useSettings } from '@/lib/contexts/SettingsContext';
 import { Settings, Sparkles, TrendingUp, AlertTriangle, Activity, Crown, Hash, Rocket } from 'lucide-react';
 import { SOURCES } from '@/lib/config/sources';
@@ -29,6 +30,7 @@ interface FeedResponse {
     fetchedAt: string;
     cached?: boolean;
     staleRefreshing?: boolean;
+    refreshingSources?: { id: string; name: string; icon: string }[];
     failures?: { source: string; error: string }[];
 }
 
@@ -367,11 +369,11 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
             </header>
 
             <main id="main-content" className="dashboard-main" role="main" aria-label="AI Trends Content">
-                {isStaleRefreshing && (
-                    <div className="info-banner" role="status" aria-live="polite">
-                        <Activity size={16} aria-hidden="true" />
-                        <span>Updating sources in background...</span>
-                    </div>
+                {isStaleRefreshing && data?.refreshingSources && data.refreshingSources.length > 0 && (
+                    <RefreshProgress
+                        initialSources={data.refreshingSources}
+                        onComplete={() => refreshData()}
+                    />
                 )}
                 {hasFailures && (
                     <div className="warning-banner" role="alert" aria-live="polite">
