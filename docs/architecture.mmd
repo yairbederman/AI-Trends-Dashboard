@@ -2,6 +2,8 @@ flowchart TD
     subgraph Client["Client Layer"]
         UI[Dashboard UI<br/>React + Framer Motion]
         SWR[SWR Cache<br/>5min revalidation]
+        Constellation[SourceConstellation<br/>SVG loading viz · skeleton + refresh modes]
+        RefreshWrapper[ConstellationRefreshWrapper<br/>polls refresh-status every 1.5s]
     end
 
     subgraph ExtConsumers["External Consumers"]
@@ -10,6 +12,7 @@ flowchart TD
 
     subgraph API["API Layer · Next.js Route Handlers"]
         Feed["/api/feed"]
+        RefreshStatus["/api/feed/refresh-status<br/>per-source progress"]
         Discovery["/api/discovery/items<br/>rate limited · search · paginated"]
         V1["/api/v1/discovery/items<br/>versioned alias"]
         Settings["/api/settings"]
@@ -57,8 +60,11 @@ flowchart TD
     Health[Source Health<br/>settings KV store]
 
     UI --> SWR
+    UI --> Constellation
     SWR --> Feed
     SWR --> Discovery
+    RefreshWrapper -->|poll| RefreshStatus
+    RefreshWrapper --> Constellation
     UI --> Settings
     UI --> Sources
     UI --> Detect

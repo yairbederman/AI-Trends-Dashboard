@@ -87,6 +87,14 @@ Scoring uses percentile-based ranking, quality ratios, source-specific baselines
 - Time range selection (1h, 12h, 24h, 48h, 7d)
 - Trend charts via Recharts
 
+### Neural Constellation Loading Visualization
+- Replaces traditional skeleton/progress bar with an animated "source constellation" SVG visualization
+- **SourceConstellation** component: radial layout where each source is an emoji node clustered by category around a central progress hub. SVG connection lines link nodes to the hub and within category clusters. Node status animations cycle through pending, fetching, done, and failed states. Phase transitions (active -> completing -> fading) animate the exit.
+- **Two modes**: `skeleton` (initial page load — simulated random fetch animation loop) and `refresh` (background refresh — real per-source status from API)
+- **ConstellationRefreshWrapper**: polling wrapper that fetches per-source refresh status from `/api/feed/refresh-status` every 1.5s and maps live source statuses into the constellation
+- Responsive layout via ResizeObserver with CSS breakpoints and `prefers-reduced-motion` support
+- Accessible: `role="status"`, `aria-label`, and `.sr-only` screen-reader text
+
 ### User Settings
 - Enable/disable sources
 - Adjust source priorities (1–5)
@@ -124,16 +132,19 @@ src/
 │   ├── api/
 │   │   ├── discovery/items/ # Multi-category paginated discovery endpoint
 │   │   ├── v1/discovery/items/ # Versioned alias (re-exports canonical route)
-│   │   ├── feed/            # Main aggregation endpoint
+│   │   ├── feed/            # Main aggregation endpoint + /refresh-status polling
 │   │   ├── settings/        # Settings CRUD
 │   │   ├── sources/         # Source management + RSS feed detection
 │   │   └── youtube/         # YouTube channel resolution
 │   ├── settings/            # Settings page
 │   ├── layout.tsx           # Root layout
 │   ├── page.tsx             # Dashboard home
-│   └── globals.css          # Global styles + design tokens
+│   └── globals.css          # Global styles + design tokens + constellation animations
 ├── components/
 │   ├── dashboard/           # Dashboard-specific components
+│   │   ├── SourceConstellation.tsx        # SVG constellation loading visualization
+│   │   ├── ConstellationRefreshWrapper.tsx # Polling wrapper for live refresh status
+│   │   └── ...              # ContentCard, TrendCharts, InsightCharts, etc.
 │   └── ui/                  # Reusable UI (shadcn/ui-based)
 ├── lib/
 │   ├── adapters/            # Source adapters (RSS, HN, Reddit, YouTube, GitHub, HF, Anthropic)

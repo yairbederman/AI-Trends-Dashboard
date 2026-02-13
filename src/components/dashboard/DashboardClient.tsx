@@ -10,8 +10,8 @@ import { InsightCharts } from '@/components/dashboard/InsightCharts';
 import { CategoryHighlights } from '@/components/dashboard/CategoryHighlights';
 import { TimeRangeDropdown } from './TimeRangeDropdown';
 import { FeedModeSelector } from './FeedModeSelector';
-import { DashboardSkeleton } from '@/components/dashboard/DashboardSkeleton';
-import { RefreshProgress } from '@/components/dashboard/RefreshProgress';
+import { SourceConstellation } from '@/components/dashboard/SourceConstellation';
+import { ConstellationRefreshWrapper } from '@/components/dashboard/ConstellationRefreshWrapper';
 import { useSettings } from '@/lib/contexts/SettingsContext';
 import { Settings, Sparkles, TrendingUp, AlertTriangle, Activity, Crown, Hash, Rocket } from 'lucide-react';
 import { SOURCES } from '@/lib/config/sources';
@@ -383,7 +383,7 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
 
             <main id="main-content" className="dashboard-main" role="main" aria-label="AI Trends Content">
                 {isStaleRefreshing && data?.refreshingSources && data.refreshingSources.length > 0 && (
-                    <RefreshProgress
+                    <ConstellationRefreshWrapper
                         initialSources={data.refreshingSources}
                         onComplete={handleRefreshComplete}
                     />
@@ -404,7 +404,18 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
                         </button>
                     </div>
                 ) : isLoading ? (
-                    <DashboardSkeleton />
+                    <SourceConstellation
+                        sources={SOURCES.filter(s => s.enabled).map(s => ({
+                            id: s.id,
+                            name: s.name,
+                            icon: s.icon || '?',
+                            category: s.category,
+                            status: 'pending' as const,
+                        }))}
+                        percent={0}
+                        isDone={false}
+                        mode="skeleton"
+                    />
                 ) : items.length === 0 ? (
                     <div className="empty-state" role="status">
                         <div className="empty-state-icon">

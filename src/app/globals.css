@@ -3441,3 +3441,279 @@ select:focus-visible,
     font-size: 0.8125rem;
   }
 }
+
+/* =====================
+   NEURAL CONSTELLATION
+   ===================== */
+
+.constellation-container {
+  position: relative;
+  width: 100%;
+  max-width: 540px;
+  height: 420px;
+  margin: 1rem auto 2rem;
+  overflow: hidden;
+}
+
+.constellation-svg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* --- Connection Lines --- */
+
+.constellation-line,
+.constellation-cluster-line {
+  fill: none;
+  transition: stroke 0.4s ease, stroke-width 0.3s ease, opacity 0.4s ease;
+}
+
+.constellation-line-pending {
+  stroke: rgba(255, 255, 255, 0.05);
+  stroke-width: 1;
+  stroke-dasharray: 4 8;
+}
+
+.constellation-line-fetching {
+  stroke: rgba(20, 184, 166, 0.25);
+  stroke-width: 1.5;
+  stroke-dasharray: 8 4;
+  animation: constellation-dash-flow 1.2s linear infinite;
+}
+
+.constellation-line-done {
+  stroke: rgba(20, 184, 166, 0.35);
+  stroke-width: 1.5;
+  stroke-dasharray: none;
+}
+
+.constellation-cluster-line.constellation-line-pending {
+  stroke: rgba(255, 255, 255, 0.03);
+  stroke-width: 0.5;
+}
+
+.constellation-cluster-line.constellation-line-fetching {
+  stroke: rgba(20, 184, 166, 0.15);
+  stroke-width: 1;
+}
+
+.constellation-cluster-line.constellation-line-done {
+  stroke: rgba(20, 184, 166, 0.2);
+  stroke-width: 1;
+}
+
+@keyframes constellation-dash-flow {
+  to { stroke-dashoffset: -24; }
+}
+
+/* --- Central Hub --- */
+
+.constellation-hub-glow {
+  fill: rgba(20, 184, 166, 0.06);
+}
+
+.constellation-hub-track {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.08);
+  stroke-width: 3;
+}
+
+.constellation-hub-progress {
+  fill: none;
+  stroke: var(--accent-primary, #14b8a6);
+  stroke-width: 3;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.5s ease-out;
+}
+
+.constellation-hub-text {
+  fill: var(--text-secondary, #a0a0a8);
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  font-family: inherit;
+}
+
+/* --- Source Nodes --- */
+
+.constellation-node {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 50%;
+  z-index: 2;
+  transition: opacity 0.4s ease, transform 0.3s ease;
+}
+
+.constellation-node-icon {
+  font-size: 1.4rem;
+  line-height: 1;
+  position: relative;
+  z-index: 2;
+}
+
+.constellation-node-ring {
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 1.5px solid transparent;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  pointer-events: none;
+}
+
+/* Pending: dim, slow pulse */
+.constellation-node-pending {
+  opacity: 0.2;
+  animation: constellation-pulse-slow 3s ease-in-out infinite;
+}
+
+/* Fetching: brighter, faster pulse with glow ring */
+.constellation-node-fetching {
+  opacity: 0.75;
+  animation: constellation-pulse-fast 1s ease-in-out infinite;
+}
+
+.constellation-node-fetching .constellation-node-ring {
+  border-color: var(--accent-primary, #14b8a6);
+  box-shadow: 0 0 10px rgba(20, 184, 166, 0.4);
+}
+
+/* Done: full brightness, pop */
+.constellation-node-done {
+  opacity: 1;
+  animation: constellation-pop 0.4s ease-out both;
+}
+
+.constellation-node-done .constellation-node-ring {
+  border-color: rgba(20, 184, 166, 0.3);
+  box-shadow: 0 0 8px rgba(20, 184, 166, 0.2);
+}
+
+/* Failed: red tint, shake */
+.constellation-node-failed {
+  opacity: 0.7;
+  animation: constellation-shake 0.4s ease-out;
+}
+
+.constellation-node-failed .constellation-node-ring {
+  border-color: var(--error, #ef4444);
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
+}
+
+/* --- Node Keyframes --- */
+
+@keyframes constellation-pulse-slow {
+  0%, 100% { opacity: 0.2; transform: translate(-50%, -50%) scale(1); }
+  50% { opacity: 0.35; transform: translate(-50%, -50%) scale(1.05); }
+}
+
+@keyframes constellation-pulse-fast {
+  0%, 100% { opacity: 0.65; transform: translate(-50%, -50%) scale(1); }
+  50% { opacity: 0.9; transform: translate(-50%, -50%) scale(1.1); }
+}
+
+@keyframes constellation-pop {
+  0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0.5; }
+  60% { transform: translate(-50%, -50%) scale(1.15); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+}
+
+@keyframes constellation-shake {
+  0%, 100% { transform: translate(-50%, -50%); }
+  20% { transform: translate(calc(-50% + 3px), -50%); }
+  40% { transform: translate(calc(-50% - 3px), -50%); }
+  60% { transform: translate(calc(-50% + 2px), -50%); }
+  80% { transform: translate(calc(-50% - 1px), -50%); }
+}
+
+/* --- Phase Transitions --- */
+
+.constellation-phase-completing .constellation-line {
+  stroke: rgba(20, 184, 166, 0.5) !important;
+  stroke-dasharray: none !important;
+  transition: stroke 0.3s ease;
+}
+
+.constellation-phase-completing .constellation-hub-glow {
+  fill: rgba(20, 184, 166, 0.12);
+  transition: fill 0.5s ease;
+}
+
+.constellation-phase-fading {
+  opacity: 0;
+  transform: scale(0.96);
+  filter: blur(4px);
+  transition: opacity 0.6s ease, transform 0.6s ease, filter 0.6s ease;
+}
+
+/* --- Responsive --- */
+
+@media (max-width: 768px) {
+  .constellation-container {
+    max-width: 100%;
+    height: 360px;
+  }
+
+  .constellation-node-icon {
+    font-size: 1.15rem;
+  }
+
+  .constellation-node {
+    width: 1.8rem;
+    height: 1.8rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .constellation-container {
+    max-width: 100%;
+    height: 320px;
+  }
+
+  .constellation-node-icon {
+    font-size: 0.95rem;
+  }
+
+  .constellation-node {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+
+  .constellation-line,
+  .constellation-cluster-line {
+    stroke-width: 0.75 !important;
+  }
+}
+
+/* --- Reduced Motion --- */
+
+@media (prefers-reduced-motion: reduce) {
+  .constellation-node-pending,
+  .constellation-node-fetching {
+    animation: none;
+  }
+
+  .constellation-node-done {
+    animation: none;
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+
+  .constellation-node-failed {
+    animation: none;
+  }
+
+  .constellation-line-fetching {
+    animation: none;
+  }
+
+  .constellation-phase-fading {
+    filter: none;
+    transition: opacity 0.4s ease;
+  }
+}
