@@ -235,6 +235,7 @@ function getTimeRangeCutoff(timeRange: TimeRange): Date {
 export async function getSourceFreshness(
     sourceIds: string[]
 ): Promise<{ stale: string[]; fresh: string[] }> {
+    if (sourceIds.length === 0) return { stale: [], fresh: [] };
     try {
         const dbSources = await db
             .select({ id: sources.id, lastFetchedAt: sources.lastFetchedAt })

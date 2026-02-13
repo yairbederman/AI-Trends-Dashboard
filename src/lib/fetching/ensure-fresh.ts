@@ -119,12 +119,13 @@ export async function ensureSourcesFresh(
                         lastError: null,
                     };
                 } else if (result.status === 'fulfilled') {
+                    // 0 items returned — successful fetch, just nothing new
                     currentHealth[sourceId] = {
                         lastFetchAt: now,
-                        lastSuccessAt: prev.lastSuccessAt,
-                        lastItemCount: prev.lastItemCount,
-                        consecutiveFailures: prev.consecutiveFailures + 1,
-                        lastError: 'Returned 0 items',
+                        lastSuccessAt: now,
+                        lastItemCount: 0,
+                        consecutiveFailures: 0,
+                        lastError: null,
                     };
                 } else {
                     currentHealth[sourceId] = {

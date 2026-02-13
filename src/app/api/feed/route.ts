@@ -14,8 +14,8 @@ import { feedCache } from '@/lib/cache/memory-cache';
 import { ensureSourcesFresh } from '@/lib/fetching/ensure-fresh';
 import { startRefreshSession } from '@/lib/fetching/refresh-progress';
 import { db } from '@/lib/db';
-import { settings } from '@/lib/db/schema';
-import { sql } from 'drizzle-orm';
+import { settings, contentItems } from '@/lib/db/schema';
+import { sql, inArray } from 'drizzle-orm';
 
 // Run cleanup once per day max
 const CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
@@ -53,7 +53,26 @@ export async function GET(request: Request) {
     const category = searchParams.get('category');
     const sourceId = searchParams.get('source');
     const queryTimeRange = searchParams.get('timeRange') as TimeRange | null;
-    const feedMode = (searchParams.get('mode') as FeedMode) || 'hot';
+    const rawMode = searchParams.get('mode');
+
+    // Validate timeRange parameter
+    const VALID_TIME_RANGES: TimeRange[] = ['1h', '12h', '24h', '48h', '7d'];
+    if (queryTimeRange && !VALID_TIME_RANGES.includes(queryTimeRange)) {
+        return NextResponse.json(
+            { success: false, error: `Invalid timeRange: ${queryTimeRange}`, validValues: VALID_TIME_RANGES },
+            { status: 400 }
+        );
+    }
+
+    // Validate mode parameter
+    const VALID_FEED_MODES: FeedMode[] = ['hot', 'rising', 'top'];
+    if (rawMode && !VALID_FEED_MODES.includes(rawMode as FeedMode)) {
+        return NextResponse.json(
+            { success: false, error: `Invalid mode: ${rawMode}`, validValues: VALID_FEED_MODES },
+            { status: 400 }
+        );
+    }
+    const feedMode: FeedMode = (rawMode as FeedMode) || 'hot';
 
     try {
         // Fetch config and source list in parallel
@@ -76,6 +95,18 @@ export async function GET(request: Request) {
 
         const targetSourceIds = targetSources.map(s => s.id);
 
+        // Guard: no matching sources → return empty result (avoids SQL crash with empty inArray)
+        if (targetSourceIds.length === 0) {
+            return NextResponse.json({
+                success: true,
+                count: 0,
+                items: [],
+                fetchedAt: new Date().toISOString(),
+                cached: true,
+                mode: feedMode,
+            });
+        }
+
         // Check in-memory cache first
         const memoryCacheKey = `feed:${targetSourceIds.sort().join(',')}:${timeRange}:${feedMode}`;
         const memoryCached = feedCache.get(memoryCacheKey);
@@ -83,10 +114,16 @@ export async function GET(request: Request) {
             return NextResponse.json(memoryCached);
         }
 
-        // 2. Query existing DB content and check freshness in parallel
-        const [existingItems, freshness] = await Promise.all([
+        // 2. Query existing DB content, check freshness, and check if ANY content exists
+        //    (even outside time range) to distinguish returning users from first-ever visits
+        const [existingItems, freshness, hasAnyContent] = await Promise.all([
             getCachedContentBySourceIds(targetSourceIds, timeRange),
             getSourceFreshness(targetSourceIds),
+            db.select({ id: contentItems.id })
+                .from(contentItems)
+                .where(inArray(contentItems.sourceId, targetSourceIds))
+                .limit(1)
+                .then(rows => rows.length > 0),
         ]);
 
         let staleRefreshing = false;
@@ -99,7 +136,7 @@ export async function GET(request: Request) {
                 .map(s => ({ id: s.id, name: s.name, icon: s.icon || '' }))
             : [];
 
-        if (freshness.stale.length > 0 && existingItems.length > 0) {
+        if (freshness.stale.length > 0 && (existingItems.length > 0 || hasAnyContent)) {
             // Stale-while-revalidate: return existing data now, refresh in background
             staleRefreshing = true;
             // Start session SYNCHRONOUSLY so it exists before client polls
@@ -116,8 +153,8 @@ export async function GET(request: Request) {
             failures = result.failures;
         }
 
-        // 3. Use existing items or re-query if we did a blocking fetch
-        const allItems = (freshness.stale.length > 0 && existingItems.length === 0)
+        // 3. Use existing items, or re-query after a blocking fetch (not SWR)
+        const allItems = (!staleRefreshing && freshness.stale.length > 0 && existingItems.length === 0)
             ? await getCachedContentBySourceIds(targetSourceIds, timeRange)
             : existingItems;
 
