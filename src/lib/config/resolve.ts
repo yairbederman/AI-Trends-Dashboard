@@ -7,6 +7,7 @@
 
 import {
     getSetting,
+    getAllSettings,
     getAllSourcePriorities,
     getBoostKeywords,
     getYouTubeChannels,
@@ -71,27 +72,38 @@ export async function getEffectiveConfig(): Promise<EffectiveConfig> {
     const cached = settingsCache.get(CONFIG_CACHE_KEY) as EffectiveConfig | undefined;
     if (cached) return cached;
 
+    // Only 2 parallel queries instead of 9 — critical with 2s+ latency to Seoul DB.
+    // getAllSettings() bulk-loads all settings rows and populates the per-key cache,
+    // so subsequent getSetting() calls hit the in-memory cache.
+    const [, dbSources] = await Promise.all([
+        getAllSettings(),
+        db.select({ id: sources.id, enabled: sources.enabled, priority: sources.priority }).from(sources),
+    ]);
+
+    // These now all hit the in-memory cache (populated by getAllSettings above)
     const [
         theme,
         timeRange,
-        priorities,
         boostKeywords,
         youtubeChannels,
         customSubreddits,
         customSources,
         deletedSourceIds,
-        dbSources,
     ] = await Promise.all([
         getSetting('theme', 'dark'),
         getSetting<TimeRange>('timeRange', '24h'),
-        getAllSourcePriorities(),
         getBoostKeywords(),
         getYouTubeChannels(),
         getCustomSubreddits(),
         getCustomSources(),
         getDeletedSourceIds(),
-        db.select({ id: sources.id, enabled: sources.enabled }).from(sources),
     ]);
+
+    // Build priorities from dbSources (already fetched) — no extra query
+    const priorities = new Map<string, number>();
+    for (const row of dbSources) {
+        priorities.set(row.id, row.priority ?? 3);
+    }
 
     // Compute enabled IDs in-memory from already-fetched data (no extra queries)
     const enabledSourceIds = computeEnabledSourceIds(dbSources, customSources, deletedSourceIds);

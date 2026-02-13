@@ -37,6 +37,42 @@ export async function getSetting<T = string>(key: string, defaultValue: T): Prom
     }
 }
 
+/**
+ * Fetch ALL settings in a single query and populate cache.
+ * Returns a Map of key → parsed value.
+ * This avoids N individual queries when loading config (critical with high-latency DB).
+ */
+export async function getAllSettings(): Promise<Map<string, unknown>> {
+    const cacheKey = 'allSettings:loaded';
+    if (settingsCache.get(cacheKey)) {
+        // Individual keys already cached from a previous bulk load
+        return new Map(); // Callers should use getSetting() for cached values
+    }
+
+    try {
+        const rows = await db.select().from(settings);
+        const map = new Map<string, unknown>();
+
+        for (const row of rows) {
+            let value: unknown;
+            try {
+                value = JSON.parse(row.value);
+            } catch {
+                value = row.value;
+            }
+            map.set(row.key, value);
+            // Populate individual caches so getSetting() hits cache
+            settingsCache.set(`setting:${row.key}`, value);
+        }
+
+        settingsCache.set(cacheKey, true);
+        return map;
+    } catch (error) {
+        console.error('Failed to bulk-load settings:', error);
+        return new Map();
+    }
+}
+
 export async function updateSetting(key: string, value: unknown): Promise<void> {
     try {
         const stringValue = typeof value === 'string' ? value : JSON.stringify(value);

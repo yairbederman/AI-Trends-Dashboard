@@ -100,5 +100,5 @@ export class MemoryCache<T = unknown> {
 // Singleton instances
 // Feed cache: 5min TTL, max 30 entries (sourceIds x timeRange x feedMode combos)
 export const feedCache = new MemoryCache(5 * 60 * 1000, 30);
-// Settings cache: 30s TTL, max 20 entries (small payloads, low permutation count)
-export const settingsCache = new MemoryCache(30 * 1000, 20);
+// Settings cache: 5min TTL, max 20 entries (critical with high-latency remote DB)
+export const settingsCache = new MemoryCache(5 * 60 * 1000, 20);

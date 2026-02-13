@@ -14,11 +14,14 @@ import { feedCache } from '@/lib/cache/memory-cache';
 import { ensureSourcesFresh } from '@/lib/fetching/ensure-fresh';
 import { startRefreshSession } from '@/lib/fetching/refresh-progress';
 import { db } from '@/lib/db';
-import { settings } from '@/lib/db/schema';
-import { sql } from 'drizzle-orm';
+import { settings, contentItems } from '@/lib/db/schema';
+import { sql, inArray } from 'drizzle-orm';
 
 // Run cleanup once per day max
 const CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
+
+// Module-level lock: prevent duplicate background refreshes for the same source set
+let activeRefreshKey: string | null = null;
 
 async function maybeRunCleanup() {
     try {
@@ -76,12 +79,14 @@ export async function GET(request: Request) {
     const feedMode: FeedMode = (rawMode as FeedMode) || 'hot';
 
     try {
+        const t0 = Date.now();
         // Fetch config and source list in parallel
         const [config, sourceList] = await Promise.all([
             getEffectiveConfig(),
             getEffectiveSourceList(),
         ]);
         const timeRange = queryTimeRange || config.timeRange;
+        console.log(`[FEED TIMING] config+sourceList: ${Date.now() - t0}ms`);
 
         // 1. Determine target source IDs (including custom sources)
         let targetSources = sourceList.enabled;
@@ -115,13 +120,20 @@ export async function GET(request: Request) {
             return NextResponse.json(memoryCached);
         }
 
-        // 2. Query existing DB content and check freshness
-        //    Limit to 300 items (plenty for dashboard display) to keep queries fast on serverless
-        const [existingItems, freshness] = await Promise.all([
+        // 2. Query existing DB content, check freshness, and check if ANY content exists
+        //    (even outside time range) to distinguish returning users from first-ever visits
+        const t1 = Date.now();
+        const [existingItems, freshness, hasAnyContent] = await Promise.all([
             getCachedContentBySourceIds(targetSourceIds, timeRange, 300),
             getSourceFreshness(targetSourceIds),
+            db.select({ id: contentItems.id })
+                .from(contentItems)
+                .where(inArray(contentItems.sourceId, targetSourceIds))
+                .limit(1)
+                .then(rows => rows.length > 0),
         ]);
-        const hasAnyContent = existingItems.length > 0;
+
+        console.log(`[FEED TIMING] DB queries (items=${existingItems.length}, hasAny=${hasAnyContent}, stale=${freshness.stale.length}): ${Date.now() - t1}ms`);
 
         let staleRefreshing = false;
         let failures: { source: string; error: string }[] = [];
@@ -133,17 +145,21 @@ export async function GET(request: Request) {
                 .map(s => ({ id: s.id, name: s.name, icon: s.icon || '' }))
             : [];
 
-        if (freshness.stale.length > 0 && hasAnyContent) {
+        if (freshness.stale.length > 0 && (existingItems.length > 0 || hasAnyContent)) {
             // Stale-while-revalidate: return existing data now, refresh in background
             staleRefreshing = true;
-            // Start session SYNCHRONOUSLY so it exists before client polls
-            startRefreshSession(refreshingSources);
-            ensureSourcesFresh(targetSources, targetSourceIds, timeRange)
-                .then(() => {
-                    // Invalidate memory cache so next request gets fresh data
-                    feedCache.clear();
-                })
-                .catch(err => console.error('Background source refresh failed:', err));
+            // Only start ONE background refresh per source set (lock prevents duplicates)
+            const refreshKey = targetSourceIds.sort().join(',');
+            if (activeRefreshKey !== refreshKey) {
+                activeRefreshKey = refreshKey;
+                startRefreshSession(refreshingSources);
+                ensureSourcesFresh(targetSources, targetSourceIds, timeRange)
+                    .then(() => {
+                        feedCache.clear();
+                    })
+                    .catch(err => console.error('Background source refresh failed:', err))
+                    .finally(() => { activeRefreshKey = null; });
+            }
         } else if (freshness.stale.length > 0) {
             // No existing content (first-ever visit) — must block on fetch
             const result = await ensureSourcesFresh(targetSources, targetSourceIds, timeRange);
@@ -151,11 +167,14 @@ export async function GET(request: Request) {
         }
 
         // 3. Use existing items, or re-query after a blocking fetch (not SWR)
+        const t2 = Date.now();
         const allItems = (!staleRefreshing && freshness.stale.length > 0 && existingItems.length === 0)
             ? await getCachedContentBySourceIds(targetSourceIds, timeRange, 300)
             : existingItems;
+        console.log(`[FEED TIMING] allItems (${allItems.length}): ${Date.now() - t2}ms`);
 
         // Get velocities for Hot/Rising modes (with 3s timeout to avoid serverless 504)
+        const t3 = Date.now();
         let velocities = new Map<string, number>();
         if (feedMode === 'hot' || feedMode === 'rising') {
             try {
@@ -166,10 +185,10 @@ export async function GET(request: Request) {
                     ),
                 ]);
             } catch {
-                // Timeout or error — fall back to engagement-only scoring
                 console.warn('Velocity query timed out, falling back to engagement scoring');
             }
         }
+        console.log(`[FEED TIMING] velocities: ${Date.now() - t3}ms`);
 
         // Score and sort based on feed mode
         const scoredItems = scoreItemsByFeedMode(allItems, velocities, feedMode);
@@ -186,10 +205,9 @@ export async function GET(request: Request) {
             failures: failures.length > 0 ? failures : undefined,
         };
 
-        // Store in memory cache (skip if background refresh is in progress)
-        if (!staleRefreshing) {
-            feedCache.set(memoryCacheKey, response);
-        }
+        // Always cache — SWR responses are still valid for subsequent requests
+        feedCache.set(memoryCacheKey, response);
+        console.log(`[FEED TIMING] total: ${Date.now() - t0}ms | stale=${freshness.stale.length} swr=${staleRefreshing}`);
 
         return NextResponse.json(response);
     } catch (error) {

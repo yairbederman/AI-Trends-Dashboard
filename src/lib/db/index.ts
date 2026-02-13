@@ -18,7 +18,7 @@ function getClient() {
         clientInstance = postgres(connectionString, {
             onnotice: () => { }, // Suppress notices
             prepare: false, // Required for Supabase transaction pooler (port 6543)
-            max: 1,          // Single connection for serverless — each invocation is short-lived
+            max: 5,          // Allow parallel queries (important with high-latency remote DB)
             idle_timeout: 20,
             max_lifetime: 300,
             connect_timeout: 5,
