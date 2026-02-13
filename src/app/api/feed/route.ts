@@ -14,8 +14,8 @@ import { feedCache } from '@/lib/cache/memory-cache';
 import { ensureSourcesFresh } from '@/lib/fetching/ensure-fresh';
 import { startRefreshSession } from '@/lib/fetching/refresh-progress';
 import { db } from '@/lib/db';
-import { settings, contentItems } from '@/lib/db/schema';
-import { sql, inArray } from 'drizzle-orm';
+import { settings } from '@/lib/db/schema';
+import { sql } from 'drizzle-orm';
 
 // Run cleanup once per day max
 const CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
@@ -115,17 +115,13 @@ export async function GET(request: Request) {
             return NextResponse.json(memoryCached);
         }
 
-        // 2. Query existing DB content, check freshness, and check if ANY content exists
-        //    (even outside time range) to distinguish returning users from first-ever visits
-        const [existingItems, freshness, hasAnyContent] = await Promise.all([
-            getCachedContentBySourceIds(targetSourceIds, timeRange),
+        // 2. Query existing DB content and check freshness
+        //    Limit to 300 items (plenty for dashboard display) to keep queries fast on serverless
+        const [existingItems, freshness] = await Promise.all([
+            getCachedContentBySourceIds(targetSourceIds, timeRange, 300),
             getSourceFreshness(targetSourceIds),
-            db.select({ id: contentItems.id })
-                .from(contentItems)
-                .where(inArray(contentItems.sourceId, targetSourceIds))
-                .limit(1)
-                .then(rows => rows.length > 0),
         ]);
+        const hasAnyContent = existingItems.length > 0;
 
         let staleRefreshing = false;
         let failures: { source: string; error: string }[] = [];
@@ -137,7 +133,7 @@ export async function GET(request: Request) {
                 .map(s => ({ id: s.id, name: s.name, icon: s.icon || '' }))
             : [];
 
-        if (freshness.stale.length > 0 && (existingItems.length > 0 || hasAnyContent)) {
+        if (freshness.stale.length > 0 && hasAnyContent) {
             // Stale-while-revalidate: return existing data now, refresh in background
             staleRefreshing = true;
             // Start session SYNCHRONOUSLY so it exists before client polls
@@ -156,13 +152,24 @@ export async function GET(request: Request) {
 
         // 3. Use existing items, or re-query after a blocking fetch (not SWR)
         const allItems = (!staleRefreshing && freshness.stale.length > 0 && existingItems.length === 0)
-            ? await getCachedContentBySourceIds(targetSourceIds, timeRange)
+            ? await getCachedContentBySourceIds(targetSourceIds, timeRange, 300)
             : existingItems;
 
-        // Get velocities for Hot/Rising modes
-        const velocities = (feedMode === 'hot' || feedMode === 'rising')
-            ? await getBulkVelocities(allItems.map(i => i.id))
-            : new Map<string, number>();
+        // Get velocities for Hot/Rising modes (with 3s timeout to avoid serverless 504)
+        let velocities = new Map<string, number>();
+        if (feedMode === 'hot' || feedMode === 'rising') {
+            try {
+                velocities = await Promise.race([
+                    getBulkVelocities(allItems.map(i => i.id)),
+                    new Promise<Map<string, number>>((_, reject) =>
+                        setTimeout(() => reject(new Error('Velocity query timeout')), 3000)
+                    ),
+                ]);
+            } catch {
+                // Timeout or error — fall back to engagement-only scoring
+                console.warn('Velocity query timed out, falling back to engagement scoring');
+            }
+        }
 
         // Score and sort based on feed mode
         const scoredItems = scoreItemsByFeedMode(allItems, velocities, feedMode);
