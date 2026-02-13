@@ -127,6 +127,7 @@ function HighlightTooltip({ item }: { item: HighlightItem }) {
 
 function LaneCard({ item, isTouchDevice }: { item: HighlightItem; isTouchDevice: boolean }) {
     const [mobileOpen, setMobileOpen] = useState(false);
+    const [selected, setSelected] = useState(false);
 
     // Close tooltip on outside touch
     useEffect(() => {
@@ -135,6 +136,7 @@ function LaneCard({ item, isTouchDevice }: { item: HighlightItem; isTouchDevice:
             // Don't close if touching the tooltip itself
             if ((e.target as Element)?.closest?.('.tooltip-content')) return;
             setMobileOpen(false);
+            setSelected(false);
         };
         document.addEventListener('touchstart', close);
         return () => document.removeEventListener('touchstart', close);
@@ -150,7 +152,7 @@ function LaneCard({ item, isTouchDevice }: { item: HighlightItem; isTouchDevice:
                     href={item.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="lane-card"
+                    className={`lane-card${selected ? ' selected' : ''}`}
                     title={item.title}
                 >
                     <div
@@ -182,10 +184,17 @@ function LaneCard({ item, isTouchDevice }: { item: HighlightItem; isTouchDevice:
                             role="button"
                             tabIndex={0}
                             aria-label="Show details"
+                            onTouchEnd={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setMobileOpen(prev => !prev);
+                                setSelected(true);
+                            }}
                             onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
                                 setMobileOpen(prev => !prev);
+                                setSelected(true);
                             }}
                         >
                             <Info size={16} />
