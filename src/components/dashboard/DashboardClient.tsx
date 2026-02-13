@@ -13,6 +13,7 @@ import { FeedModeSelector } from './FeedModeSelector';
 import { SourceConstellation } from '@/components/dashboard/SourceConstellation';
 import { ConstellationRefreshWrapper } from '@/components/dashboard/ConstellationRefreshWrapper';
 import { useSettings } from '@/lib/contexts/SettingsContext';
+import { TooltipProvider } from '@/components/ui/Tooltip';
 import { Settings, Sparkles, TrendingUp, AlertTriangle, Activity, Crown, Hash, Rocket } from 'lucide-react';
 import { SOURCES } from '@/lib/config/sources';
 import { CATEGORY_LABELS } from '@/types';
@@ -58,10 +59,16 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
     const [feedMode, setFeedMode] = useState<FeedMode>('hot');
     const { isSourceEnabled } = useSettings();
     const [isHeaderVisible, setIsHeaderVisible] = useState(true);
+    const [skeletonDone, setSkeletonDone] = useState(initialItems.length > 0);
     const lastScrollY = useRef(0);
-    // Prevents RefreshProgress from re-mounting after it completes
+    // Prevents refresh constellation from re-mounting after it completes
     // (SWR keepPreviousData keeps old staleRefreshing=true during refetch)
     const refreshDismissedRef = useRef(false);
+    const [isTouchDevice, setIsTouchDevice] = useState(false);
+
+    useEffect(() => {
+        setIsTouchDevice('ontouchstart' in window || navigator.maxTouchPoints > 0);
+    }, []);
 
     useEffect(() => {
         const handleScroll = () => {
@@ -85,23 +92,20 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
-    // Build API URL with time range, category, and feed mode
+    // Build API URL with time range and feed mode (category filtering is client-side)
     const apiUrl = useMemo(() => {
         const params = new URLSearchParams();
         params.set('timeRange', timeRange);
         params.set('mode', feedMode);
-        if (activeCategory !== 'all' && activeCategory !== 'dashboard') {
-            params.set('category', activeCategory);
-        }
         return `/api/feed?${params.toString()}`;
-    }, [timeRange, feedMode, activeCategory]);
+    }, [timeRange, feedMode]);
 
     // Reset dismissal when feed params change (new request may trigger refresh)
     useEffect(() => {
         refreshDismissedRef.current = false;
-    }, [timeRange, feedMode, activeCategory]);
+    }, [timeRange, feedMode]);
 
-    const { data, error, isLoading, mutate: refreshData } = useSWR<FeedResponse>(
+    const { data, error, isLoading, isValidating, mutate: refreshData } = useSWR<FeedResponse>(
         apiUrl,
         fetcher,
         {
@@ -118,17 +122,22 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
         }
     );
 
-    // Filter items based on enabled sources (sorting is done by API based on feedMode)
-    const allItems = data?.items || [];
-    const items = useMemo(() => {
-        return allItems.filter((item) => isSourceEnabled(item.sourceId));
-    }, [allItems, isSourceEnabled]);
-
     const sourceToCategory = useMemo(() => {
         const map: Record<string, string> = {};
         SOURCES.forEach(s => { map[s.id] = s.category; });
         return map;
     }, []);
+
+    // Filter items based on enabled sources AND active category client-side
+    // This gives instant feedback on tab switch while SWR fetches the new data
+    const allItems = data?.items || [];
+    const items = useMemo(() => {
+        let filtered = allItems.filter((item) => isSourceEnabled(item.sourceId));
+        if (activeCategory !== 'all' && activeCategory !== 'dashboard') {
+            filtered = filtered.filter(item => sourceToCategory[item.sourceId] === activeCategory);
+        }
+        return filtered;
+    }, [allItems, isSourceEnabled, activeCategory, sourceToCategory]);
 
     const categoryCounts = useMemo(() => {
         const counts: Record<string, number> = {};
@@ -341,7 +350,7 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
     }, [items, sourceMap, sourceToCategory]);
 
     const hasFailures = data?.failures && data.failures.length > 0;
-    const isStaleRefreshing = data?.staleRefreshing === true && !refreshDismissedRef.current;
+    const isStaleRefreshing = data?.staleRefreshing === true && !refreshDismissedRef.current && !isValidating;
 
     const handleRefreshComplete = useCallback(() => {
         refreshDismissedRef.current = true;
@@ -403,7 +412,7 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
                             Try Again
                         </button>
                     </div>
-                ) : isLoading ? (
+                ) : (items.length === 0 && isValidating && !skeletonDone) ? (
                     <SourceConstellation
                         sources={SOURCES.filter(s => s.enabled).map(s => ({
                             id: s.id,
@@ -415,6 +424,21 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
                         percent={0}
                         isDone={false}
                         mode="skeleton"
+                        onTransitionComplete={() => setSkeletonDone(true)}
+                    />
+                ) : (items.length > 0 && !skeletonDone) ? (
+                    <SourceConstellation
+                        sources={SOURCES.filter(s => s.enabled).map(s => ({
+                            id: s.id,
+                            name: s.name,
+                            icon: s.icon || '?',
+                            category: s.category,
+                            status: 'pending' as const,
+                        }))}
+                        percent={0}
+                        isDone={true}
+                        mode="skeleton"
+                        onTransitionComplete={() => setSkeletonDone(true)}
                     />
                 ) : items.length === 0 ? (
                     <div className="empty-state" role="status">
@@ -465,11 +489,13 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
                                 <TrendCharts items={items} />
                             </>
                         ) : (
-                            <div className="content-grid" role="feed" aria-label="AI content feed">
-                                {items.map((item, index) => (
-                                    <ContentCard key={item.id} item={item} style={{ '--card-delay': `${Math.min(index, 12) * 60}ms` } as any} />
-                                ))}
-                            </div>
+                            <TooltipProvider delayDuration={300}>
+                                <div className="content-grid" role="feed" aria-label="AI content feed">
+                                    {items.map((item, index) => (
+                                        <ContentCard key={item.id} item={item} isTouchDevice={isTouchDevice} style={{ '--card-delay': `${Math.min(index, 12) * 60}ms` } as any} />
+                                    ))}
+                                </div>
+                            </TooltipProvider>
                         )}
                     </>
                 )}

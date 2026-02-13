@@ -3434,6 +3434,40 @@ select:focus-visible,
   background: var(--accent-primary);
 }
 
+/* Content card header right area (time + info icon) */
+.content-card-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+/* Content card info icon (mobile) */
+.content-card-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  color: var(--accent-primary);
+  background: var(--accent-primary-alpha, rgba(99, 102, 241, 0.10));
+  transition: color 0.15s ease, background 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.content-card-info:active {
+  color: #fff;
+  background: var(--accent-primary);
+}
+
+/* Content card selected state (tooltip open) */
+.content-card.selected {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 1px var(--accent-primary), var(--glass-glow);
+}
+
 /* Mobile tooltip adjustments */
 @media (max-width: 768px) {
   .tooltip-content {

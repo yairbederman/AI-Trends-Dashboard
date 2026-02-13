@@ -22,4 +22,4 @@ expected.
 
 ## Skills
 
-- **product-docs**: After structural changes, run the `product-docs` skill at `C:\Users\YairBederman\.gemini\antigravity\scratch\skills-hub\engineering\product-docs\SKILL.md` to keep the product spec and architecture diagram in sync.
+Before any task, consult the skills-index.json referenced in the global CLAUDE.md to find applicable skills by matching tags and descriptions to the task at hand. Read the matching `SKILL.md` before proceeding.

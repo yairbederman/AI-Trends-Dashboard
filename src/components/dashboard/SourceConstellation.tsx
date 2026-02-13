@@ -145,14 +145,7 @@ export function SourceConstellation({
             }, doneDelay));
         });
 
-        // Loop: restart simulation after all done
         const totalDuration = 6000;
-        const loopTimer = setTimeout(() => {
-            const fresh: Record<string, NodeStatus> = {};
-            sources.forEach(s => { fresh[s.id] = 'pending'; });
-            setSimStatuses(fresh);
-        }, totalDuration);
-        timers.push(loopTimer);
 
         const intervalId = setInterval(() => {
             // Restart cycle
@@ -189,7 +182,7 @@ export function SourceConstellation({
 
     // Transition out when done
     useEffect(() => {
-        if (!isDone || mode === 'skeleton') return;
+        if (!isDone) return;
 
         setPhase('completing');
 

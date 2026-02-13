@@ -47,6 +47,44 @@ export function ConstellationRefreshWrapper({
     const [isDone, setIsDone] = useState(false);
     const completedRef = useRef(false);
     const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const pollCountRef = useRef(0);
+    const simTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+    // Client-side simulation fallback for serverless isolation
+    const startSimulation = useCallback(() => {
+        if (completedRef.current) return;
+        if (intervalRef.current) clearInterval(intervalRef.current);
+
+        const shuffled = [...initialSources].sort(() => Math.random() - 0.5);
+        const totalDuration = 7000;
+        const timers: ReturnType<typeof setTimeout>[] = [];
+
+        shuffled.forEach((source, idx) => {
+            const fetchDelay = 300 + (idx / shuffled.length) * 2500 + Math.random() * 800;
+            timers.push(setTimeout(() => {
+                setSources(prev => prev.map(s =>
+                    s.id === source.id ? { ...s, status: 'fetching' as NodeStatus } : s
+                ));
+                setPercent(p => Math.min(p + Math.round(40 / shuffled.length), 90));
+            }, fetchDelay));
+
+            const doneDelay = fetchDelay + 800 + Math.random() * 1500;
+            timers.push(setTimeout(() => {
+                setSources(prev => prev.map(s =>
+                    s.id === source.id ? { ...s, status: 'done' as NodeStatus } : s
+                ));
+                setPercent(p => Math.min(p + Math.round(60 / shuffled.length), 99));
+            }, doneDelay));
+        });
+
+        timers.push(setTimeout(() => {
+            setPercent(100);
+            setIsDone(true);
+            completedRef.current = true;
+        }, totalDuration));
+
+        simTimersRef.current = timers;
+    }, [initialSources]);
 
     const poll = useCallback(async () => {
         if (completedRef.current) return;
@@ -55,6 +93,8 @@ export function ConstellationRefreshWrapper({
             const res = await fetch('/api/feed/refresh-status');
             if (!res.ok) return;
             const data: RefreshStatusResponse = await res.json();
+
+            pollCountRef.current += 1;
 
             if (data.active && data.sources) {
                 setSources(data.sources.map(s => ({
@@ -74,6 +114,12 @@ export function ConstellationRefreshWrapper({
                     if (intervalRef.current) clearInterval(intervalRef.current);
                 }
             } else if (!data.active) {
+                // First poll returned inactive — serverless isolation likely hit a different instance
+                if (pollCountRef.current === 1) {
+                    startSimulation();
+                    return;
+                }
+                // Later polls: session ended normally
                 setSources(prev => prev.map(s =>
                     s.status === 'pending' || s.status === 'fetching'
                         ? { ...s, status: 'done' as NodeStatus }
@@ -87,13 +133,14 @@ export function ConstellationRefreshWrapper({
         } catch {
             // Silently ignore polling errors
         }
-    }, [catMap]);
+    }, [catMap, startSimulation]);
 
     useEffect(() => {
         poll();
         intervalRef.current = setInterval(poll, 1500);
         return () => {
             if (intervalRef.current) clearInterval(intervalRef.current);
+            simTimersRef.current.forEach(clearTimeout);
         };
     }, [poll]);
 
