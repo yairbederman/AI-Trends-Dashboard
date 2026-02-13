@@ -10,6 +10,7 @@ import { ensureSourcesFresh } from '@/lib/fetching/ensure-fresh';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+export const maxDuration = 60;
 
 const CORS_HEADERS = {
     'Access-Control-Allow-Origin': '*',

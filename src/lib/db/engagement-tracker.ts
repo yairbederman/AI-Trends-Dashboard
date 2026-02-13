@@ -23,19 +23,22 @@ export async function recordEngagementSnapshotsBatch(
     const windowStart = new Date(Date.now() - 6 * 60 * 60 * 1000);
     const contentIds = items.map(i => i.contentId);
 
-    // 1. Batch fetch most recent snapshot per content ID (single query)
-    const previousSnapshots = await db
-      .select()
-      .from(engagementSnapshots)
-      .where(sql`${engagementSnapshots.contentId} IN (${sql.join(contentIds.map(id => sql`${id}`), sql`, `)})
-        AND ${engagementSnapshots.snapshotAt} >= ${windowStart}`)
-      .orderBy(desc(engagementSnapshots.snapshotAt));
+    // 1. Batch fetch most recent snapshot per content ID (chunked to avoid huge IN clauses)
+    const latestByContentId = new Map<string, (typeof engagementSnapshots)['$inferSelect']>();
+    const QUERY_CHUNK = 500;
+    for (let i = 0; i < contentIds.length; i += QUERY_CHUNK) {
+      const chunk = contentIds.slice(i, i + QUERY_CHUNK);
+      const previousSnapshots = await db
+        .select()
+        .from(engagementSnapshots)
+        .where(sql`${engagementSnapshots.contentId} IN (${sql.join(chunk.map(id => sql`${id}`), sql`, `)})
+          AND ${engagementSnapshots.snapshotAt} >= ${windowStart}`)
+        .orderBy(desc(engagementSnapshots.snapshotAt));
 
-    // Keep only the most recent snapshot per contentId
-    const latestByContentId = new Map<string, typeof previousSnapshots[number]>();
-    for (const snap of previousSnapshots) {
-      if (!latestByContentId.has(snap.contentId)) {
-        latestByContentId.set(snap.contentId, snap);
+      for (const snap of previousSnapshots) {
+        if (!latestByContentId.has(snap.contentId)) {
+          latestByContentId.set(snap.contentId, snap);
+        }
       }
     }
 
@@ -107,19 +110,24 @@ export async function getBulkVelocities(
 
   try {
     const windowStart = new Date(Date.now() - 24 * 60 * 60 * 1000);
-
-    // Postgres DISTINCT ON: get the most recent snapshot per contentId in one query
-    const results = await db.execute<{ content_id: string; velocity_score: number | null }>(
-      sql`SELECT DISTINCT ON (content_id) content_id, velocity_score
-          FROM engagement_snapshots
-          WHERE content_id IN (${sql.join(contentIds.map(id => sql`${id}`), sql`, `)})
-            AND snapshot_at >= ${windowStart}
-          ORDER BY content_id, snapshot_at DESC`
-    );
-
     const velocityMap = new Map<string, number>();
-    for (const row of results) {
-      velocityMap.set(row.content_id, row.velocity_score || 0);
+
+    // Chunk to avoid massive IN clauses that timeout on serverless
+    const CHUNK_SIZE = 500;
+    for (let i = 0; i < contentIds.length; i += CHUNK_SIZE) {
+      const chunk = contentIds.slice(i, i + CHUNK_SIZE);
+
+      const results = await db.execute<{ content_id: string; velocity_score: number | null }>(
+        sql`SELECT DISTINCT ON (content_id) content_id, velocity_score
+            FROM engagement_snapshots
+            WHERE content_id IN (${sql.join(chunk.map(id => sql`${id}`), sql`, `)})
+              AND snapshot_at >= ${windowStart}
+            ORDER BY content_id, snapshot_at DESC`
+      );
+
+      for (const row of results) {
+        velocityMap.set(row.content_id, row.velocity_score || 0);
+      }
     }
 
     return velocityMap;

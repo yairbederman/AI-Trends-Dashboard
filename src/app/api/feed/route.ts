@@ -44,6 +44,7 @@ async function maybeRunCleanup() {
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+export const maxDuration = 60;
 
 export async function GET(request: Request) {
     // Trigger cleanup if needed (runs in background, once per day)
