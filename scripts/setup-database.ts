@@ -200,19 +200,61 @@ async function setupDatabase() {
 
         // Migration 2: Add sources
         const sourcesToAdd = [
-            { id: 'reddit-custom', enabled: true },
-            { id: 'youtube', enabled: true },
+            // AI Labs
+            { id: 'openai-blog', enabled: true },
+            { id: 'google-ai-blog', enabled: true },
+            { id: 'anthropic-blog', enabled: true },
+            { id: 'meta-ai-blog', enabled: false },
+            { id: 'deepmind-blog', enabled: true },
+            { id: 'microsoft-ai', enabled: true },
+            { id: 'nvidia-ai', enabled: true },
+            { id: 'mistral-ai', enabled: false },
+            { id: 'cohere-blog', enabled: true },
+            { id: 'stability-ai', enabled: true },
+            { id: 'aws-ai-blog', enabled: true },
+            { id: 'apple-ml', enabled: true },
+            // Dev Platforms
+            { id: 'github-trending', enabled: true },
+            { id: 'huggingface', enabled: true },
+            { id: 'papers-with-code', enabled: false },
+            { id: 'langchain-blog', enabled: true },
+            { id: 'llamaindex-blog', enabled: false },
+            { id: 'wandb-blog', enabled: true },
+            { id: 'arxiv-cs-ai', enabled: true },
+            { id: 'arxiv-cs-cl', enabled: true },
+            // Social
             { id: 'twitter', enabled: false },
             { id: 'linkedin', enabled: false },
-            { id: 'lmsys-arena', enabled: true },
-            { id: 'open-llm-leaderboard', enabled: true },
-            { id: 'artificial-analysis', enabled: true },
+            { id: 'youtube', enabled: true },
+            // News
+            { id: 'verge-ai', enabled: true },
+            { id: 'techcrunch-ai', enabled: true },
+            { id: 'venturebeat-ai', enabled: true },
+            { id: 'mit-tech-review', enabled: true },
+            { id: 'ars-technica-ai', enabled: true },
+            { id: 'wired-ai', enabled: true },
             { id: 'forbes-ai', enabled: true },
             { id: 'mit-sloan-review', enabled: true },
             { id: 'mckinsey-ai', enabled: true },
             { id: 'hbr', enabled: true },
+            // Community
+            { id: 'reddit-custom', enabled: true },
+            { id: 'hackernews', enabled: true },
+            // Newsletters
+            { id: 'import-ai', enabled: true },
+            { id: 'the-batch', enabled: false },
+            { id: 'bens-bites', enabled: false },
+            { id: 'the-rundown-ai', enabled: false },
+            { id: 'latent-space', enabled: true },
+            { id: 'simon-willison', enabled: true },
+            { id: 'ahead-of-ai', enabled: true },
+            { id: 'interconnects', enabled: true },
             { id: 'one-useful-thing', enabled: true },
             { id: 'pragmatic-engineer', enabled: true },
+            // Leaderboards
+            { id: 'lmsys-arena', enabled: true },
+            { id: 'open-llm-leaderboard', enabled: true },
+            { id: 'artificial-analysis', enabled: true },
         ];
 
         for (const source of sourcesToAdd) {

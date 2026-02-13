@@ -6,7 +6,7 @@ import { ContentItem, CustomSourceConfig, TimeRange, SourceHealthMap } from '@/t
 import { YouTubeChannelConfig, DEFAULT_YOUTUBE_CHANNELS } from '@/lib/config/youtube-channels';
 import { SubredditConfig, DEFAULT_SUBREDDITS } from '@/lib/config/subreddit-sources';
 import { recordEngagementSnapshotsBatch } from './engagement-tracker';
-import { isSourceStale } from './cache-config';
+import { isSourceStale, MAX_ITEMS_PER_SOURCE } from './cache-config';
 import { settingsCache } from '@/lib/cache/memory-cache';
 import { analyzeSentiment } from '@/lib/sentiment';
 
@@ -347,32 +347,56 @@ export async function getCachedContentBySourceIds(
         if (sourceIds.length === 0) return [];
 
         const cutoff = getTimeRangeCutoff(timeRange);
+        const cutoffISO = cutoff.toISOString();
 
-        const items = await db
-            .select()
-            .from(contentItems)
-            .where(
-                and(
-                    inArray(contentItems.sourceId, sourceIds),
-                    gte(contentItems.publishedAt, cutoff)
-                )
+        // Per-source cap: prevent high-frequency sources (reddit, huggingface) from
+        // crowding out low-frequency sources (AI Labs blogs) in the LIMIT window.
+        const maxPerSource = Math.max(MAX_ITEMS_PER_SOURCE, Math.ceil(limit / sourceIds.length * 2));
+        const sourceIdList = sql.join(sourceIds.map(id => sql`${id}`), sql`, `);
+
+        const items = await db.execute<{
+            id: string;
+            source_id: string;
+            title: string;
+            description: string | null;
+            url: string;
+            image_url: string | null;
+            published_at: Date;
+            fetched_at: Date;
+            author: string | null;
+            tags: string | null;
+            sentiment: string | null;
+            sentiment_score: number | null;
+            engagement: string | null;
+        }>(sql`
+            WITH ranked AS (
+                SELECT *, ROW_NUMBER() OVER (PARTITION BY source_id ORDER BY published_at DESC) AS rn
+                FROM content_items
+                WHERE source_id IN (${sourceIdList})
+                  AND published_at >= ${cutoffISO}::timestamptz
             )
-            .orderBy(desc(contentItems.publishedAt))
-            .limit(limit);
+            SELECT id, source_id, title, description, url, image_url,
+                   published_at, fetched_at, author, tags, sentiment,
+                   sentiment_score, engagement
+            FROM ranked
+            WHERE rn <= ${maxPerSource}
+            ORDER BY published_at DESC
+            LIMIT ${limit}
+        `);
 
-        return items.map(item => ({
+        return [...items].map(item => ({
             id: item.id,
-            sourceId: item.sourceId,
+            sourceId: item.source_id,
             title: item.title,
             description: item.description ?? undefined,
             url: item.url,
-            imageUrl: item.imageUrl ?? undefined,
-            publishedAt: item.publishedAt!,
-            fetchedAt: item.fetchedAt!,
+            imageUrl: item.image_url ?? undefined,
+            publishedAt: item.published_at,
+            fetchedAt: item.fetched_at,
             author: item.author ?? undefined,
             tags: item.tags ? JSON.parse(item.tags) : undefined,
             sentiment: item.sentiment as ContentItem['sentiment'],
-            sentimentScore: item.sentimentScore ?? undefined,
+            sentimentScore: item.sentiment_score ?? undefined,
             engagement: item.engagement ? JSON.parse(item.engagement) : undefined,
         }));
     } catch (error) {

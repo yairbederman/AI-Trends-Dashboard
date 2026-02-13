@@ -1,5 +1,10 @@
 import { SourceCategory } from '@/types';
 
+// Max items returned per source in feed queries.
+// Prevents high-frequency sources (Reddit, HuggingFace) from crowding out
+// low-frequency sources (AI Labs blogs) in the LIMIT window.
+export const MAX_ITEMS_PER_SOURCE = 15;
+
 // TTL in milliseconds per source category
 const CATEGORY_TTL_MS: Record<SourceCategory, number> = {
     'community': 5 * 60 * 1000,       // 5 min  - fast-moving (Reddit, HN)
