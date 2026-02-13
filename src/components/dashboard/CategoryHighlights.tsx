@@ -1,10 +1,9 @@
 'use client';
 
-import { memo, useState, useEffect, useRef, useCallback } from 'react';
-import { Zap, Eye, ThumbsUp, MessageSquare, Star, Download, Heart, GitFork } from 'lucide-react';
+import { memo, useState, useEffect } from 'react';
+import { Zap, Eye, ThumbsUp, MessageSquare, Star, Download, Heart, GitFork, Info } from 'lucide-react';
 import { SourceCategory, CATEGORY_LABELS, CATEGORY_COLORS, EngagementMetrics } from '@/types';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/Tooltip';
-import { useLongPress } from '@/hooks/useLongPress';
 
 export interface HighlightItem {
     id: string;
@@ -128,27 +127,6 @@ function HighlightTooltip({ item }: { item: HighlightItem }) {
 
 function LaneCard({ item, isTouchDevice }: { item: HighlightItem; isTouchDevice: boolean }) {
     const [mobileOpen, setMobileOpen] = useState(false);
-    const preventClickRef = useRef(false);
-    const cardRef = useRef<HTMLAnchorElement>(null);
-
-    const longPressHandlers = useLongPress(
-        () => {
-            setMobileOpen(true);
-            preventClickRef.current = true;
-        },
-        {
-            threshold: 500,
-            onStart: () => cardRef.current?.classList.add('long-pressing'),
-            onFinish: () => cardRef.current?.classList.remove('long-pressing'),
-        }
-    );
-
-    const handleClick = useCallback((e: React.MouseEvent) => {
-        if (preventClickRef.current) {
-            e.preventDefault();
-            preventClickRef.current = false;
-        }
-    }, []);
 
     // Close tooltip on outside touch
     useEffect(() => {
@@ -169,14 +147,11 @@ function LaneCard({ item, isTouchDevice }: { item: HighlightItem; isTouchDevice:
         >
             <TooltipTrigger asChild>
                 <a
-                    ref={cardRef}
                     href={item.url}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="lane-card"
                     title={item.title}
-                    onClick={handleClick}
-                    {...(isTouchDevice ? longPressHandlers : {})}
                 >
                     <div
                         className={`highlight-score ${item.tierClass}`}
@@ -201,6 +176,21 @@ function LaneCard({ item, isTouchDevice }: { item: HighlightItem; isTouchDevice:
                             </span>
                         ) : null}
                     </div>
+                    {isTouchDevice && (
+                        <span
+                            className="lane-card-info"
+                            role="button"
+                            tabIndex={0}
+                            aria-label="Show details"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setMobileOpen(prev => !prev);
+                            }}
+                        >
+                            <Info size={14} />
+                        </span>
+                    )}
                 </a>
             </TooltipTrigger>
             <TooltipContent side="top" align="center">

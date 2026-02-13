@@ -3413,11 +3413,24 @@ select:focus-visible,
   opacity: 0.3;
 }
 
-/* Long-press visual feedback */
-.lane-card.long-pressing {
-  transform: scale(0.97);
-  opacity: 0.85;
-  transition: transform 0.2s ease, opacity 0.2s ease;
+/* Mobile info icon */
+.lane-card-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  color: var(--text-muted);
+  background: var(--bg-tertiary);
+  transition: color 0.15s ease, background 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.lane-card-info:active {
+  color: var(--accent-primary);
+  background: var(--accent-primary-alpha, rgba(99, 102, 241, 0.12));
 }
 
 /* Mobile tooltip adjustments */
