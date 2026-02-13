@@ -29,7 +29,7 @@ flowchart TD
 
     subgraph Adapters["Source Adapters"]
         RSS[RSS Adapter]
-        HN[HackerNews Adapter]
+        HN[HackerNews Adapter<br/>chunked · timeout · allSettled]
         Reddit[Reddit Adapter<br/>custom subreddits]
         YT[YouTube Adapter<br/>custom channels]
         GH[GitHub Adapter]
@@ -53,7 +53,7 @@ flowchart TD
         AnthNews[Anthropic /news]
     end
 
-    DB[(Supabase<br/>PostgreSQL)]
+    DB[(Supabase PostgreSQL<br/>FK cascades · pooled)]
     Health[Source Health<br/>settings KV store]
 
     UI --> SWR

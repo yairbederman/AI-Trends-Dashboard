@@ -15,7 +15,7 @@ AI practitioners, researchers, and enthusiasts who want a single view of what's 
 | Next.js App Router | Page rendering, API routes, server components | New pages or API routes added |
 | Source Adapters | Fetch and normalize content from external sources | New source types or APIs integrated |
 | Scoring Engine | Rank content using engagement, recency, velocity | Scoring algorithm tuned or new feed modes added |
-| Drizzle ORM + PostgreSQL | Persist content, settings, engagement snapshots | Schema changes, new tables |
+| Drizzle ORM + PostgreSQL | Persist content, settings, engagement snapshots. FK constraints with CASCADE deletes enforce referential integrity. Connection pooling (max 10, idle 20s, lifetime 30min) | Schema changes, new tables, pool tuning |
 | SWR Client Cache | Client-side data fetching with auto-revalidation | Fetch intervals or cache keys change |
 | In-Memory Cache | 60s TTL server-side cache layer | TTL or invalidation strategy changes |
 
@@ -29,8 +29,8 @@ User Request
     → Database Cache (category-based TTL: 5min–60min)
     → Source Adapters (only stale sources fetched)
     → External APIs / RSS Feeds
-    → Batch upsert to PostgreSQL (chunks of 100)
-    → Scored & ranked response returned
+    → Batch upsert to PostgreSQL (chunks of 100, atomic via onConflictDoUpdate)
+    → Scored & ranked response returned (capped at 2000 items per query)
 ```
 
 ### Category TTLs
@@ -46,6 +46,7 @@ User Request
 
 ### Content Aggregation
 - Fetches from 40+ sources via 7 adapter types (RSS, HackerNews, Reddit, YouTube, GitHub, HuggingFace, Anthropic scrape)
+- HackerNews adapter uses chunked concurrency (10 parallel), 10s timeouts via AbortController, and `Promise.allSettled` for partial failure tolerance
 - Anthropic adapter uses cheerio DOM parser (not regex) for resilient HTML parsing
 - Shared freshness module (`src/lib/fetching/ensure-fresh.ts`) — used by both feed and discovery endpoints
 - Per-source freshness tracking — only stale sources are refetched
@@ -62,7 +63,7 @@ User Request
 - `GET /api/discovery/items` — multi-category, paginated content view with standardized response shape
 - Versioned alias at `GET /api/v1/discovery/items` (thin re-export)
 - Required params: `categories` (comma-separated), `timeRange` (1h/12h/24h/48h/7d)
-- Optional params: `limit` (default 100), `offset` (default 0), `search` (text filter on title/description/tags)
+- Optional params: `limit` (default 100, max 500), `offset` (default 0), `search` (text filter on title/description/tags)
 - Accepts `social-blogs` as alias for internal `social` category
 - Valid categories: `news`, `newsletters`, `social-blogs`, `ai-labs`, `dev-platforms`, `community`, `leaderboards`
 - Returns `meta` (totalItems, returnedItems, offset, limit, timeRange, per-category counts) + `items` array
