@@ -188,7 +188,7 @@ function LaneCard({ item, isTouchDevice }: { item: HighlightItem; isTouchDevice:
                                 setMobileOpen(prev => !prev);
                             }}
                         >
-                            <Info size={14} />
+                            <Info size={16} />
                         </span>
                     )}
                 </a>

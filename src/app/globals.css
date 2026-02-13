@@ -3418,19 +3418,19 @@ select:focus-visible,
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
   flex-shrink: 0;
-  color: var(--text-muted);
-  background: var(--bg-tertiary);
+  color: var(--accent-primary);
+  background: var(--accent-primary-alpha, rgba(99, 102, 241, 0.10));
   transition: color 0.15s ease, background 0.15s ease;
   -webkit-tap-highlight-color: transparent;
 }
 
 .lane-card-info:active {
-  color: var(--accent-primary);
-  background: var(--accent-primary-alpha, rgba(99, 102, 241, 0.12));
+  color: #fff;
+  background: var(--accent-primary);
 }
 
 /* Mobile tooltip adjustments */
