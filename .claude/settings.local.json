@@ -131,7 +131,13 @@
       "mcp__claude_ai_Vercel__get_project",
       "mcp__claude_ai_Vercel__search_vercel_documentation",
       "mcp__claude_ai_Mermaid_Chart__validate_and_render_mermaid_diagram",
-      "mcp__plugin_playwright_playwright__browser_tabs"
+      "mcp__plugin_playwright_playwright__browser_tabs",
+      "Bash(tasklist:*)",
+      "Bash(powershell -NoProfile -Command \"Start-Sleep -Seconds 10; Invoke-WebRequest -Uri ''http://localhost:3000'' -UseBasicParsing -TimeoutSec 10 | Select-Object -ExpandProperty StatusCode\")",
+      "Bash(powershell -NoProfile -Command \"Start-Sleep -Seconds 20; Invoke-WebRequest -Uri ''http://localhost:3001'' -UseBasicParsing -TimeoutSec 30 | Select-Object -ExpandProperty StatusCode\")",
+      "Bash(powershell -NoProfile -Command:*)",
+      "mcp__claude_ai_Context7__resolve-library-id",
+      "mcp__claude_ai_Context7__query-docs"
     ]
   }
 }
