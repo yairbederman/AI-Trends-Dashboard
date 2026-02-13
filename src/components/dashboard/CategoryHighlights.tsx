@@ -1,9 +1,10 @@
 'use client';
 
-import { memo } from 'react';
+import { memo, useState, useEffect, useRef, useCallback } from 'react';
 import { Zap, Eye, ThumbsUp, MessageSquare, Star, Download, Heart, GitFork } from 'lucide-react';
 import { SourceCategory, CATEGORY_LABELS, CATEGORY_COLORS, EngagementMetrics } from '@/types';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/Tooltip';
+import { useLongPress } from '@/hooks/useLongPress';
 
 export interface HighlightItem {
     id: string;
@@ -125,8 +126,97 @@ function HighlightTooltip({ item }: { item: HighlightItem }) {
     );
 }
 
+function LaneCard({ item, isTouchDevice }: { item: HighlightItem; isTouchDevice: boolean }) {
+    const [mobileOpen, setMobileOpen] = useState(false);
+    const preventClickRef = useRef(false);
+    const cardRef = useRef<HTMLAnchorElement>(null);
+
+    const longPressHandlers = useLongPress(
+        () => {
+            setMobileOpen(true);
+            preventClickRef.current = true;
+        },
+        {
+            threshold: 500,
+            onStart: () => cardRef.current?.classList.add('long-pressing'),
+            onFinish: () => cardRef.current?.classList.remove('long-pressing'),
+        }
+    );
+
+    const handleClick = useCallback((e: React.MouseEvent) => {
+        if (preventClickRef.current) {
+            e.preventDefault();
+            preventClickRef.current = false;
+        }
+    }, []);
+
+    // Close tooltip on outside touch
+    useEffect(() => {
+        if (!mobileOpen) return;
+        const close = (e: TouchEvent) => {
+            // Don't close if touching the tooltip itself
+            if ((e.target as Element)?.closest?.('.tooltip-content')) return;
+            setMobileOpen(false);
+        };
+        document.addEventListener('touchstart', close);
+        return () => document.removeEventListener('touchstart', close);
+    }, [mobileOpen]);
+
+    return (
+        <Tooltip
+            open={isTouchDevice ? mobileOpen : undefined}
+            onOpenChange={isTouchDevice ? setMobileOpen : undefined}
+        >
+            <TooltipTrigger asChild>
+                <a
+                    ref={cardRef}
+                    href={item.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="lane-card"
+                    title={item.title}
+                    onClick={handleClick}
+                    {...(isTouchDevice ? longPressHandlers : {})}
+                >
+                    <div
+                        className={`highlight-score ${item.tierClass}`}
+                        aria-label={`Score: ${item.score}`}
+                    >
+                        {item.score}
+                    </div>
+                    <div className="lane-card-body">
+                        <span className="lane-card-source">
+                            {item.sourceIcon && <span className="lane-card-emoji" aria-hidden="true">{item.sourceIcon}</span>}
+                            {item.sourceName}
+                        </span>
+                        <span className="lane-card-title">{item.title}</span>
+                    </div>
+                    <div className="lane-card-meta">
+                        {item.timeAgo ? (
+                            <span className="lane-card-time">{item.timeAgo}</span>
+                        ) : null}
+                        {item.primaryMetric ? (
+                            <span className="lane-card-metric">
+                                {item.primaryMetric.value} {item.primaryMetric.label}
+                            </span>
+                        ) : null}
+                    </div>
+                </a>
+            </TooltipTrigger>
+            <TooltipContent side="top" align="center">
+                <HighlightTooltip item={item} />
+            </TooltipContent>
+        </Tooltip>
+    );
+}
+
 export const CategoryHighlights = memo(function CategoryHighlights({ groups }: CategoryHighlightsProps) {
     const totalItems = groups.reduce((sum, g) => sum + g.items.length, 0);
+    const [isTouchDevice, setIsTouchDevice] = useState(false);
+
+    useEffect(() => {
+        setIsTouchDevice('ontouchstart' in window || navigator.maxTouchPoints > 0);
+    }, []);
 
     return (
         <TooltipProvider delayDuration={300}>
@@ -161,44 +251,7 @@ export const CategoryHighlights = memo(function CategoryHighlights({ groups }: C
                                 </div>
                                 <div className="lane-cards">
                                     {group.items.map(item => (
-                                        <Tooltip key={item.id}>
-                                            <TooltipTrigger asChild>
-                                                <a
-                                                    href={item.url}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="lane-card"
-                                                    title={item.title}
-                                                >
-                                                    <div
-                                                        className={`highlight-score ${item.tierClass}`}
-                                                        aria-label={`Score: ${item.score}`}
-                                                    >
-                                                        {item.score}
-                                                    </div>
-                                                    <div className="lane-card-body">
-                                                        <span className="lane-card-source">
-                                                            {item.sourceIcon && <span className="lane-card-emoji" aria-hidden="true">{item.sourceIcon}</span>}
-                                                            {item.sourceName}
-                                                        </span>
-                                                        <span className="lane-card-title">{item.title}</span>
-                                                    </div>
-                                                    <div className="lane-card-meta">
-                                                        {item.timeAgo ? (
-                                                            <span className="lane-card-time">{item.timeAgo}</span>
-                                                        ) : null}
-                                                        {item.primaryMetric ? (
-                                                            <span className="lane-card-metric">
-                                                                {item.primaryMetric.value} {item.primaryMetric.label}
-                                                            </span>
-                                                        ) : null}
-                                                    </div>
-                                                </a>
-                                            </TooltipTrigger>
-                                            <TooltipContent side="top" align="center">
-                                                <HighlightTooltip item={item} />
-                                            </TooltipContent>
-                                        </Tooltip>
+                                        <LaneCard key={item.id} item={item} isTouchDevice={isTouchDevice} />
                                     ))}
                                 </div>
                             </div>

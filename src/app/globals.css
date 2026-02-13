@@ -3412,3 +3412,18 @@ select:focus-visible,
 .lane-card:hover::after {
   opacity: 0.3;
 }
+
+/* Long-press visual feedback */
+.lane-card.long-pressing {
+  transform: scale(0.97);
+  opacity: 0.85;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+/* Mobile tooltip adjustments */
+@media (max-width: 768px) {
+  .tooltip-content {
+    max-width: 280px;
+    font-size: 0.8125rem;
+  }
+}
