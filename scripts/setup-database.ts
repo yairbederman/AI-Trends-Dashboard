@@ -60,7 +60,7 @@ async function setupDatabase() {
         await db.execute(sql`
             CREATE TABLE IF NOT EXISTS content_items (
                 id TEXT PRIMARY KEY,
-                source_id TEXT NOT NULL,
+                source_id TEXT NOT NULL REFERENCES sources(id) ON DELETE CASCADE,
                 title TEXT NOT NULL,
                 description TEXT,
                 url TEXT NOT NULL,
@@ -90,7 +90,7 @@ async function setupDatabase() {
         await db.execute(sql`
             CREATE TABLE IF NOT EXISTS engagement_snapshots (
                 id SERIAL PRIMARY KEY,
-                content_id TEXT NOT NULL,
+                content_id TEXT NOT NULL REFERENCES content_items(id) ON DELETE CASCADE,
                 snapshot_at TIMESTAMP WITH TIME ZONE NOT NULL,
                 upvotes INTEGER,
                 comments INTEGER,

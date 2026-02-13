@@ -3,15 +3,15 @@ import { pgTable, text, boolean, integer, doublePrecision, timestamp, serial, in
 // Sources configuration (stored for user overrides)
 export const sources = pgTable('sources', {
     id: text('id').primaryKey(),
-    enabled: boolean('enabled').default(true),
-    priority: integer('priority').default(3), // 1-5, default 3
+    enabled: boolean('enabled').notNull().default(true),
+    priority: integer('priority').notNull().default(3), // 1-5, default 3
     lastFetchedAt: timestamp('last_fetched_at', { withTimezone: true }),
 });
 
 // Content items fetched from sources
 export const contentItems = pgTable('content_items', {
     id: text('id').primaryKey(),
-    sourceId: text('source_id').notNull(),
+    sourceId: text('source_id').notNull().references(() => sources.id, { onDelete: 'cascade' }),
     title: text('title').notNull(),
     description: text('description'),
     url: text('url').notNull(),
@@ -39,7 +39,7 @@ export const settings = pgTable('settings', {
 // Engagement snapshots for velocity tracking
 export const engagementSnapshots = pgTable('engagement_snapshots', {
     id: serial('id').primaryKey(),
-    contentId: text('content_id').notNull(),
+    contentId: text('content_id').notNull().references(() => contentItems.id, { onDelete: 'cascade' }),
     snapshotAt: timestamp('snapshot_at', { withTimezone: true }).notNull(),
     // Individual metrics for efficient queries
     upvotes: integer('upvotes'),

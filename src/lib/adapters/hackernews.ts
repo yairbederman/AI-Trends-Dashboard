@@ -22,18 +22,36 @@ export class HackerNewsAdapter extends BaseAdapter {
         super(source);
     }
 
+    private fetchWithTimeout(url: string, timeoutMs = 10000): Promise<Response> {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
+        return fetch(url, { signal: controller.signal }).finally(() => clearTimeout(timer));
+    }
+
     async fetch(options?: AdapterOptions): Promise<ContentItem[]> {
         try {
-            // Get top stories
-            const topStoriesRes = await fetch(`${this.baseUrl}/topstories.json`);
+            // Get top stories (with timeout)
+            const topStoriesRes = await this.fetchWithTimeout(`${this.baseUrl}/topstories.json`);
             const topStories: number[] = await topStoriesRes.json();
 
-            // Fetch first 100 stories
-            const storyPromises = topStories.slice(0, 100).map((id) =>
-                fetch(`${this.baseUrl}/item/${id}.json`).then((r) => r.json())
-            );
+            // Fetch first 100 stories in chunks of 10 with allSettled
+            const storyIds = topStories.slice(0, 100);
+            const CHUNK_SIZE = 10;
+            const stories: HNItem[] = [];
 
-            const stories: HNItem[] = await Promise.all(storyPromises);
+            for (let i = 0; i < storyIds.length; i += CHUNK_SIZE) {
+                const chunk = storyIds.slice(i, i + CHUNK_SIZE);
+                const results = await Promise.allSettled(
+                    chunk.map((id) =>
+                        this.fetchWithTimeout(`${this.baseUrl}/item/${id}.json`).then((r) => r.json())
+                    )
+                );
+                for (const result of results) {
+                    if (result.status === 'fulfilled' && result.value) {
+                        stories.push(result.value);
+                    }
+                }
+            }
 
             // Filter for AI-related content
             const aiStories = stories.filter((story) => {

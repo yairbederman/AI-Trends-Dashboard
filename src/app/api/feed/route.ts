@@ -34,7 +34,7 @@ async function maybeRunCleanup() {
                 db.delete(settings).where(sql`${settings.key} LIKE 'feed_cache_%'`),
             ]).then(([contentDeleted, snapshotsDeleted]) => {
                 console.log(`Cleanup: removed ${contentDeleted} old items, ${snapshotsDeleted} old snapshots, cleaned feed_cache_* settings`);
-            });
+            }).catch(err => console.error('Cleanup failed:', err));
             await updateSetting('lastCleanupTime', new Date().toISOString());
         }
     } catch (error) {

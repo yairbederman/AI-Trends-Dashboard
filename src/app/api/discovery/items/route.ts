@@ -116,7 +116,7 @@ export async function GET(request: Request) {
     }
 
     const timeRange = timeRangeParam as TimeRange;
-    const limit = Math.max(1, parseInt(limitParam || '100', 10) || 100);
+    const limit = Math.min(Math.max(1, parseInt(limitParam || '100', 10) || 100), 500);
     const offset = Math.max(0, parseInt(offsetParam || '0', 10) || 0);
 
     // Convert API categories to internal categories

@@ -18,6 +18,9 @@ function getClient() {
         clientInstance = postgres(connectionString, {
             onnotice: () => { }, // Suppress notices
             prepare: false, // Required for Supabase transaction pooler (port 6543)
+            max: 10,
+            idle_timeout: 20,
+            max_lifetime: 60 * 30,
         });
 
         // Test connection

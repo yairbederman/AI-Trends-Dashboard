@@ -87,8 +87,6 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
 
     // Build API URL with time range, category, and feed mode
     const apiUrl = useMemo(() => {
-        // Reset dismissal when feed params change (new request may trigger refresh)
-        refreshDismissedRef.current = false;
         const params = new URLSearchParams();
         params.set('timeRange', timeRange);
         params.set('mode', feedMode);
@@ -96,6 +94,11 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
             params.set('category', activeCategory);
         }
         return `/api/feed?${params.toString()}`;
+    }, [timeRange, feedMode, activeCategory]);
+
+    // Reset dismissal when feed params change (new request may trigger refresh)
+    useEffect(() => {
+        refreshDismissedRef.current = false;
     }, [timeRange, feedMode, activeCategory]);
 
     const { data, error, isLoading, mutate: refreshData } = useSWR<FeedResponse>(

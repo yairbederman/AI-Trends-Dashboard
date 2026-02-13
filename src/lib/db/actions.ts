@@ -40,13 +40,12 @@ export async function getSetting<T = string>(key: string, defaultValue: T): Prom
 export async function updateSetting(key: string, value: unknown): Promise<void> {
     try {
         const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
-        const [existing] = await db.select().from(settings).where(eq(settings.key, key));
-
-        if (existing) {
-            await db.update(settings).set({ value: stringValue }).where(eq(settings.key, key));
-        } else {
-            await db.insert(settings).values({ key, value: stringValue });
-        }
+        await db.insert(settings)
+            .values({ key, value: stringValue })
+            .onConflictDoUpdate({
+                target: settings.key,
+                set: { value: stringValue },
+            });
     } catch (error) {
         console.error(`Failed to update setting ${key}:`, error);
         throw error;
@@ -305,7 +304,8 @@ export async function updateSourceLastFetched(sourceIds: string[]): Promise<void
 
 export async function getCachedContentBySourceIds(
     sourceIds: string[],
-    timeRange: TimeRange = '24h'
+    timeRange: TimeRange = '24h',
+    limit: number = 2000
 ): Promise<ContentItem[]> {
     try {
         if (sourceIds.length === 0) return [];
@@ -321,7 +321,8 @@ export async function getCachedContentBySourceIds(
                     gte(contentItems.publishedAt, cutoff)
                 )
             )
-            .orderBy(desc(contentItems.publishedAt));
+            .orderBy(desc(contentItems.publishedAt))
+            .limit(limit);
 
         return items.map(item => ({
             id: item.id,
@@ -529,7 +530,7 @@ export async function getSourceHealth(): Promise<SourceHealthMap> {
 }
 
 export async function updateSourceHealth(health: SourceHealthMap): Promise<void> {
-    // Invalidate cache before writing so next read gets fresh data
-    settingsCache.invalidate('setting:sourceHealth');
     await updateSetting('sourceHealth', health);
+    // Invalidate cache after write so next read gets fresh data
+    settingsCache.invalidate('setting:sourceHealth');
 }
