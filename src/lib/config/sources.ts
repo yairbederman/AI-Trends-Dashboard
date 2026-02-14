@@ -299,6 +299,18 @@ export const SOURCES: SourceConfig[] = [
     // NEWS
     // =====================
     {
+        id: 'the-decoder',
+        name: 'The Decoder',
+        category: 'news',
+        url: 'https://the-decoder.com',
+        feedUrl: 'https://the-decoder.com/feed/',
+        method: 'rss',
+        enabled: true,
+        requiresKey: false,
+        icon: '🔓',
+        defaultPriority: 4, // Good priority: 100% AI-focused news, reliable RSS
+    },
+    {
         id: 'verge-ai',
         name: 'The Verge AI',
         category: 'news',
