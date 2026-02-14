@@ -4,6 +4,11 @@ import { SourceConfig, SourceCategory, CustomSourceConfig } from '@/types';
 // Sources without API keys are enabled by default
 // Sources requiring keys are disabled by default
 
+function faviconUrl(siteUrl: string, size = 64): string {
+    const domain = new URL(siteUrl).hostname;
+    return `https://www.google.com/s2/favicons?domain=${domain}&sz=${size}`;
+}
+
 export const SOURCES: SourceConfig[] = [
     // =====================
     // AI LABS
@@ -18,6 +23,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🤖',
+        logoUrl: faviconUrl('https://openai.com/blog'),
         defaultPriority: 4, // Good priority: Leading AI lab, reliable RSS feed
     },
     {
@@ -30,6 +36,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🔵',
+        logoUrl: faviconUrl('https://blog.google/technology/ai/'),
         defaultPriority: 4, // Good priority: Major AI lab, stable RSS feed
     },
     {
@@ -41,6 +48,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🟠',
+        logoUrl: faviconUrl('https://www.anthropic.com/news'),
         defaultPriority: 5,
     },
     {
@@ -53,6 +61,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: false,
         requiresKey: false,
         icon: '📘',
+        logoUrl: faviconUrl('https://ai.meta.com/blog/'),
         defaultPriority: 1,
         brokenReason: 'No RSS feed available',
     },
@@ -66,6 +75,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🧠',
+        logoUrl: faviconUrl('https://deepmind.google/blog/'),
         defaultPriority: 5, // High priority: Leading research lab, reliable RSS
     },
     {
@@ -78,6 +88,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🪟',
+        logoUrl: faviconUrl('https://blogs.microsoft.com/ai/'),
         defaultPriority: 4, // Good priority: Major player, reliable RSS
     },
     {
@@ -90,6 +101,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '💚',
+        logoUrl: faviconUrl('https://blogs.nvidia.com/'),
         defaultPriority: 4, // Good priority: Important for AI hardware/infrastructure
     },
     {
@@ -102,6 +114,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: false,
         requiresKey: false,
         icon: '🌀',
+        logoUrl: faviconUrl('https://mistral.ai/news/'),
         defaultPriority: 1,
         brokenReason: 'No RSS feed available',
     },
@@ -115,6 +128,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🔷',
+        logoUrl: faviconUrl('https://cohere.com/blog'),
         defaultPriority: 4, // Good priority: Important LLM provider, Ghost RSS reliable
     },
     {
@@ -127,6 +141,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🎨',
+        logoUrl: faviconUrl('https://stability.ai/news'),
         defaultPriority: 4, // Good priority: Leading image gen, reliable RSS
     },
     {
@@ -139,6 +154,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '☁️',
+        logoUrl: faviconUrl('https://aws.amazon.com/blogs/machine-learning/'),
         defaultPriority: 4, // Good priority: Important cloud AI provider
     },
     {
@@ -151,6 +167,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🍎',
+        logoUrl: faviconUrl('https://machinelearning.apple.com'),
         defaultPriority: 4, // Good priority: Major tech company, quality research
     },
 
@@ -167,6 +184,7 @@ export const SOURCES: SourceConfig[] = [
         requiresKey: false, // Works without key, better with
         apiKeyEnvVar: 'GITHUB_TOKEN',
         icon: '🐙',
+        logoUrl: faviconUrl('https://github.com/trending'),
         defaultPriority: 3, // Medium priority: Essential developer platform, reliable API
     },
     {
@@ -178,6 +196,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🤗',
+        logoUrl: faviconUrl('https://huggingface.co'),
         defaultPriority: 5, // High priority: Central AI/ML platform, excellent API
     },
     {
@@ -190,6 +209,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: false,
         requiresKey: false,
         icon: '📄',
+        logoUrl: faviconUrl('https://huggingface.co/papers'),
         defaultPriority: 1,
         brokenReason: 'Site redirects to HuggingFace papers',
     },
@@ -203,6 +223,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🦜',
+        logoUrl: faviconUrl('https://blog.langchain.dev'),
         defaultPriority: 4, // Good priority: Important LLM framework, reliable RSS
     },
     {
@@ -215,6 +236,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: false,
         requiresKey: false,
         icon: '🦙',
+        logoUrl: faviconUrl('https://www.llamaindex.ai/blog'),
         defaultPriority: 1,
         brokenReason: 'No RSS feed available',
     },
@@ -228,6 +250,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '📊',
+        logoUrl: faviconUrl('https://wandb.ai/fully-connected'),
         defaultPriority: 4, // Good priority: Important ML tool, reliable RSS
     },
     {
@@ -240,6 +263,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '📑',
+        logoUrl: faviconUrl('https://arxiv.org/list/cs.AI/recent'),
         defaultPriority: 5, // High priority: Research papers, highly reliable RSS
     },
     {
@@ -252,6 +276,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '📝',
+        logoUrl: faviconUrl('https://arxiv.org/list/cs.CL/recent'),
         defaultPriority: 5, // High priority: NLP research papers, highly reliable RSS
     },
 
@@ -268,6 +293,7 @@ export const SOURCES: SourceConfig[] = [
         requiresKey: true,
         apiKeyEnvVar: 'TWITTER_API_KEY',
         icon: '🐦',
+        logoUrl: faviconUrl('https://twitter.com'),
         defaultPriority: 1, // Low priority: Requires expensive paid API
     },
     {
@@ -280,6 +306,7 @@ export const SOURCES: SourceConfig[] = [
         requiresKey: true,
         apiKeyEnvVar: 'LINKEDIN_API_KEY',
         icon: '💼',
+        logoUrl: faviconUrl('https://linkedin.com'),
         defaultPriority: 1, // Low priority: Restricted API access
     },
     {
@@ -292,6 +319,7 @@ export const SOURCES: SourceConfig[] = [
         requiresKey: true,
         apiKeyEnvVar: 'YOUTUBE_API_KEY',
         icon: '📺',
+        logoUrl: faviconUrl('https://youtube.com'),
         defaultPriority: 4, // Good priority: Requires key but API is stable
     },
 
@@ -308,6 +336,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🔓',
+        logoUrl: faviconUrl('https://the-decoder.com'),
         defaultPriority: 4, // Good priority: 100% AI-focused news, reliable RSS
     },
     {
@@ -320,6 +349,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '📰',
+        logoUrl: faviconUrl('https://www.theverge.com/ai-artificial-intelligence'),
         relevanceFilter: true,
         defaultPriority: 4, // Good priority: Major tech news, reliable RSS
     },
@@ -333,6 +363,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '💚',
+        logoUrl: faviconUrl('https://techcrunch.com/category/artificial-intelligence/'),
         relevanceFilter: true,
         defaultPriority: 4, // Good priority: Leading tech news, reliable RSS
     },
@@ -346,6 +377,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🟣',
+        logoUrl: faviconUrl('https://venturebeat.com/category/ai/'),
         relevanceFilter: true,
         defaultPriority: 4, // Good priority: Enterprise AI news, reliable RSS
     },
@@ -359,6 +391,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🎓',
+        logoUrl: faviconUrl('https://www.technologyreview.com/topic/artificial-intelligence/'),
         relevanceFilter: true,
         defaultPriority: 5, // High priority: High-quality analysis, reliable RSS
     },
@@ -372,6 +405,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🔧',
+        logoUrl: faviconUrl('https://arstechnica.com/ai/'),
         relevanceFilter: true,
         defaultPriority: 4, // Good priority: Technical news coverage, reliable RSS
     },
@@ -385,6 +419,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '📡',
+        logoUrl: faviconUrl('https://www.wired.com/tag/ai/'),
         relevanceFilter: true,
         defaultPriority: 4, // Good priority: Quality tech journalism, reliable RSS
     },
@@ -398,6 +433,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '💰',
+        logoUrl: faviconUrl('https://www.forbes.com/innovation/ai/'),
         relevanceFilter: true,
         defaultPriority: 4, // Good priority: Major business publication, AI-specific feed
     },
@@ -411,6 +447,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🎓',
+        logoUrl: faviconUrl('https://sloanreview.mit.edu'),
         relevanceFilter: true,
         defaultPriority: 4, // Good priority: Prestigious management research, reliable RSS
     },
@@ -424,6 +461,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '📊',
+        logoUrl: faviconUrl('https://www.mckinsey.com/capabilities/quantumblack/our-insights'),
         relevanceFilter: true,
         defaultPriority: 4, // Good priority: Top consulting firm AI insights, reliable RSS
     },
@@ -437,6 +475,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '📕',
+        logoUrl: faviconUrl('https://hbr.org'),
         relevanceFilter: true,
         defaultPriority: 4, // Good priority: Premier business publication, reliable Atom feed
     },
@@ -453,6 +492,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🔴',
+        logoUrl: faviconUrl('https://www.reddit.com'),
         defaultPriority: 4, // Good priority: User-configured subreddit list
     },
     {
@@ -464,6 +504,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🟧',
+        logoUrl: faviconUrl('https://news.ycombinator.com'),
         defaultPriority: 5, // High priority: High-quality tech discussions, excellent API
     },
 
@@ -480,6 +521,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '📬',
+        logoUrl: faviconUrl('https://importai.substack.com'),
         defaultPriority: 5, // High priority: Quality curation, reliable Substack RSS
     },
     {
@@ -492,6 +534,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: false,
         requiresKey: false,
         icon: '📧',
+        logoUrl: faviconUrl('https://www.deeplearning.ai/the-batch/'),
         defaultPriority: 1,
         brokenReason: 'No RSS feed available',
     },
@@ -505,6 +548,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: false,
         requiresKey: false,
         icon: '🍪',
+        logoUrl: faviconUrl('https://bensbites.beehiiv.com'),
         relevanceFilter: true,
         defaultPriority: 1,
         brokenReason: 'Feed returns 404',
@@ -519,6 +563,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: false,
         requiresKey: false,
         icon: '🏃',
+        logoUrl: faviconUrl('https://therundownai.com'),
         relevanceFilter: true,
         defaultPriority: 1,
         brokenReason: 'Domain no longer active',
@@ -533,6 +578,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🌌',
+        logoUrl: faviconUrl('https://www.latent.space'),
         defaultPriority: 5, // High priority: Excellent AI content, reliable RSS
     },
     {
@@ -545,6 +591,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🔧',
+        logoUrl: faviconUrl('https://simonwillison.net'),
         defaultPriority: 5, // High priority: High-quality insights, reliable Atom feed
     },
     {
@@ -557,6 +604,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🧪',
+        logoUrl: faviconUrl('https://magazine.sebastianraschka.com'),
         defaultPriority: 5, // High priority: Expert analysis, reliable RSS
     },
     {
@@ -569,6 +617,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🔗',
+        logoUrl: faviconUrl('https://www.interconnects.ai'),
         defaultPriority: 4, // Good priority: Quality AI analysis, reliable RSS
     },
     {
@@ -581,6 +630,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '💡',
+        logoUrl: faviconUrl('https://www.oneusefulthing.org'),
         relevanceFilter: true,
         defaultPriority: 5, // High priority: Wharton professor on AI in workplace, highly aligned
     },
@@ -594,6 +644,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '⚙️',
+        logoUrl: faviconUrl('https://newsletter.pragmaticengineer.com'),
         relevanceFilter: true,
         defaultPriority: 5, // High priority: Eng leadership + AI impact, highly aligned audience
     },
@@ -610,6 +661,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '🏆',
+        logoUrl: faviconUrl('https://chat.lmsys.org/?leaderboard'),
         defaultPriority: 5, // High priority: Essential LLM benchmark, stable scraping
     },
     {
@@ -621,6 +673,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '📊',
+        logoUrl: faviconUrl('https://huggingface.co/spaces/HuggingFaceH4/open_llm_leaderboard'),
         defaultPriority: 5, // High priority: Official HF leaderboard, reliable API
     },
     {
@@ -632,6 +685,7 @@ export const SOURCES: SourceConfig[] = [
         enabled: true,
         requiresKey: false,
         icon: '📈',
+        logoUrl: faviconUrl('https://artificialanalysis.ai'),
         defaultPriority: 4, // Good priority: Valuable benchmarks, scraping method
     },
 ];
@@ -656,6 +710,7 @@ export function customToSourceConfig(custom: CustomSourceConfig): SourceConfig {
         requiresKey: false,
         defaultPriority: 3,
         icon: '🔗',
+        logoUrl: faviconUrl(custom.url),
     };
 }
 

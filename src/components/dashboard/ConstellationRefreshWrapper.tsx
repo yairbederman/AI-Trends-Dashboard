@@ -21,7 +21,7 @@ interface RefreshStatusResponse {
 }
 
 interface ConstellationRefreshWrapperProps {
-    initialSources: { id: string; name: string; icon: string }[];
+    initialSources: { id: string; name: string; icon: string; logoUrl?: string }[];
     onComplete: () => void;
 }
 
@@ -39,6 +39,7 @@ export function ConstellationRefreshWrapper({
     const [sources, setSources] = useState<ConstellationSource[]>(
         initialSources.map(s => ({
             ...s,
+            logoUrl: s.logoUrl,
             category: catMap[s.id] || 'other',
             status: 'pending' as NodeStatus,
         }))

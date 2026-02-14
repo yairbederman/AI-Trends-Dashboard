@@ -31,7 +31,7 @@ interface FeedResponse {
     fetchedAt: string;
     cached?: boolean;
     staleRefreshing?: boolean;
-    refreshingSources?: { id: string; name: string; icon: string }[];
+    refreshingSources?: { id: string; name: string; icon: string; logoUrl?: string }[];
     failures?: { source: string; error: string }[];
 }
 
@@ -424,6 +424,7 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
                             id: s.id,
                             name: s.name,
                             icon: s.icon || '?',
+                            logoUrl: s.logoUrl,
                             category: s.category,
                             status: 'pending' as const,
                         }))}
@@ -438,6 +439,7 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
                             id: s.id,
                             name: s.name,
                             icon: s.icon || '?',
+                            logoUrl: s.logoUrl,
                             category: s.category,
                             status: 'pending' as const,
                         }))}

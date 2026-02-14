@@ -22,6 +22,7 @@ export interface SourceConfig {
   requiresKey: boolean;
   apiKeyEnvVar?: string;
   icon?: string;
+  logoUrl?: string;
   // Default priority (1-5, higher = more important)
   defaultPriority?: number;
   // If true, items are filtered for AI relevance (for general-topic feeds)

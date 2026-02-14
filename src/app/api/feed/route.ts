@@ -143,7 +143,7 @@ export async function GET(request: Request) {
         const refreshingSources = freshness.stale.length > 0
             ? targetSources
                 .filter(s => freshness.stale.includes(s.id))
-                .map(s => ({ id: s.id, name: s.name, icon: s.icon || '' }))
+                .map(s => ({ id: s.id, name: s.name, icon: s.icon || '', logoUrl: s.logoUrl }))
             : [];
 
         if (freshness.stale.length > 0 && (existingItems.length > 0 || hasAnyContent)) {

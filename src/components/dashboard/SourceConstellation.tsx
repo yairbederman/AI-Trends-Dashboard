@@ -8,6 +8,7 @@ export interface ConstellationSource {
     id: string;
     name: string;
     icon: string;
+    logoUrl?: string;
     category: string;
     status: NodeStatus;
 }
@@ -321,7 +322,26 @@ export function SourceConstellation({
                         title={sources.find(s => s.id === pos.id)?.name || pos.id}
                     >
                         <span className="constellation-node-icon">
-                            {sources.find(s => s.id === pos.id)?.icon || '?'}
+                            {(() => {
+                                const source = sources.find(s => s.id === pos.id);
+                                const logoUrl = source?.logoUrl;
+                                if (logoUrl) {
+                                    return (
+                                        <img
+                                            src={logoUrl}
+                                            alt=""
+                                            width={20}
+                                            height={20}
+                                            className="constellation-logo"
+                                            onError={(e) => {
+                                                const span = e.currentTarget.parentElement;
+                                                if (span) span.textContent = source?.icon || '?';
+                                            }}
+                                        />
+                                    );
+                                }
+                                return source?.icon || '?';
+                            })()}
                         </span>
                         <span className="constellation-node-ring" />
                     </div>
