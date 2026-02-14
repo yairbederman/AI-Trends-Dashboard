@@ -21,7 +21,7 @@ import { sql, inArray } from 'drizzle-orm';
 const CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
 // Module-level lock: prevent duplicate background refreshes for the same source set
-let activeRefreshKey: string | null = null;
+const activeRefreshKeys = new Set<string>();
 
 async function maybeRunCleanup() {
     try {
@@ -35,10 +35,11 @@ async function maybeRunCleanup() {
                 cleanupOldSnapshots(7),    // Keep 7 days of snapshots
                 // Phase 4: Clean up stale feed_cache_* entries from settings table
                 db.delete(settings).where(sql`${settings.key} LIKE 'feed_cache_%'`),
-            ]).then(([contentDeleted, snapshotsDeleted]) => {
+            ]).then(async ([contentDeleted, snapshotsDeleted]) => {
                 console.log(`Cleanup: removed ${contentDeleted} old items, ${snapshotsDeleted} old snapshots, cleaned feed_cache_* settings`);
+                // Only advance timestamp after successful cleanup so failures retry next request
+                await updateSetting('lastCleanupTime', new Date().toISOString());
             }).catch(err => console.error('Cleanup failed:', err));
-            await updateSetting('lastCleanupTime', new Date().toISOString());
         }
     } catch (error) {
         console.error('Cleanup check failed:', error);
@@ -150,15 +151,15 @@ export async function GET(request: Request) {
             staleRefreshing = true;
             // Only start ONE background refresh per source set (lock prevents duplicates)
             const refreshKey = targetSourceIds.sort().join(',');
-            if (activeRefreshKey !== refreshKey) {
-                activeRefreshKey = refreshKey;
+            if (!activeRefreshKeys.has(refreshKey)) {
+                activeRefreshKeys.add(refreshKey);
                 startRefreshSession(refreshingSources);
                 ensureSourcesFresh(targetSources, targetSourceIds, timeRange)
                     .then(() => {
                         feedCache.clear();
                     })
                     .catch(err => console.error('Background source refresh failed:', err))
-                    .finally(() => { activeRefreshKey = null; });
+                    .finally(() => { activeRefreshKeys.delete(refreshKey); });
             }
         } else if (freshness.stale.length > 0) {
             // No existing content (first-ever visit) — must block on fetch
@@ -209,7 +210,11 @@ export async function GET(request: Request) {
         feedCache.set(memoryCacheKey, response);
         console.log(`[FEED TIMING] total: ${Date.now() - t0}ms | stale=${freshness.stale.length} swr=${staleRefreshing}`);
 
-        return NextResponse.json(response);
+        return NextResponse.json(response, {
+            headers: {
+                'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=60',
+            },
+        });
     } catch (error) {
         console.error('Feed API error:', error);
         return NextResponse.json(

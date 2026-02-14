@@ -82,6 +82,11 @@ export async function updateSetting(key: string, value: unknown): Promise<void> 
                 target: settings.key,
                 set: { value: stringValue },
             });
+        // Invalidate caches so subsequent reads get fresh data,
+        // regardless of which code path called updateSetting().
+        settingsCache.invalidate(`setting:${key}`);
+        settingsCache.invalidate('allSettings:loaded');
+        settingsCache.invalidatePattern('resolved:');
     } catch (error) {
         console.error(`Failed to update setting ${key}:`, error);
         throw error;

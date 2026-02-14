@@ -97,8 +97,16 @@ export class MemoryCache<T = unknown> {
     }
 }
 
-// Singleton instances
+// Singleton instances — use globalThis to survive Next.js dev hot-reloads.
+// Without this, each hot-reload creates a new MemoryCache (with a new setInterval),
+// while the old timer keeps running against an orphaned Map.
+const globalRef = globalThis as typeof globalThis & {
+    __feedCache?: MemoryCache;
+    __settingsCache?: MemoryCache;
+};
+
 // Feed cache: 5min TTL, max 30 entries (sourceIds x timeRange x feedMode combos)
-export const feedCache = new MemoryCache(5 * 60 * 1000, 30);
-// Settings cache: 5min TTL, max 20 entries (critical with high-latency remote DB)
-export const settingsCache = new MemoryCache(5 * 60 * 1000, 20);
+export const feedCache = globalRef.__feedCache ??= new MemoryCache(5 * 60 * 1000, 30);
+// Settings cache: 5min TTL, max 50 entries (critical with high-latency remote DB)
+// ~10 individual setting keys + 3 computed keys from getAllSettings; 50 prevents LRU eviction
+export const settingsCache = globalRef.__settingsCache ??= new MemoryCache(5 * 60 * 1000, 50);
