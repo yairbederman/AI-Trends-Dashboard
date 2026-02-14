@@ -2,7 +2,7 @@ flowchart TD
     subgraph Client["Client Layer"]
         UI[Dashboard UI<br/>React + Framer Motion]
         SWR[SWR Cache<br/>5min revalidation]
-        Constellation[SourceConstellation<br/>SVG loading viz · skeleton + refresh modes]
+        Constellation[SourceConstellation<br/>favicon logos · skeleton + refresh modes]
         RefreshWrapper[ConstellationRefreshWrapper<br/>polls refresh-status every 1.5s]
     end
 
@@ -10,8 +10,8 @@ flowchart TD
         ThirdParty[Third-party Services<br/>CORS enabled]
     end
 
-    subgraph API["API Layer · Next.js Route Handlers"]
-        Feed["/api/feed"]
+    subgraph API["API Layer · Next.js Route Handlers · vercel.json maxDuration"]
+        Feed["/api/feed<br/>non-blocking refresh"]
         RefreshStatus["/api/feed/refresh-status<br/>per-source progress"]
         Discovery["/api/discovery/items<br/>rate limited · search · paginated"]
         V1["/api/v1/discovery/items<br/>versioned alias"]
@@ -77,8 +77,8 @@ flowchart TD
     Discovery --> CDNCache
     CDNCache --> MemCache
     MemCache --> DBCache
-    DBCache --> EnsureFresh
-    EnsureFresh --> Adapters
+    DBCache -->|if stale| EnsureFresh
+    EnsureFresh -.->|fire-and-forget| Adapters
 
     RSS --> RSSFeeds
     HN --> HNAPI

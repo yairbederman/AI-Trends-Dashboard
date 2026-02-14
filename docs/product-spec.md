@@ -2,7 +2,7 @@
 
 ## What It Is
 
-A real-time AI content aggregation dashboard built with Next.js 16. It pulls from 40+ sources across AI labs, dev platforms, social media, news outlets, communities, newsletters, and leaderboards — scoring and ranking content using multi-algorithm feeds (Hot, Rising, Top). Users can configure custom YouTube channels, subreddits, and add/delete RSS sources. A three-layer caching strategy (memory → database → external APIs) keeps the dashboard fast while minimizing external API calls.
+A real-time AI content aggregation dashboard built with Next.js 16. It pulls from 40+ sources across AI labs, dev platforms, social media, news outlets, communities, newsletters, and leaderboards — scoring and ranking content using multi-algorithm feeds (Hot, Rising, Top). Users can configure custom YouTube channels, subreddits, and add/delete RSS sources. A three-layer caching strategy (memory → database → external APIs) with always-non-blocking refresh keeps the dashboard fast while minimizing external API calls and preventing serverless timeouts.
 
 ## Who It's For
 
@@ -27,11 +27,14 @@ User Request
     → /api/feed or /api/discovery/items route handler
     → Memory Cache (5min TTL)
     → Database Cache (category-based TTL: 5min–60min)
-    → Source Adapters (only stale sources fetched)
-    → External APIs / RSS Feeds
-    → Batch upsert to PostgreSQL (chunks of 100, atomic via onConflictDoUpdate)
-    → Scored & ranked response returned (capped at 2000 items per query)
+    → If stale: fire-and-forget background refresh (non-blocking)
+        → Source Adapters (only stale sources fetched)
+        → External APIs / RSS Feeds
+        → Batch upsert to PostgreSQL (chunks of 100, atomic via onConflictDoUpdate)
+    → Scored & ranked response returned immediately from existing data (capped at 2000 items per query)
 ```
+
+The feed API **always returns immediately** with cached/existing data. If sources are stale, a background refresh runs asynchronously. This prevents 504 timeouts on cold starts when all sources are stale. A module-level lock prevents duplicate concurrent refreshes for the same source set.
 
 ### Category TTLs
 
@@ -82,14 +85,15 @@ Scoring uses percentile-based ranking, quality ratios, source-specific baselines
 
 ### Dashboard Views
 - Overview with KPIs (Top Source, Hottest Topic, Biggest Mover, Driving Category)
-- Category filters (AI Labs, Community, News, Dev Platforms, etc.)
+- Category filters (AI Labs, Community, News, Dev Platforms, etc.) — client-side filtering for instant tab switching
 - Source-level filtering
 - Time range selection (1h, 12h, 24h, 48h, 7d)
 - Trend charts via Recharts
+- Mobile: info icon tooltips on CategoryHighlights (replaces long-press)
 
 ### Neural Constellation Loading Visualization
 - Replaces traditional skeleton/progress bar with an animated "source constellation" SVG visualization
-- **SourceConstellation** component: radial layout where each source is an emoji node clustered by category around a central progress hub. SVG connection lines link nodes to the hub and within category clusters. Node status animations cycle through pending, fetching, done, and failed states. Phase transitions (active -> completing -> fading) animate the exit.
+- **SourceConstellation** component: radial layout where each source is a favicon logo node clustered by category around a central progress hub. SVG connection lines link nodes to the hub and within category clusters. Node status animations cycle through pending, fetching, done, and failed states. Phase transitions (active -> completing -> fading) animate the exit.
 - **Two modes**: `skeleton` (initial page load — simulated random fetch animation loop) and `refresh` (background refresh — real per-source status from API)
 - **ConstellationRefreshWrapper**: polling wrapper that fetches per-source refresh status from `/api/feed/refresh-status` every 1.5s and maps live source statuses into the constellation
 - Responsive layout via ResizeObserver with CSS breakpoints and `prefers-reduced-motion` support
@@ -162,6 +166,7 @@ scripts/
 ├── setup-database.ts        # Schema + migration + seed script
 drizzle/                     # Generated migrations
 docs/                        # Documentation
+vercel.json                  # Serverless function config (maxDuration per route)
 ```
 
 ## Keeping This Current
