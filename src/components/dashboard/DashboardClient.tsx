@@ -352,6 +352,12 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
     const hasFailures = data?.failures && data.failures.length > 0;
     const isStaleRefreshing = data?.staleRefreshing === true && !refreshDismissedRef.current && !isValidating;
 
+    useEffect(() => {
+        if (isStaleRefreshing && !skeletonDone) {
+            setSkeletonDone(true);
+        }
+    }, [isStaleRefreshing, skeletonDone]);
+
     const handleRefreshComplete = useCallback(() => {
         refreshDismissedRef.current = true;
         refreshData();
@@ -426,7 +432,7 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
                         mode="skeleton"
                         onTransitionComplete={() => setSkeletonDone(true)}
                     />
-                ) : (items.length > 0 && !skeletonDone) ? (
+                ) : (items.length > 0 && !skeletonDone && !isStaleRefreshing) ? (
                     <SourceConstellation
                         sources={SOURCES.filter(s => s.enabled).map(s => ({
                             id: s.id,
