@@ -146,10 +146,10 @@ export async function GET(request: Request) {
                 .map(s => ({ id: s.id, name: s.name, icon: s.icon || '', logoUrl: s.logoUrl }))
             : [];
 
-        if (freshness.stale.length > 0 && (existingItems.length > 0 || hasAnyContent)) {
-            // Stale-while-revalidate: return existing data now, refresh in background
+        if (freshness.stale.length > 0) {
+            // Always non-blocking: return whatever we have now, refresh in background.
+            // This prevents 504 timeouts on cold starts when all sources are stale.
             staleRefreshing = true;
-            // Only start ONE background refresh per source set (lock prevents duplicates)
             const refreshKey = targetSourceIds.sort().join(',');
             if (!activeRefreshKeys.has(refreshKey)) {
                 activeRefreshKeys.add(refreshKey);
@@ -161,18 +161,10 @@ export async function GET(request: Request) {
                     .catch(err => console.error('Background source refresh failed:', err))
                     .finally(() => { activeRefreshKeys.delete(refreshKey); });
             }
-        } else if (freshness.stale.length > 0) {
-            // No existing content (first-ever visit) — must block on fetch
-            const result = await ensureSourcesFresh(targetSources, targetSourceIds, timeRange);
-            failures = result.failures;
         }
 
-        // 3. Use existing items, or re-query after a blocking fetch (not SWR)
-        const t2 = Date.now();
-        const allItems = (!staleRefreshing && freshness.stale.length > 0 && existingItems.length === 0)
-            ? await getCachedContentBySourceIds(targetSourceIds, timeRange, 300)
-            : existingItems;
-        console.log(`[FEED TIMING] allItems (${allItems.length}): ${Date.now() - t2}ms`);
+        // 3. Use existing items (background refresh will populate new ones)
+        const allItems = existingItems;
 
         // Get velocities for Hot/Rising modes (with 3s timeout to avoid serverless 504)
         const t3 = Date.now();

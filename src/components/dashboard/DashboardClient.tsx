@@ -448,7 +448,7 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
                         mode="skeleton"
                         onTransitionComplete={() => setSkeletonDone(true)}
                     />
-                ) : items.length === 0 ? (
+                ) : items.length === 0 && !isStaleRefreshing ? (
                     <div className="empty-state" role="status">
                         <div className="empty-state-icon">
                             <TrendingUp size={48} aria-hidden="true" />
