@@ -11,7 +11,7 @@ flowchart TD
     end
 
     subgraph API["API Layer · Next.js Route Handlers · vercel.json maxDuration"]
-        Feed["/api/feed<br/>non-blocking refresh"]
+        Feed["/api/feed<br/>after · background refresh"]
         RefreshStatus["/api/feed/refresh-status<br/>per-source progress"]
         Discovery["/api/discovery/items<br/>rate limited · search · paginated"]
         V1["/api/v1/discovery/items<br/>versioned alias"]
@@ -78,7 +78,7 @@ flowchart TD
     CDNCache --> MemCache
     MemCache --> DBCache
     DBCache -->|if stale| EnsureFresh
-    EnsureFresh -.->|fire-and-forget| Adapters
+    EnsureFresh -.->|after · waitUntil| Adapters
 
     RSS --> RSSFeeds
     HN --> HNAPI

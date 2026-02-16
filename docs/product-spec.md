@@ -27,14 +27,14 @@ User Request
     → /api/feed or /api/discovery/items route handler
     → Memory Cache (5min TTL)
     → Database Cache (category-based TTL: 5min–60min)
-    → If stale: fire-and-forget background refresh (non-blocking)
+    → If stale: background refresh via after() (non-blocking, Vercel-safe)
         → Source Adapters (only stale sources fetched)
         → External APIs / RSS Feeds
         → Batch upsert to PostgreSQL (chunks of 100, atomic via onConflictDoUpdate)
     → Scored & ranked response returned immediately from existing data (capped at 2000 items per query)
 ```
 
-The feed API **always returns immediately** with cached/existing data. If sources are stale, a background refresh runs asynchronously. This prevents 504 timeouts on cold starts when all sources are stale. A module-level lock prevents duplicate concurrent refreshes for the same source set.
+The feed API **always returns immediately** with cached/existing data. If sources are stale, a background refresh runs via Next.js `after()` API. This sends the response immediately while keeping the Vercel serverless function alive (via `waitUntil`) until all adapters complete. A module-level lock prevents duplicate concurrent refreshes for the same source set. Daily cleanup also runs inside `after()` to ensure it completes reliably.
 
 ### Category TTLs
 
