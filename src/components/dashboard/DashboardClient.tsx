@@ -230,7 +230,8 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
             }
         }
 
-        // Driving the Feed: which category has the highest total score among top items
+        // Driving the Feed: which category has the highest average score (not total)
+        // Using average prevents categories with many items from always winning
         const catScores: Record<string, { total: number; count: number }> = {};
         for (const item of items) {
             const cat = sourceToCategory[item.sourceId];
@@ -240,12 +241,13 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
             catScores[cat].count += 1;
         }
         let drivingCategory = '';
-        let drivingCategoryScore = 0;
+        let drivingCategoryAvg = 0;
         let drivingCategoryCount = 0;
         for (const [cat, data] of Object.entries(catScores)) {
-            if (data.total > drivingCategoryScore) {
+            const avg = data.count > 0 ? data.total / data.count : 0;
+            if (avg > drivingCategoryAvg) {
                 drivingCategory = cat;
-                drivingCategoryScore = data.total;
+                drivingCategoryAvg = avg;
                 drivingCategoryCount = data.count;
             }
         }
@@ -300,8 +302,21 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
             }
         }
 
-        // Sort category groups by their top item's score (hottest category first)
-        groups.sort((a, b) => (b.items[0]?.score || 0) - (a.items[0]?.score || 0));
+        // Sort by average score of top 3 picked items (fairer than raw top-item score),
+        // then apply a daily rotation offset so a different category leads each day
+        groups.sort((a, b) => {
+            const avgA = a.items.reduce((s, i) => s + i.score, 0) / a.items.length;
+            const avgB = b.items.reduce((s, i) => s + i.score, 0) / b.items.length;
+            return avgB - avgA;
+        });
+        // Daily rotation: shift the sorted array by (dayOfYear % groupCount)
+        if (groups.length > 1) {
+            const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
+            const offset = dayOfYear % groups.length;
+            const rotated = [...groups.slice(offset), ...groups.slice(0, offset)];
+            groups.length = 0;
+            groups.push(...rotated);
+        }
 
         return groups;
 
@@ -348,6 +363,44 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
             };
         }
     }, [items, sourceMap, sourceToCategory]);
+
+    // Interleave items across categories for multi-category views (Fix D)
+    // Uses weighted round-robin: pick top unpicked item from each category per round
+    const interleavedItems = useMemo(() => {
+        // Only interleave for multi-category views
+        if (activeCategory !== 'all' && activeCategory !== 'dashboard') return items;
+        if (items.length === 0) return items;
+
+        // Group by category, each group pre-sorted by score (items already sorted)
+        const queues = new Map<string, ContentItem[]>();
+        for (const item of items) {
+            const cat = sourceToCategory[item.sourceId] || 'unknown';
+            if (!queues.has(cat)) queues.set(cat, []);
+            queues.get(cat)!.push(item);
+        }
+
+        // Weighted round-robin: take top item from each category per round
+        const result: ContentItem[] = [];
+        const cursors = new Map<string, number>();
+        for (const cat of queues.keys()) cursors.set(cat, 0);
+
+        while (result.length < items.length) {
+            const roundItems: ContentItem[] = [];
+            for (const [cat, queue] of queues) {
+                const idx = cursors.get(cat)!;
+                if (idx < queue.length) {
+                    roundItems.push(queue[idx]);
+                    cursors.set(cat, idx + 1);
+                }
+            }
+            if (roundItems.length === 0) break;
+            // Sort items within each round by score (best first)
+            roundItems.sort((a, b) => (b.trendingScore || 0) - (a.trendingScore || 0));
+            result.push(...roundItems);
+        }
+
+        return result;
+    }, [items, activeCategory, sourceToCategory]);
 
     const hasFailures = data?.failures && data.failures.length > 0;
     const isStaleRefreshing = data?.staleRefreshing === true && !refreshDismissedRef.current && !isValidating;
@@ -499,7 +552,7 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
                         ) : (
                             <TooltipProvider delayDuration={300}>
                                 <div className="content-grid" role="feed" aria-label="AI content feed">
-                                    {items.map((item, index) => (
+                                    {interleavedItems.map((item, index) => (
                                         <ContentCard key={item.id} item={item} isTouchDevice={isTouchDevice} style={{ '--card-delay': `${Math.min(index, 12) * 60}ms` } as any} />
                                     ))}
                                 </div>

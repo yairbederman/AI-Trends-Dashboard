@@ -313,5 +313,65 @@ export function getScoreColor(score: number): string {
     return 'score-normal';
 }
 
+/**
+ * Normalize scores across categories to reduce dominance of high-metric categories.
+ * Re-maps scores within each category to a common 15-85 range using min-max normalization,
+ * then blends 80% normalized + 20% original to preserve some absolute signal.
+ *
+ * @param items - Scored items with trendingScore set
+ * @param sourceToCategoryMap - Maps sourceId -> category string
+ * @returns Items with adjusted trendingScore values
+ */
+export function normalizeCrossCategory(
+    items: ContentItem[],
+    sourceToCategoryMap: Record<string, string>
+): ContentItem[] {
+    if (items.length === 0) return items;
+
+    // Group items by category
+    const byCategory = new Map<string, ContentItem[]>();
+    for (const item of items) {
+        const cat = sourceToCategoryMap[item.sourceId] || 'unknown';
+        if (!byCategory.has(cat)) byCategory.set(cat, []);
+        byCategory.get(cat)!.push(item);
+    }
+
+    // Build a set of item IDs that should be normalized
+    const normalizedScores = new Map<string, number>();
+
+    for (const [, catItems] of byCategory) {
+        // Skip categories with <3 items — not enough data to normalize meaningfully
+        if (catItems.length < 3) continue;
+
+        const scores = catItems.map(i => i.trendingScore || 0);
+        const min = Math.min(...scores);
+        const max = Math.max(...scores);
+
+        // Skip if all items have the same score (avoid division by zero)
+        if (max - min < 0.01) continue;
+
+        const TARGET_MIN = 15;
+        const TARGET_MAX = 85;
+
+        for (const item of catItems) {
+            const original = item.trendingScore || 0;
+            // Min-max normalization to TARGET_MIN..TARGET_MAX range
+            const mapped = TARGET_MIN + ((original - min) / (max - min)) * (TARGET_MAX - TARGET_MIN);
+            // Blend: 80% normalized + 20% original
+            const blended = mapped * 0.8 + original * 0.2;
+            normalizedScores.set(item.id, Math.round(blended * 10) / 10);
+        }
+    }
+
+    // Apply normalized scores (items in small categories keep original scores)
+    return items.map(item => {
+        const newScore = normalizedScores.get(item.id);
+        if (newScore !== undefined) {
+            return { ...item, trendingScore: newScore };
+        }
+        return item;
+    });
+}
+
 export { scoreItemsByFeedMode, calculateHotScore, calculateRisingScore, calculateTopScore } from './feed-modes';
 export type { FeedMode } from './feed-modes';

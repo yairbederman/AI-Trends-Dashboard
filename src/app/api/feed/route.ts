@@ -8,8 +8,9 @@ import {
     getSourceFreshness,
 } from '@/lib/db/actions';
 import { getEffectiveConfig, getEffectiveSourceList } from '@/lib/config/resolve';
-import { scoreItemsByFeedMode } from '@/lib/scoring';
+import { scoreItemsByFeedMode, normalizeCrossCategory } from '@/lib/scoring';
 import { getBulkVelocities, cleanupOldSnapshots } from '@/lib/db/engagement-tracker';
+import { SOURCES } from '@/lib/config/sources';
 import { feedCache } from '@/lib/cache/memory-cache';
 import { ensureSourcesFresh } from '@/lib/fetching/ensure-fresh';
 import { startRefreshSession } from '@/lib/fetching/refresh-progress';
@@ -185,7 +186,12 @@ export async function GET(request: Request) {
         console.log(`[FEED TIMING] velocities: ${Date.now() - t3}ms`);
 
         // Score and sort based on feed mode
-        const scoredItems = scoreItemsByFeedMode(allItems, velocities, feedMode);
+        const rawScoredItems = scoreItemsByFeedMode(allItems, velocities, feedMode);
+
+        // Normalize scores across categories to reduce dev-platforms dominance
+        const sourceToCategoryMap: Record<string, string> = {};
+        for (const s of SOURCES) { sourceToCategoryMap[s.id] = s.category; }
+        const scoredItems = normalizeCrossCategory(rawScoredItems, sourceToCategoryMap);
 
         const response = {
             success: true,
