@@ -83,8 +83,14 @@ The feed API **always returns immediately** with cached/existing data. If source
 
 Scoring uses percentile-based ranking, quality ratios, source-specific baselines, and keyword boosting.
 
+### Cross-Category Score Normalization
+After feed-mode scoring, a normalization pass re-maps scores within each category to a common 15–85 range using min-max normalization, then blends 80% normalized + 20% original. This compresses inter-category score gaps (e.g., GitHub stars vs. newsletter baselines) while preserving within-category ordering. Categories with fewer than 3 items or identical scores are skipped.
+
 ### Dashboard Views
 - Overview with KPIs (Top Source, Hottest Topic, Biggest Mover, Driving Category)
+  - "Driving the Feed" KPI uses average score per category (not total), so high-volume categories don't always win
+- Must-Read Highlights sorted by average score of top-3 picks per category, with a daily rotation offset so a different category leads each day
+- Content grid uses weighted round-robin interleaving in multi-category views (All tab, Dashboard): picks the top unpicked item from each category per round, sorts within each round by score. Single-category tabs keep pure score ordering.
 - Category filters (AI Labs, Community, News, Dev Platforms, etc.) — client-side filtering for instant tab switching
 - Source-level filtering
 - Time range selection (1h, 12h, 24h, 48h, 7d)

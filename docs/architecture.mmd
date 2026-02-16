@@ -44,6 +44,7 @@ flowchart TD
         Hot[Hot Mode<br/>50/30/20]
         Rising[Rising Mode<br/>70/20/10]
         Top[Top Mode<br/>engagement]
+        Normalize[Cross-Category Normalization<br/>min-max 15–85 · 80/20 blend]
     end
 
     subgraph External["External Sources"]
@@ -97,5 +98,8 @@ flowchart TD
     Health --> DB
 
     DB --> Scoring
-    Scoring --> Feed
-    Scoring --> Discovery
+    Hot --> Normalize
+    Rising --> Normalize
+    Top --> Normalize
+    Normalize --> Feed
+    Normalize --> Discovery
