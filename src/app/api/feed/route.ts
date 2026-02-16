@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, after } from 'next/server';
 import { TimeRange, FeedMode } from '@/types';
 import {
     getSetting,
@@ -29,20 +29,17 @@ async function maybeRunCleanup() {
         const lastTime = lastCleanup ? new Date(lastCleanup).getTime() : 0;
 
         if (Date.now() - lastTime > CLEANUP_INTERVAL_MS) {
-            // Run cleanup in background (don't await)
-            Promise.all([
+            const [contentDeleted, snapshotsDeleted] = await Promise.all([
                 cleanOldContent(7),        // Keep 7 days of content
                 cleanupOldSnapshots(7),    // Keep 7 days of snapshots
-                // Phase 4: Clean up stale feed_cache_* entries from settings table
+                // Clean up stale feed_cache_* entries from settings table
                 db.delete(settings).where(sql`${settings.key} LIKE 'feed_cache_%'`),
-            ]).then(async ([contentDeleted, snapshotsDeleted]) => {
-                console.log(`Cleanup: removed ${contentDeleted} old items, ${snapshotsDeleted} old snapshots, cleaned feed_cache_* settings`);
-                // Only advance timestamp after successful cleanup so failures retry next request
-                await updateSetting('lastCleanupTime', new Date().toISOString());
-            }).catch(err => console.error('Cleanup failed:', err));
+            ]);
+            console.log(`Cleanup: removed ${contentDeleted} old items, ${snapshotsDeleted} old snapshots, cleaned feed_cache_* settings`);
+            await updateSetting('lastCleanupTime', new Date().toISOString());
         }
     } catch (error) {
-        console.error('Cleanup check failed:', error);
+        console.error('Cleanup failed:', error);
     }
 }
 
@@ -51,8 +48,8 @@ export const revalidate = 0;
 export const maxDuration = 60;
 
 export async function GET(request: Request) {
-    // Trigger cleanup if needed (runs in background, once per day)
-    maybeRunCleanup();
+    // Trigger cleanup if needed (runs after response via after())
+    after(() => maybeRunCleanup());
 
     const { searchParams } = new URL(request.url);
     const category = searchParams.get('category');
@@ -148,18 +145,22 @@ export async function GET(request: Request) {
 
         if (freshness.stale.length > 0) {
             // Always non-blocking: return whatever we have now, refresh in background.
-            // This prevents 504 timeouts on cold starts when all sources are stale.
+            // Uses after() so Vercel keeps the function alive until refresh completes.
             staleRefreshing = true;
             const refreshKey = targetSourceIds.sort().join(',');
             if (!activeRefreshKeys.has(refreshKey)) {
                 activeRefreshKeys.add(refreshKey);
                 startRefreshSession(refreshingSources);
-                ensureSourcesFresh(targetSources, targetSourceIds, timeRange)
-                    .then(() => {
+                after(async () => {
+                    try {
+                        await ensureSourcesFresh(targetSources, targetSourceIds, timeRange);
                         feedCache.clear();
-                    })
-                    .catch(err => console.error('Background source refresh failed:', err))
-                    .finally(() => { activeRefreshKeys.delete(refreshKey); });
+                    } catch (err) {
+                        console.error('Background source refresh failed:', err);
+                    } finally {
+                        activeRefreshKeys.delete(refreshKey);
+                    }
+                });
             }
         }
 
