@@ -81,16 +81,20 @@ export async function ensureSourcesFresh(
         }
     });
 
-    // Cache new items + update lastFetchedAt
-    const uniqueNewItems = deduplicateItems(newItems);
-    await cacheContent(uniqueNewItems);
-
+    // Ensure source rows exist BEFORE caching content items.
+    // content_items.source_id has a FK reference to sources(id). If a source was
+    // added to config but never inserted into the sources table (e.g. migration
+    // not applied), the entire insert chunk fails. Creating the rows first avoids this.
     const successfulSourceIds = adapterPairs
         .filter((_, i) => results[i].status === 'fulfilled')
         .map(p => p.source.id);
     if (successfulSourceIds.length > 0) {
         await updateSourceLastFetched(successfulSourceIds);
     }
+
+    // Cache new items (source rows now guaranteed to exist)
+    const uniqueNewItems = deduplicateItems(newItems);
+    await cacheContent(uniqueNewItems);
 
     // End progress tracking — all fetches complete
     endRefreshSession();

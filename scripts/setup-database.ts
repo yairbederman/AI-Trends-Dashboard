@@ -237,6 +237,7 @@ async function setupDatabase() {
             { id: 'mit-sloan-review', enabled: true },
             { id: 'mckinsey-ai', enabled: true },
             { id: 'hbr', enabled: true },
+            { id: 'the-decoder', enabled: true },
             // Community
             { id: 'reddit-custom', enabled: true },
             { id: 'hackernews', enabled: true },
@@ -289,7 +290,7 @@ async function setupDatabase() {
             'microsoft-ai', 'nvidia-ai', 'cohere-blog', 'stability-ai', 'aws-ai-blog', 'apple-ml',
             'langchain-blog', 'wandb-blog', 'youtube',
             'verge-ai', 'techcrunch-ai', 'venturebeat-ai', 'ars-technica-ai', 'wired-ai',
-            'forbes-ai', 'mit-sloan-review', 'mckinsey-ai', 'hbr',
+            'forbes-ai', 'mit-sloan-review', 'mckinsey-ai', 'hbr', 'the-decoder',
             'reddit-custom',
             'interconnects', 'artificial-analysis'
         ];

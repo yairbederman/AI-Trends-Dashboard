@@ -139,7 +139,11 @@ export async function GET(request: Request) {
                 .from(contentItems)
                 .where(inArray(contentItems.sourceId, targetSourceIds))
                 .limit(1)
-                .then(rows => rows.length > 0),
+                .then(rows => rows.length > 0)
+                .catch(err => {
+                    console.error('hasAnyContent query failed:', err);
+                    return false;
+                }),
         ]);
 
         console.log(`[FEED TIMING] DB queries (items=${existingItems.length}, hasAny=${hasAnyContent}, stale=${freshness.stale.length}, fresh=${freshness.fresh.length}): ${Date.now() - t1}ms`);

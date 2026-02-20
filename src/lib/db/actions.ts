@@ -411,13 +411,16 @@ export async function getCachedContentBySourceIds(
 }
 
 export async function cacheContent(items: ContentItem[]): Promise<void> {
-    try {
-        if (items.length === 0) return;
+    if (items.length === 0) return;
 
-        // Batch upsert content items in chunks of 100
-        const CHUNK_SIZE = 100;
-        for (let i = 0; i < items.length; i += CHUNK_SIZE) {
-            const chunk = items.slice(i, i + CHUNK_SIZE);
+    // Batch upsert content items in chunks of 100.
+    // Each chunk has its own try-catch so a single FK violation (e.g. a source
+    // missing from the `sources` table) doesn't silently drop all remaining chunks.
+    const CHUNK_SIZE = 100;
+    let cachedCount = 0;
+    for (let i = 0; i < items.length; i += CHUNK_SIZE) {
+        const chunk = items.slice(i, i + CHUNK_SIZE);
+        try {
             const dbItems = chunk.map(item => {
                 // Run sentiment analysis if not already set
                 const sentimentResult = (!item.sentiment)
@@ -460,20 +463,26 @@ export async function cacheContent(items: ContentItem[]): Promise<void> {
                         engagement: sql`excluded.engagement`,
                     },
                 });
+            cachedCount += chunk.length;
+        } catch (error) {
+            const sourceIds = [...new Set(chunk.map(c => c.sourceId))];
+            console.error(`Failed to cache chunk ${i / CHUNK_SIZE} (${chunk.length} items, sources: ${sourceIds.join(',')}):`, error);
         }
+    }
 
-        // Record engagement snapshots in background (non-blocking).
-        // Uses batch query instead of per-item N+1 to handle remote DB latency.
-        const engagementItems = items
-            .filter(item => item.engagement)
-            .map(item => ({ contentId: item.id, engagement: item.engagement! }));
-        if (engagementItems.length > 0) {
-            recordEngagementSnapshotsBatch(engagementItems).catch(err =>
-                console.error('Background engagement snapshot failed:', err)
-            );
-        }
-    } catch (error) {
-        console.error('Failed to cache content:', error);
+    if (cachedCount < items.length) {
+        console.warn(`[cacheContent] Cached ${cachedCount}/${items.length} items (${items.length - cachedCount} lost to chunk errors)`);
+    }
+
+    // Record engagement snapshots in background (non-blocking).
+    // Uses batch query instead of per-item N+1 to handle remote DB latency.
+    const engagementItems = items
+        .filter(item => item.engagement)
+        .map(item => ({ contentId: item.id, engagement: item.engagement! }));
+    if (engagementItems.length > 0) {
+        recordEngagementSnapshotsBatch(engagementItems).catch(err =>
+            console.error('Background engagement snapshot failed:', err)
+        );
     }
 }
 

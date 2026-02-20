@@ -51,7 +51,16 @@ function formatNumber(n: number): string {
     return String(n);
 }
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+const fetcher = async (url: string) => {
+    const res = await fetch(url);
+    if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        const err = new Error(body.error || `HTTP ${res.status}`);
+        (err as Error & { info: unknown }).info = body;
+        throw err;
+    }
+    return res.json();
+};
 
 export function DashboardClient({ initialItems }: DashboardClientProps) {
     const [activeCategory, setActiveCategory] = useState<SourceCategory | 'all' | 'dashboard'>('dashboard');
