@@ -36,6 +36,28 @@ User Request
 
 The feed API **always returns immediately** with cached/existing data. If sources are stale, a background refresh runs via Next.js `after()` API. This sends the response immediately while keeping the Vercel serverless function alive (via `waitUntil`) until all adapters complete. A module-level lock prevents duplicate concurrent refreshes for the same source set. Daily cleanup also runs inside `after()` to ensure it completes reliably.
 
+### Conditional Caching (Never-Cache-Empty)
+
+Empty/error results are never cached at full TTL during background refresh. This prevents a transient empty state from locking out fresh data:
+- **Server-side**: `feedCache.set()` only when `scoredItems.length > 0`; empty results are skipped with a warning
+- **HTTP**: Empty responses get `Cache-Control: no-store`; non-empty get `public, s-maxage=120, stale-while-revalidate=60`
+
+### Diagnostic `_debug` Field
+
+When the feed API returns empty results or encounters errors, the response includes a `_debug` object with diagnostic context (reason code, source counts, DB item counts, stale/fresh breakdown). This field is always present in empty/error responses and omitted on success.
+
+### Per-Chunk Error Isolation in Batch Upserts
+
+`cacheContent()` splits items into chunks of 100 and wraps each chunk in its own try/catch. A single FK violation fails only that chunk — remaining chunks proceed. After the loop, a `console.warn` reports how many items were lost to chunk errors, making partial data loss visible.
+
+### FK Ordering Guarantee
+
+During background refresh, `updateSourceLastFetched()` (which upserts source rows) runs BEFORE `cacheContent()` (which inserts content items). This guarantees parent FK targets exist before child rows reference them.
+
+### Adaptive Client Polling
+
+SWR uses a function-based `refreshInterval`: 30s when the response is empty and a background refresh is active (`count === 0 && staleRefreshing`), 5 minutes otherwise. `dedupingInterval` is 15s to allow faster retries after the background refresh completes.
+
 ### Category TTLs
 
 | Category | TTL | Sources |
@@ -75,6 +97,11 @@ The feed API **always returns immediately** with cached/existing data. If source
 - HTTP cache headers: `Cache-Control: public, s-maxage=300, stale-while-revalidate=60` for CDN/edge caching
 - Uses shared freshness/caching/scoring pipeline (via `ensureSourcesFresh`) with the feed endpoint
 - Designed for both dashboard frontend and external service consumption
+
+### Diagnostic Endpoint
+- `GET /api/debug` — returns environment status, DB connectivity/latency, table row counts, effective config resolution, adapter availability, recent content sample, source freshness, and source health records
+- Returns HTTP 500 with `CRITICAL` errors if DB is unreachable or no sources/adapters are available
+- `force-dynamic` and `maxDuration=30` configured
 
 ### Feed Modes (Multi-Algorithm Scoring)
 1. **Hot** — 50% engagement + 30% recency + 20% velocity
@@ -142,6 +169,7 @@ src/
 │   ├── api/
 │   │   ├── discovery/items/ # Multi-category paginated discovery endpoint
 │   │   ├── v1/discovery/items/ # Versioned alias (re-exports canonical route)
+│   │   ├── debug/            # Diagnostic endpoint (env, DB, tables, adapters, health)
 │   │   ├── feed/            # Main aggregation endpoint + /refresh-status polling
 │   │   ├── settings/        # Settings CRUD
 │   │   ├── sources/         # Source management + RSS feed detection

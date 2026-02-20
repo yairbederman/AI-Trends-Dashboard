@@ -15,14 +15,15 @@ flowchart TD
         RefreshStatus["/api/feed/refresh-status<br/>per-source progress"]
         Discovery["/api/discovery/items<br/>rate limited · search · paginated"]
         V1["/api/v1/discovery/items<br/>versioned alias"]
+        Debug["/api/debug<br/>env · DB · adapters · health"]
         Settings["/api/settings"]
         Sources["/api/sources<br/>+ health data"]
         Detect["/api/sources/detect<br/>RSS auto-detection"]
     end
 
-    subgraph Cache["Caching"]
-        MemCache[Memory Cache<br/>5min TTL]
-        CDNCache[CDN Cache<br/>s-maxage=300]
+    subgraph Cache["Caching · never-cache-empty"]
+        MemCache[Memory Cache<br/>5min TTL<br/>skip when empty]
+        CDNCache[CDN Cache<br/>s-maxage=300 · no-store if empty]
         DBCache[DB Freshness Check<br/>5–60min per category]
     end
 
@@ -73,6 +74,9 @@ flowchart TD
     ThirdParty -->|CORS| Discovery
     ThirdParty -->|CORS| V1
     V1 -.->|re-export| Discovery
+
+    Debug --> DB
+    Debug --> Health
 
     Feed --> MemCache
     Discovery --> CDNCache
