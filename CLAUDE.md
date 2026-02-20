@@ -8,10 +8,16 @@ files and updating setup scripts. Migration files do not auto-apply.
 
 ## Documentation Update Rule
 
-After any structural change (workflow steps added/removed, new workflows,
-rule changes, file structure changes, new dependencies), update both:
+After any structural change, update both:
 1. `docs/product-spec.md` — reflect the change in the spec
 2. `docs/architecture.png` — regenerate the diagram from `docs/architecture.mmd`
+
+"Structural change" includes: workflow steps added/removed, new workflows,
+rule changes, file structure changes, new dependencies, new API endpoints,
+error-handling strategy changes, data-pipeline behavior changes (caching,
+polling, fetch logic), and new diagnostic/debug facilities. When in doubt,
+update the docs — a redundant docs update costs nothing; a missing one
+accumulates drift.
 
 ## Verification Rule
 
