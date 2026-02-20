@@ -79,13 +79,16 @@ export async function GET(request: Request) {
 
     try {
         const t0 = Date.now();
+        console.log(`[FEED] Request: timeRange=${queryTimeRange} mode=${rawMode} category=${category} source=${sourceId}`);
+        console.log(`[FEED] DATABASE_URL set: ${!!process.env.DATABASE_URL}`);
+
         // Fetch config and source list in parallel
         const [config, sourceList] = await Promise.all([
             getEffectiveConfig(),
             getEffectiveSourceList(),
         ]);
         const timeRange = queryTimeRange || config.timeRange;
-        console.log(`[FEED TIMING] config+sourceList: ${Date.now() - t0}ms`);
+        console.log(`[FEED TIMING] config+sourceList: ${Date.now() - t0}ms | enabledSources=${sourceList.enabled.length} configuredTimeRange=${config.timeRange} effectiveTimeRange=${timeRange}`);
 
         // 1. Determine target source IDs (including custom sources)
         let targetSources = sourceList.enabled;
@@ -99,9 +102,11 @@ export async function GET(request: Request) {
         }
 
         const targetSourceIds = targetSources.map(s => s.id);
+        console.log(`[FEED] Target sources: ${targetSourceIds.length} (after filters: category=${category}, source=${sourceId})`);
 
         // Guard: no matching sources → return empty result (avoids SQL crash with empty inArray)
         if (targetSourceIds.length === 0) {
+            console.warn(`[FEED] No matching sources — returning empty. Total enabled: ${sourceList.enabled.length}, categories: ${sourceList.activeCategories.join(',')}`);
             return NextResponse.json({
                 success: true,
                 count: 0,
@@ -109,6 +114,11 @@ export async function GET(request: Request) {
                 fetchedAt: new Date().toISOString(),
                 cached: true,
                 mode: feedMode,
+                _debug: {
+                    reason: 'no_matching_sources',
+                    totalEnabled: sourceList.enabled.length,
+                    activeCategories: sourceList.activeCategories,
+                },
             });
         }
 
@@ -132,7 +142,10 @@ export async function GET(request: Request) {
                 .then(rows => rows.length > 0),
         ]);
 
-        console.log(`[FEED TIMING] DB queries (items=${existingItems.length}, hasAny=${hasAnyContent}, stale=${freshness.stale.length}): ${Date.now() - t1}ms`);
+        console.log(`[FEED TIMING] DB queries (items=${existingItems.length}, hasAny=${hasAnyContent}, stale=${freshness.stale.length}, fresh=${freshness.fresh.length}): ${Date.now() - t1}ms`);
+        if (existingItems.length === 0) {
+            console.warn(`[FEED] No items found in DB for timeRange=${timeRange}. hasAnyContent=${hasAnyContent}. stale=${freshness.stale.length}/${targetSourceIds.length} sources stale.`);
+        }
 
         let staleRefreshing = false;
         let failures: { source: string; error: string }[] = [];
@@ -193,7 +206,7 @@ export async function GET(request: Request) {
         for (const s of SOURCES) { sourceToCategoryMap[s.id] = s.category; }
         const scoredItems = normalizeCrossCategory(rawScoredItems, sourceToCategoryMap);
 
-        const response = {
+        const response: Record<string, unknown> = {
             success: true,
             count: scoredItems.length,
             items: scoredItems,
@@ -205,22 +218,54 @@ export async function GET(request: Request) {
             failures: failures.length > 0 ? failures : undefined,
         };
 
-        // Always cache — SWR responses are still valid for subsequent requests
-        feedCache.set(memoryCacheKey, response);
-        console.log(`[FEED TIMING] total: ${Date.now() - t0}ms | stale=${freshness.stale.length} swr=${staleRefreshing}`);
+        // Include debug info when no items are returned to help diagnose issues
+        if (scoredItems.length === 0) {
+            response._debug = {
+                reason: 'no_items_after_scoring',
+                targetSourceCount: targetSourceIds.length,
+                dbItemCount: existingItems.length,
+                hasAnyContentInDb: hasAnyContent,
+                staleSourceCount: freshness.stale.length,
+                freshSourceCount: freshness.fresh.length,
+                timeRange,
+                backgroundRefreshTriggered: staleRefreshing,
+            };
+        }
+
+        // Only cache non-empty results. When items is empty AND a background refresh
+        // was triggered, caching would lock out fresh data for the entire TTL.
+        if (scoredItems.length > 0) {
+            feedCache.set(memoryCacheKey, response);
+        } else {
+            console.warn(`[FEED] Skipping cache — empty result with staleRefreshing=${staleRefreshing}`);
+        }
+        console.log(`[FEED TIMING] total: ${Date.now() - t0}ms | items=${scoredItems.length} stale=${freshness.stale.length} swr=${staleRefreshing}`);
+
+        // Don't let CDN cache empty responses — the background refresh will populate data soon.
+        const cacheHeader = scoredItems.length > 0
+            ? 'public, s-maxage=120, stale-while-revalidate=60'
+            : 'no-store';
 
         return NextResponse.json(response, {
             headers: {
-                'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=60',
+                'Cache-Control': cacheHeader,
             },
         });
     } catch (error) {
         console.error('Feed API error:', error);
+        console.error('Feed API error stack:', error instanceof Error ? error.stack : 'no stack');
         return NextResponse.json(
             {
                 success: false,
                 error: 'Failed to fetch feed',
-                details: error instanceof Error ? error.message : 'Unknown error'
+                details: error instanceof Error ? error.message : 'Unknown error',
+                _debug: {
+                    errorType: error instanceof Error ? error.constructor.name : typeof error,
+                    stack: process.env.NODE_ENV !== 'production'
+                        ? (error instanceof Error ? error.stack : undefined)
+                        : undefined,
+                    databaseUrlSet: !!process.env.DATABASE_URL,
+                },
             },
             { status: 500 }
         );

@@ -116,8 +116,12 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
                 fetchedAt: new Date().toISOString(),
             },
             revalidateOnFocus: false,
-            refreshInterval: 5 * 60 * 1000, // Auto-refresh every 5 minutes
-            dedupingInterval: 60000, // 1 minute
+            // Refresh sooner (30s) when we have no items yet (background fetch likely in progress),
+            // otherwise every 5 minutes
+            refreshInterval: (latestData) =>
+                (latestData?.count === 0 && latestData?.staleRefreshing) ? 30_000 : 5 * 60 * 1000,
+            // Shorter dedup when empty — allows faster retry after background refresh completes
+            dedupingInterval: 15000,
             keepPreviousData: true,
         }
     );
