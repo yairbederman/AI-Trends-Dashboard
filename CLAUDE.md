@@ -47,7 +47,8 @@ Managed by the `workflows/self-healing` skill. Read the skill when triggered pro
 
 **Real-time capture:** Every feedback signal (correction, preference, opinion) must be written to the buffer file BEFORE the next action. Not after the session. Immediately.
 
-**Session start:** Quick-scan buffer file. If 20+ entries, flag bloat. Clear any PROMOTED markers. Spot-check oldest signals against rules file.
+**Session start:** Quick-scan buffer file. If 20+ entries, flag bloat. Clear any PROMOTED markers. Spot-check oldest signals against rules file. Check global CLAUDE.md > Global Promotion History — if any promotions in the last 7 days, surface them in a callout:
+> **Recent global promotions:** [rule] (from [project], [date])
 
 **Session end:** (1) Scan conversation for uncaptured signals. (2) Encode actionable signals, check 3+ thresholds, apply direct statements. (3) Clear every encoded/promoted signal from buffer. Report count. (4) Summarize: what was produced, learnings captured, self-healing fires, signals cleared.
 
