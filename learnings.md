@@ -10,11 +10,17 @@
 ## Pattern-Building Data
 <!-- Observations accumulating toward the 3+ threshold. Clear after promotion. -->
 
+
 ## Direct Statements
 <!-- Explicit preferences. Encode immediately, then clear. -->
 
+- **2026-02-22** — KPI cards should be designed for a time-constrained manager deciding where to focus reading. Cross-Source Signal is excellent; Top Story / Surging Now / Feed Pulse don't clearly provide actionable value. KPIs must answer "where should I spend my reading time?"
+
 ## Signal History
 <!-- Optional audit trail. Brief one-liners noting what was promoted/cleared and when. -->
+
+- **2026-02-22** — Verification scope promoted (immediate, user directive): DOD Verification gate now requires Playwright checks on **every affected page**, not just the primary view → project CLAUDE.md > DOD Checklist.
+- **2026-02-22** — DOD enforcement gap promoted: added DOD Checklist + Plan-Mode Requirement sections to project CLAUDE.md, plus promoted rule. Root cause: prior session skipped 3/3 DOD gates (DB, architecture diagram, Playwright).
 
 - **2026-02-20** — Enforcement gap encoded: broadened "structural change" definition in Documentation Update Rule → project CLAUDE.md
 - **2026-02-16** — Direct statement encoded: post-fix debrief rule → global CLAUDE.md > Interaction Style

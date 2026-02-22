@@ -51,6 +51,19 @@ Managed by the `workflows/self-healing` skill. Read the skill when triggered pro
 
 **Session end:** (1) Scan conversation for uncaptured signals. (2) Encode actionable signals, check 3+ thresholds, apply direct statements. (3) Clear every encoded/promoted signal from buffer. Report count. (4) Summarize: what was produced, learnings captured, self-healing fires, signals cleared.
 
+## Definition of Done (DOD) Checklist
+
+Every implementation plan MUST include these as explicit final steps. Do not
+consider a task complete until all applicable gates pass.
+
+- [ ] **Database** — If sources or schema changed: applied to live Supabase (not just migration files)
+- [ ] **Docs: product-spec** — If structural change: `docs/product-spec.md` updated
+- [ ] **Docs: architecture diagram** — If structural change: `docs/architecture.png` regenerated from `docs/architecture.mmd`
+- [ ] **Verification** — Dev server launched, Playwright snapshot confirms UI renders correctly on **every affected page** (not just the primary view — include Settings, detail pages, or any route that displays changed data).
+- [ ] **Cleanup** — Temporary Playwright screenshots deleted before commit
+
+Mark gates as "N/A" in the plan when genuinely not applicable. Never silently skip.
+
 ## Promoted Rules
 
 <!-- Rules promoted by self-healing. This section grows as the system learns. -->

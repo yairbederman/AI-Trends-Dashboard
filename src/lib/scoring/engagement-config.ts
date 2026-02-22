@@ -9,15 +9,15 @@
  * Source Quality Tiers for baseline scoring
  * Used when a source has no engagement metrics (RSS feeds, unimplemented scrapers)
  *
- * Tier 1 (0.55): Official AI Labs - Primary sources, official announcements
- * Tier 2 (0.45): Major News & Academic - Established journalism, peer-reviewed
- * Tier 3 (0.35): Quality Blogs & Newsletters - Expert curation, dev platforms
+ * Tier 1 (0.70): Official AI Labs - Primary sources, official announcements
+ * Tier 2 (0.55): Major News & Academic - Established journalism, peer-reviewed
+ * Tier 3 (0.50): Quality Blogs & Newsletters - Expert curation, dev platforms
  * Tier 4 (0.25): Unimplemented/Lower Signal - Scrape not working, less established
  */
 export const SOURCE_QUALITY_TIERS = {
-    TIER_1_OFFICIAL: 0.55,
-    TIER_2_NEWS: 0.45,
-    TIER_3_QUALITY: 0.35,
+    TIER_1_OFFICIAL: 0.70,
+    TIER_2_NEWS: 0.55,
+    TIER_3_QUALITY: 0.50,
     TIER_4_OTHER: 0.25,
 } as const;
 
@@ -26,7 +26,7 @@ export const SOURCE_QUALITY_TIERS = {
  * Sources with engagement metrics will calculate dynamically instead
  */
 export const SOURCE_QUALITY_MAP: Record<string, number> = {
-    // ===== TIER 1: Official AI Labs (0.55) =====
+    // ===== TIER 1: Official AI Labs (0.70) =====
     // Primary sources - official company announcements
     'openai-blog': SOURCE_QUALITY_TIERS.TIER_1_OFFICIAL,
     'anthropic-blog': SOURCE_QUALITY_TIERS.TIER_1_OFFICIAL,
@@ -41,7 +41,7 @@ export const SOURCE_QUALITY_MAP: Record<string, number> = {
     'aws-ai-blog': SOURCE_QUALITY_TIERS.TIER_1_OFFICIAL,
     'apple-ml': SOURCE_QUALITY_TIERS.TIER_1_OFFICIAL,
 
-    // ===== TIER 2: Major News & Academic (0.45) =====
+    // ===== TIER 2: Major News & Academic (0.55) =====
     // Established tech journalism, peer-reviewed research
     'verge-ai': SOURCE_QUALITY_TIERS.TIER_2_NEWS,
     'techcrunch-ai': SOURCE_QUALITY_TIERS.TIER_2_NEWS,
@@ -56,8 +56,10 @@ export const SOURCE_QUALITY_MAP: Record<string, number> = {
     'mit-sloan-review': SOURCE_QUALITY_TIERS.TIER_2_NEWS,
     'mckinsey-ai': SOURCE_QUALITY_TIERS.TIER_2_NEWS,
     'hbr': SOURCE_QUALITY_TIERS.TIER_2_NEWS,
+    'thehackernews': SOURCE_QUALITY_TIERS.TIER_2_NEWS,
+    'cyberscoop': SOURCE_QUALITY_TIERS.TIER_2_NEWS,
 
-    // ===== TIER 3: Quality Blogs & Newsletters (0.35) =====
+    // ===== TIER 3: Quality Blogs & Newsletters (0.50) =====
     // Expert curation, established dev platforms
     'langchain-blog': SOURCE_QUALITY_TIERS.TIER_3_QUALITY,
     'llamaindex-blog': SOURCE_QUALITY_TIERS.TIER_3_QUALITY,

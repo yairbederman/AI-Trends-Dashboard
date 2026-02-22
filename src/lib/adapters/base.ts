@@ -78,6 +78,8 @@ const SUBSTRING_KEYWORDS = [
     // Infrastructure
     'nvidia', 'cuda', 'inference', 'training data',
     'vector database', 'model weights', 'open source model', 'open-source model',
+    // AI-security crossover
+    'ai security', 'ai vulnerability', 'ai-powered security',
 ];
 
 /**

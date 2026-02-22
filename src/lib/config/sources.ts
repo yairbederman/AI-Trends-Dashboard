@@ -479,6 +479,34 @@ export const SOURCES: SourceConfig[] = [
         relevanceFilter: true,
         defaultPriority: 4, // Good priority: Premier business publication, reliable Atom feed
     },
+    {
+        id: 'thehackernews',
+        name: 'The Hacker News',
+        category: 'news',
+        url: 'https://thehackernews.com',
+        feedUrl: 'https://feeds.feedburner.com/TheHackersNews',
+        method: 'rss',
+        enabled: true,
+        requiresKey: false,
+        icon: '🛡️',
+        logoUrl: faviconUrl('https://thehackernews.com'),
+        relevanceFilter: true,
+        defaultPriority: 4, // Good priority: Leading cybersecurity news, reliable RSS
+    },
+    {
+        id: 'cyberscoop',
+        name: 'CyberScoop',
+        category: 'news',
+        url: 'https://cyberscoop.com',
+        feedUrl: 'https://cyberscoop.com/feed/',
+        method: 'rss',
+        enabled: true,
+        requiresKey: false,
+        icon: '🔐',
+        logoUrl: faviconUrl('https://cyberscoop.com'),
+        relevanceFilter: true,
+        defaultPriority: 4, // Good priority: Cybersecurity journalism, reliable RSS
+    },
 
     // =====================
     // COMMUNITY

@@ -4,6 +4,7 @@ flowchart TD
         SWR[SWR Cache<br/>5min revalidation]
         Constellation[SourceConstellation<br/>favicon logos · skeleton + refresh modes]
         RefreshWrapper[ConstellationRefreshWrapper<br/>polls refresh-status every 1.5s]
+        KPI[KPI Cards<br/>Top Story · Cross-Source · Surging · Pulse]
     end
 
     subgraph ExtConsumers["External Consumers"]
@@ -32,13 +33,13 @@ flowchart TD
     end
 
     subgraph Adapters["Source Adapters"]
-        RSS[RSS Adapter]
+        RSS[RSS Adapter<br/>relevance filter]
         HN[HackerNews Adapter<br/>chunked · timeout · allSettled]
         Reddit[Reddit Adapter<br/>custom subreddits]
         YT[YouTube Adapter<br/>custom channels]
         GH[GitHub Adapter]
         HF[HuggingFace Adapter]
-        Anth[Anthropic Adapter<br/>cheerio DOM parser]
+        Anth[Anthropic Adapter<br/>cheerio DOM parser · fallback title/date]
     end
 
     subgraph Scoring["Scoring Engine"]
@@ -49,7 +50,7 @@ flowchart TD
     end
 
     subgraph External["External Sources"]
-        RSSFeeds[30+ RSS Feeds]
+        RSSFeeds[40+ RSS Feeds]
         HNAPI[HN Firebase API]
         RedditJSON[Reddit JSON]
         YTAPI[YouTube API v3]
@@ -63,6 +64,7 @@ flowchart TD
 
     UI --> SWR
     UI --> Constellation
+    SWR --> KPI
     SWR --> Feed
     SWR --> Discovery
     RefreshWrapper -->|poll| RefreshStatus

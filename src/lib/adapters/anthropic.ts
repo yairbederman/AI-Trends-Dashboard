@@ -39,6 +39,12 @@ export class AnthropicAdapter extends BaseAdapter {
 
             const articles = this.parseArticles(html);
 
+            if (articles.length === 0) {
+                console.warn(
+                    '[AnthropicAdapter] Parsed 0 articles from /news page — possible markup change or fetch issue'
+                );
+            }
+
             const items: ContentItem[] = articles.map((article) => ({
                 id: createContentId(this.source.id, article.url),
                 sourceId: this.source.id,
@@ -91,20 +97,30 @@ export class AnthropicAdapter extends BaseAdapter {
 
             const $el = $(el);
 
-            // Title: first heading (h2-h6), or a span/element with "title" in class
+            // Title: first heading (h2-h6), or a span/element with "title" in class,
+            // or fallback to link text itself
             const $heading = $el.find('h2, h3, h4, h5, h6').first();
             let title = $heading.length ? $heading.text().trim() : '';
             if (!title) {
                 const $titleSpan = $el.find('[class*="title"]').first();
                 title = $titleSpan.length ? $titleSpan.text().trim() : '';
             }
+            if (!title) {
+                // Fallback: use the link's own text content (trimmed, first line only)
+                const linkText = $el.text().trim().split('\n')[0].trim();
+                if (linkText.length > 10 && linkText.length < 200) {
+                    title = linkText;
+                }
+            }
 
             if (!title) return; // Skip nav/footer links without titles
 
-            // Date: look for "MMM DD, YYYY" pattern in text content
+            // Date: look for "MMM DD, YYYY" or ISO "YYYY-MM-DD" pattern in text content
             const textContent = $el.text();
             const dateMatch = textContent.match(
                 /(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2},\s+\d{4}/
+            ) || textContent.match(
+                /\d{4}-\d{2}-\d{2}/
             );
 
             if (!dateMatch) return; // Skip links without dates (nav/footer)

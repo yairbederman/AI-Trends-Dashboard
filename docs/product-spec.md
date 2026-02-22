@@ -2,7 +2,7 @@
 
 ## What It Is
 
-A real-time AI content aggregation dashboard built with Next.js 16. It pulls from 40+ sources across AI labs, dev platforms, social media, news outlets, communities, newsletters, and leaderboards — scoring and ranking content using multi-algorithm feeds (Hot, Rising, Top). Users can configure custom YouTube channels, subreddits, and add/delete RSS sources. A three-layer caching strategy (memory → database → external APIs) with always-non-blocking refresh keeps the dashboard fast while minimizing external API calls and preventing serverless timeouts.
+A real-time AI content aggregation dashboard built with Next.js 16. It pulls from 40+ sources across AI labs, dev platforms, social media, news outlets (including cybersecurity press), communities, newsletters, and leaderboards — scoring and ranking content using multi-algorithm feeds (Hot, Rising, Top). Users can configure custom YouTube channels, subreddits, and add/delete RSS sources. A three-layer caching strategy (memory → database → external APIs) with always-non-blocking refresh keeps the dashboard fast while minimizing external API calls and preventing serverless timeouts.
 
 ## Who It's For
 
@@ -72,7 +72,9 @@ SWR uses a function-based `refreshInterval`: 30s when the response is empty and 
 ### Content Aggregation
 - Fetches from 40+ sources via 7 adapter types (RSS, HackerNews, Reddit, YouTube, GitHub, HuggingFace, Anthropic scrape)
 - HackerNews adapter uses chunked concurrency (10 parallel), 10s timeouts via AbortController, and `Promise.allSettled` for partial failure tolerance
-- Anthropic adapter uses cheerio DOM parser (not regex) for resilient HTML parsing
+- Anthropic adapter uses cheerio DOM parser (not regex) for resilient HTML parsing; warns on 0-article parses; fallback date parsing (ISO 8601) and title extraction from link text
+- Cybersecurity news sources (The Hacker News, CyberScoop) included with `relevanceFilter: true` — AI relevance filter keeps only AI-related articles from general cybersecurity feeds
+- AI-security crossover keywords (`ai security`, `ai vulnerability`, `ai-powered security`) added to relevance filter
 - Shared freshness module (`src/lib/fetching/ensure-fresh.ts`) — used by both feed and discovery endpoints
 - Per-source freshness tracking — only stale sources are refetched
 - Batch upsert operations for performance

@@ -168,7 +168,23 @@
       "mcp__claude_ai_Vercel__deploy_to_vercel",
       "Bash(the Feed\" KPI uses average score instead of sum, highlights rotate daily by\ncategory, and multi-category views use round-robin interleaving for diversity.\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(git fetch:*)",
-      "Bash(git merge:*)"
+      "Bash(git merge:*)",
+      "WebFetch(domain:claude.com)",
+      "WebFetch(domain:thehackernews.com)",
+      "WebFetch(domain:cyberscoop.com)",
+      "WebFetch(domain:feeds.feedburner.com)",
+      "mcp__claude_ai_Supabase__list_projects",
+      "mcp__claude_ai_Supabase__list_tables",
+      "Bash(pkill:*)",
+      "WebFetch(domain:www.pencilandpaper.io)",
+      "WebFetch(domain:evaschicker.medium.com)",
+      "WebFetch(domain:www.datadoghq.com)",
+      "WebFetch(domain:www.uxpin.com)",
+      "WebFetch(domain:lukasreese.com)",
+      "WebFetch(domain:www.lazarev.agency)",
+      "WebFetch(domain:grafana.com)",
+      "Bash(grep mcp-chrome:)",
+      "Bash(powershell.exe:*)"
     ]
   }
 }

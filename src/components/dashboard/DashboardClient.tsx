@@ -14,7 +14,7 @@ import { SourceConstellation } from '@/components/dashboard/SourceConstellation'
 import { ConstellationRefreshWrapper } from '@/components/dashboard/ConstellationRefreshWrapper';
 import { useSettings } from '@/lib/contexts/SettingsContext';
 import { TooltipProvider } from '@/components/ui/Tooltip';
-import { Settings, Sparkles, TrendingUp, AlertTriangle, Activity, Crown, Hash, Rocket } from 'lucide-react';
+import { Settings, Sparkles, TrendingUp, AlertTriangle, Activity, Zap, Flame, Gem, Clock } from 'lucide-react';
 import { SOURCES } from '@/lib/config/sources';
 import { CATEGORY_LABELS } from '@/types';
 import { formatDistanceToNow } from 'date-fns';
@@ -171,111 +171,211 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
     const kpiData = useMemo(() => {
         if (items.length === 0) return null;
 
-        // Top Source: which source has the most high-scoring content
-        // Use adaptive threshold: top 25% of score range (works across all feed modes)
-        const scores = items.map(i => i.trendingScore || 0);
-        const maxScore = Math.max(...scores);
-        const scoreThreshold = maxScore * 0.5; // Top half of score range
-
-        const sourceCounts: Record<string, number> = {};
-        for (const item of items) {
-            if ((item.trendingScore || 0) >= scoreThreshold) {
-                sourceCounts[item.sourceId] = (sourceCounts[item.sourceId] || 0) + 1;
-            }
-        }
-        let topSourceId = '';
-        let topSourceCount = 0;
-        for (const [id, count] of Object.entries(sourceCounts)) {
-            if (count > topSourceCount) { topSourceId = id; topSourceCount = count; }
-        }
-        const topSourceName = topSourceId ? (sourceMap[topSourceId]?.name || topSourceId) : 'None';
-
-        // Hottest Topic: most common tag across top 20 items (excluding generic/junk tags)
         const genericTags = new Set([
             'ai', 'artificial intelligence', 'machine learning', 'ml', 'deep learning',
             'tech', 'technology', 'other', 'none', 'general', 'misc', 'discussion',
             'en', 'us', 'question', 'help', 'showcase', 'news',
         ]);
         const junkPatterns = [/^region:/, /^lang:/, /^license:/, /^type:/, /^v\d/, /^\d+$/, /^question\s*-/i];
-        const tagCounts: Record<string, number> = {};
-        const top20 = [...items].sort((a, b) => (b.trendingScore || 0) - (a.trendingScore || 0)).slice(0, 20);
-        for (const item of top20) {
-            const allTags = [...(item.tags || []), ...(item.matchedKeywords || [])];
+        const isUsefulTag = (t: string) =>
+            t.length > 2 && !genericTags.has(t) && !junkPatterns.some(p => p.test(t));
+
+        const titleStopWords = new Set([
+            'about', 'also', 'been', 'best', 'code', 'could', 'data', 'does',
+            'even', 'first', 'from', 'full', 'have', 'here', 'high', 'into',
+            'just', 'last', 'like', 'made', 'make', 'more', 'most', 'much',
+            'next', 'only', 'open', 'over', 'some', 'than', 'that', 'them',
+            'then', 'they', 'this', 'tool', 'tools', 'very', 'want', 'were',
+            'what', 'when', 'will', 'with', 'your',
+        ]);
+
+        const sorted = [...items].sort((a, b) => (b.trendingScore || 0) - (a.trendingScore || 0));
+        const usedUrls = new Set<string>();
+
+        // Helper: get engagement string for an item
+        function getEngagementProof(item: ContentItem): string | null {
+            const eng = item.engagement;
+            if (!eng) return null;
+            if (eng.views && eng.views > 0) return `${formatNumber(eng.views)} views`;
+            if (eng.stars && eng.stars > 0) return `${formatNumber(eng.stars)} stars`;
+            if (eng.upvotes && eng.upvotes > 0) return `${formatNumber(eng.upvotes)} upvotes`;
+            if (eng.likes && eng.likes > 0) return `${formatNumber(eng.likes)} likes`;
+            if (eng.downloads && eng.downloads > 0) return `${formatNumber(eng.downloads)} downloads`;
+            if (eng.claps && eng.claps > 0) return `${formatNumber(eng.claps)} claps`;
+            return null;
+        }
+
+        // --- 1. Cross-Source Signal: topic appearing in most distinct categories ---
+        // Extract signals from titles AND tags
+        const signalData: Record<string, { cats: Set<string>; count: number; totalScore: number }> = {};
+        for (const item of items) {
+            const cat = sourceToCategory[item.sourceId] || 'other';
             const seen = new Set<string>();
+
+            // Title words
+            const titleWords = item.title.toLowerCase().split(/[^a-z]+/).filter(
+                w => w.length >= 4 && !titleStopWords.has(w) && !genericTags.has(w)
+            );
+            for (const w of titleWords) {
+                if (!seen.has(w)) {
+                    seen.add(w);
+                    if (!signalData[w]) signalData[w] = { cats: new Set(), count: 0, totalScore: 0 };
+                    signalData[w].cats.add(cat);
+                    signalData[w].count += 1;
+                    signalData[w].totalScore += (item.trendingScore || 0);
+                }
+            }
+
+            // Tags + matchedKeywords
+            const allTags = [...(item.tags || []), ...(item.matchedKeywords || [])];
             for (const tag of allTags) {
                 const t = tag.toLowerCase().trim();
-                if (t && t.length > 2 && !genericTags.has(t) && !seen.has(t) && !junkPatterns.some(p => p.test(t))) {
+                if (t && isUsefulTag(t) && !seen.has(t)) {
                     seen.add(t);
-                    tagCounts[t] = (tagCounts[t] || 0) + 1;
+                    if (!signalData[t]) signalData[t] = { cats: new Set(), count: 0, totalScore: 0 };
+                    signalData[t].cats.add(cat);
+                    signalData[t].count += 1;
+                    signalData[t].totalScore += (item.trendingScore || 0);
                 }
             }
         }
-        let hottestTopic = '';
-        let hottestTopicCount = 0;
-        for (const [tag, count] of Object.entries(tagCounts)) {
-            if (count > hottestTopicCount) { hottestTopic = tag; hottestTopicCount = count; }
-        }
 
-        // Biggest Mover: item with highest velocity score, or fallback to newest high-scorer
-        let biggestMover: { title: string; sourceName: string; velocity: number } | null = null;
-        for (const item of items) {
-            const v = item.velocityScore || 0;
-            if (v > 0 && (!biggestMover || v > biggestMover.velocity)) {
-                biggestMover = {
-                    title: item.title.length > 50 ? item.title.slice(0, 50) + '...' : item.title,
-                    sourceName: sourceMap[item.sourceId]?.name || item.sourceId,
-                    velocity: v,
-                };
-            }
-        }
-        // Fallback: newest item in the top 10 by score (proxy for "rising fast")
-        if (!biggestMover) {
-            const topByScore = [...items].sort((a, b) => (b.trendingScore || 0) - (a.trendingScore || 0)).slice(0, 10);
-            const newestTop = topByScore.sort((a, b) =>
-                new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
-            )[0];
-            if (newestTop) {
-                biggestMover = {
-                    title: newestTop.title.length > 50 ? newestTop.title.slice(0, 50) + '...' : newestTop.title,
-                    sourceName: sourceMap[newestTop.sourceId]?.name || newestTop.sourceId,
-                    velocity: 0,
-                };
+        let crossSourceTopic = '';
+        let crossSourceCatCount = 0;
+        let crossSourceItemCount = 0;
+        let crossSourceAvgScore = 0;
+        for (const [signal, data] of Object.entries(signalData)) {
+            if (data.cats.size < 2) continue;
+            const avg = data.totalScore / data.count;
+            if (
+                data.cats.size > crossSourceCatCount ||
+                (data.cats.size === crossSourceCatCount && data.count > crossSourceItemCount) ||
+                (data.cats.size === crossSourceCatCount && data.count === crossSourceItemCount && avg > crossSourceAvgScore)
+            ) {
+                crossSourceTopic = signal;
+                crossSourceCatCount = data.cats.size;
+                crossSourceItemCount = data.count;
+                crossSourceAvgScore = avg;
             }
         }
 
-        // Driving the Feed: which category has the highest average score (not total)
-        // Using average prevents categories with many items from always winning
-        const catScores: Record<string, { total: number; count: number }> = {};
+        let crossSource: { topic: string; catCount: number; article: { title: string; url: string } } | null = null;
+        if (crossSourceTopic) {
+            // Find highest-scored item containing the winning signal
+            for (const item of sorted) {
+                const titleWords = new Set(item.title.toLowerCase().split(/[^a-z]+/));
+                const allTags = [...(item.tags || []), ...(item.matchedKeywords || [])].map(t => t.toLowerCase().trim());
+                if (titleWords.has(crossSourceTopic) || allTags.includes(crossSourceTopic)) {
+                    crossSource = {
+                        topic: crossSourceTopic,
+                        catCount: crossSourceCatCount,
+                        article: {
+                            title: item.title.length > 50 ? item.title.slice(0, 50) + '...' : item.title,
+                            url: item.url,
+                        },
+                    };
+                    usedUrls.add(item.url);
+                    break;
+                }
+            }
+        }
+
+        // --- 2. Top Read: highest-scored article with engagement proof ---
+        let topRead: { title: string; url: string; sourceName: string; engagementProof: string } | null = null;
+        for (const item of sorted) {
+            if (usedUrls.has(item.url)) continue;
+            const proof = getEngagementProof(item) || `score ${Math.round(item.trendingScore || 0)}`;
+            topRead = {
+                title: item.title.length > 50 ? item.title.slice(0, 50) + '...' : item.title,
+                url: item.url,
+                sourceName: sourceMap[item.sourceId]?.name || item.sourceId,
+                engagementProof: proof,
+            };
+            usedUrls.add(item.url);
+            break;
+        }
+
+        // --- 3. Hidden Gem: highest-scoring item from underrepresented category ---
+        let hiddenGem: { title: string; url: string; sourceName: string; categoryLabel: string; score: number } | null = null;
+        const catAvgScores: Record<string, { total: number; count: number }> = {};
         for (const item of items) {
             const cat = sourceToCategory[item.sourceId];
             if (!cat) continue;
-            if (!catScores[cat]) catScores[cat] = { total: 0, count: 0 };
-            catScores[cat].total += (item.trendingScore || 0);
-            catScores[cat].count += 1;
+            if (!catAvgScores[cat]) catAvgScores[cat] = { total: 0, count: 0 };
+            catAvgScores[cat].total += (item.trendingScore || 0);
+            catAvgScores[cat].count += 1;
         }
-        let drivingCategory = '';
-        let drivingCategoryAvg = 0;
-        let drivingCategoryCount = 0;
-        for (const [cat, data] of Object.entries(catScores)) {
-            const avg = data.count > 0 ? data.total / data.count : 0;
-            if (avg > drivingCategoryAvg) {
-                drivingCategory = cat;
-                drivingCategoryAvg = avg;
-                drivingCategoryCount = data.count;
+        const catRanked = Object.entries(catAvgScores)
+            .map(([cat, d]) => ({ cat, avg: d.total / d.count }))
+            .sort((a, b) => b.avg - a.avg);
+
+        if (catRanked.length >= 3) {
+            const bottomHalf = new Set(catRanked.slice(Math.ceil(catRanked.length / 2)).map(c => c.cat));
+            for (const item of sorted) {
+                if (usedUrls.has(item.url)) continue;
+                const cat = sourceToCategory[item.sourceId];
+                if (cat && bottomHalf.has(cat)) {
+                    hiddenGem = {
+                        title: item.title.length > 45 ? item.title.slice(0, 45) + '...' : item.title,
+                        url: item.url,
+                        sourceName: sourceMap[item.sourceId]?.name || item.sourceId,
+                        categoryLabel: CATEGORY_LABELS[cat as keyof typeof CATEGORY_LABELS] || cat,
+                        score: Math.round(item.trendingScore || 0),
+                    };
+                    usedUrls.add(item.url);
+                    break;
+                }
             }
         }
-        const drivingLabel = CATEGORY_LABELS[drivingCategory as keyof typeof CATEGORY_LABELS] || drivingCategory;
+        if (!hiddenGem) {
+            for (const item of sorted) {
+                if (usedUrls.has(item.url)) continue;
+                const cat = sourceToCategory[item.sourceId] || '';
+                hiddenGem = {
+                    title: item.title.length > 45 ? item.title.slice(0, 45) + '...' : item.title,
+                    url: item.url,
+                    sourceName: sourceMap[item.sourceId]?.name || item.sourceId,
+                    categoryLabel: CATEGORY_LABELS[cat as keyof typeof CATEGORY_LABELS] || cat,
+                    score: Math.round(item.trendingScore || 0),
+                };
+                usedUrls.add(item.url);
+                break;
+            }
+        }
 
-        return {
-            topSourceName,
-            topSourceCount,
-            hottestTopic: hottestTopic || null,
-            hottestTopicCount,
-            biggestMover,
-            drivingLabel,
-            drivingCategoryCount,
-            totalCount: items.length,
-        };
+        // --- 4. Just In: freshest article above quality floor ---
+        let justIn: { title: string; url: string; sourceName: string; timeAgo: string } | null = null;
+        const byFreshness = [...items].sort((a, b) => {
+            const da = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
+            const db = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
+            return db - da;
+        });
+
+        // Try threshold 40, then 20, then any
+        for (const threshold of [40, 20, 0]) {
+            for (const item of byFreshness) {
+                if (usedUrls.has(item.url)) continue;
+                if ((item.trendingScore || 0) < threshold) continue;
+                let timeAgo = '';
+                try {
+                    const pubDate = item.publishedAt instanceof Date ? item.publishedAt : new Date(item.publishedAt);
+                    timeAgo = formatDistanceToNow(pubDate, { addSuffix: true });
+                } catch {
+                    timeAgo = 'recently';
+                }
+                justIn = {
+                    title: item.title.length > 50 ? item.title.slice(0, 50) + '...' : item.title,
+                    url: item.url,
+                    sourceName: sourceMap[item.sourceId]?.name || item.sourceId,
+                    timeAgo,
+                };
+                usedUrls.add(item.url);
+                break;
+            }
+            if (justIn) break;
+        }
+
+        return { crossSource, topRead, hiddenGem, justIn };
     }, [items, sourceMap, sourceToCategory]);
 
     const HIGHLIGHTS_PER_CATEGORY = 3;
@@ -528,30 +628,30 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
                             <>
                                 {kpiData && (
                                     <div className="kpi-grid">
-                                        <div className="kpi-card kpi-total">
-                                            <div className="kpi-icon"><Crown size={20} aria-hidden="true" /></div>
-                                            <span className="kpi-label">Top Source</span>
-                                            <span className="kpi-value kpi-value-text">{kpiData.topSourceName}</span>
-                                            <span className="kpi-detail">{kpiData.topSourceCount} trending {kpiData.topSourceCount === 1 ? 'item' : 'items'}</span>
-                                        </div>
-                                        <div className="kpi-card kpi-trending">
-                                            <div className="kpi-icon"><Hash size={20} aria-hidden="true" /></div>
-                                            <span className="kpi-label">Hottest Topic</span>
-                                            <span className="kpi-value kpi-value-text">{kpiData.hottestTopic || 'Varied'}</span>
-                                            <span className="kpi-detail">{kpiData.hottestTopic ? `across ${kpiData.hottestTopicCount} top items` : 'no dominant theme'}</span>
-                                        </div>
-                                        <div className="kpi-card kpi-active">
-                                            <div className="kpi-icon"><Rocket size={20} aria-hidden="true" /></div>
-                                            <span className="kpi-label">Biggest Mover</span>
-                                            <span className="kpi-value kpi-value-text">{kpiData.biggestMover?.sourceName || 'None yet'}</span>
-                                            <span className="kpi-detail">{kpiData.biggestMover ? kpiData.biggestMover.title : 'no data yet'}</span>
-                                        </div>
-                                        <div className="kpi-card kpi-fresh">
-                                            <div className="kpi-icon"><Activity size={20} aria-hidden="true" /></div>
-                                            <span className="kpi-label">Driving the Feed</span>
-                                            <span className="kpi-value kpi-value-text">{kpiData.drivingLabel}</span>
-                                            <span className="kpi-detail">{kpiData.drivingCategoryCount} items leading the cycle</span>
-                                        </div>
+                                        <a href={kpiData.crossSource?.article.url || undefined} target="_blank" rel="noopener noreferrer" className={`kpi-card kpi-trending${kpiData.crossSource ? ' kpi-link' : ''}`}>
+                                            <div className="kpi-icon"><Zap size={20} aria-hidden="true" /></div>
+                                            <span className="kpi-label">Cross-Source Signal</span>
+                                            <span className="kpi-value kpi-value-text">{kpiData.crossSource?.topic || 'No cross-source signal'}</span>
+                                            <span className="kpi-detail">{kpiData.crossSource ? `${kpiData.crossSource.article.title} · ${kpiData.crossSource.catCount} categories` : 'No topic spans 2+ categories'}</span>
+                                        </a>
+                                        <a href={kpiData.topRead?.url || undefined} target="_blank" rel="noopener noreferrer" className={`kpi-card kpi-total${kpiData.topRead ? ' kpi-link' : ''}`}>
+                                            <div className="kpi-icon"><Flame size={20} aria-hidden="true" /></div>
+                                            <span className="kpi-label">Top Read</span>
+                                            <span className="kpi-value kpi-value-text">{kpiData.topRead?.title || 'None found'}</span>
+                                            <span className="kpi-detail">{kpiData.topRead ? `${kpiData.topRead.sourceName} · ${kpiData.topRead.engagementProof}` : 'Not enough data'}</span>
+                                        </a>
+                                        <a href={kpiData.hiddenGem?.url || undefined} target="_blank" rel="noopener noreferrer" className={`kpi-card kpi-fresh${kpiData.hiddenGem ? ' kpi-link' : ''}`}>
+                                            <div className="kpi-icon"><Gem size={20} aria-hidden="true" /></div>
+                                            <span className="kpi-label">Hidden Gem</span>
+                                            <span className="kpi-value kpi-value-text">{kpiData.hiddenGem?.title || 'None found'}</span>
+                                            <span className="kpi-detail">{kpiData.hiddenGem ? `${kpiData.hiddenGem.sourceName} · ${kpiData.hiddenGem.categoryLabel} · score ${kpiData.hiddenGem.score}` : 'Not enough data'}</span>
+                                        </a>
+                                        <a href={kpiData.justIn?.url || undefined} target="_blank" rel="noopener noreferrer" className={`kpi-card kpi-active${kpiData.justIn ? ' kpi-link' : ''}`}>
+                                            <div className="kpi-icon"><Clock size={20} aria-hidden="true" /></div>
+                                            <span className="kpi-label">Just In</span>
+                                            <span className="kpi-value kpi-value-text">{kpiData.justIn?.title || 'Nothing recent'}</span>
+                                            <span className="kpi-detail">{kpiData.justIn ? `${kpiData.justIn.sourceName} · published ${kpiData.justIn.timeAgo}` : 'No recent items'}</span>
+                                        </a>
                                     </div>
                                 )}
 
