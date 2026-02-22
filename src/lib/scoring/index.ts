@@ -265,11 +265,22 @@ export function scoreAndSortItems(
 
     // Calculate final scores using percentile-adjusted engagement
     const scoredItems = items.map(item => {
+        const absoluteScore = engagementScores.get(item.id) || 0;
+        let percentile = percentileRanks.get(item.id);
+
+        // Dampen percentile rank for items with very low absolute engagement.
+        // Below the floor (0.15), scale the percentile proportionally so that
+        // near-zero engagement can't ride a high relative rank to an inflated score.
+        const ENGAGEMENT_FLOOR = 0.15;
+        if (percentile !== undefined && absoluteScore < ENGAGEMENT_FLOOR) {
+            percentile = percentile * (absoluteScore / ENGAGEMENT_FLOOR);
+        }
+
         const { score, matchedKeywords } = calculateTrendingScore(
             item,
             config,
-            percentileRanks.get(item.id),
-            engagementScores.get(item.id)
+            percentile,
+            absoluteScore
         );
         return {
             ...item,
