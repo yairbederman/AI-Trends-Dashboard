@@ -67,3 +67,5 @@ Mark gates as "N/A" in the plan when genuinely not applicable. Never silently sk
 ## Promoted Rules
 
 <!-- Rules promoted by self-healing. This section grows as the system learns. -->
+
+- **KPI card design principle.** Dashboard KPI cards must be designed for a time-constrained manager deciding where to focus reading. Every KPI must answer "where should I spend my reading time?" — not just display a metric. (Promoted 2026-02-22)
