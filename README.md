@@ -1,5 +1,31 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## First-time Setup
+
+### 1. Install dependencies
+```bash
+npm install
+```
+
+### 2. Create `.env.local`
+Copy `.env.example` to `.env.local` and fill in the two required keys:
+
+```bash
+cp .env.example .env.local
+```
+
+| Key | Required | Where to get it |
+|-----|----------|-----------------|
+| `DATABASE_URL` | Yes | Supabase Dashboard → Settings → Database → Connection Pooling (Transaction mode, port 6543) |
+| `YOUTUBE_API_KEY` | No | Google Cloud Console → APIs & Services → Credentials |
+
+### 3. Run the dev server
+```bash
+npm run dev
+```
+
+---
+
 ## Getting Started
 
 First, run the development server:
