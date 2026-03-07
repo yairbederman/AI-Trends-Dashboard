@@ -418,6 +418,7 @@ export async function cacheContent(items: ContentItem[]): Promise<void> {
     // missing from the `sources` table) doesn't silently drop all remaining chunks.
     const CHUNK_SIZE = 100;
     let cachedCount = 0;
+    const cachedIds = new Set<string>();
     for (let i = 0; i < items.length; i += CHUNK_SIZE) {
         const chunk = items.slice(i, i + CHUNK_SIZE);
         try {
@@ -464,6 +465,7 @@ export async function cacheContent(items: ContentItem[]): Promise<void> {
                     },
                 });
             cachedCount += chunk.length;
+            for (const item of chunk) cachedIds.add(item.id);
         } catch (error) {
             const sourceIds = [...new Set(chunk.map(c => c.sourceId))];
             console.error(`Failed to cache chunk ${i / CHUNK_SIZE} (${chunk.length} items, sources: ${sourceIds.join(',')}):`, error);
@@ -474,10 +476,11 @@ export async function cacheContent(items: ContentItem[]): Promise<void> {
         console.warn(`[cacheContent] Cached ${cachedCount}/${items.length} items (${items.length - cachedCount} lost to chunk errors)`);
     }
 
-    // Record engagement snapshots in background (non-blocking).
-    // Uses batch query instead of per-item N+1 to handle remote DB latency.
+    // Record engagement snapshots only for successfully cached items.
+    // Items from failed chunks don't exist in content_items, so snapshot
+    // INSERTs would fail on the FK constraint (content_id → content_items.id).
     const engagementItems = items
-        .filter(item => item.engagement)
+        .filter(item => item.engagement && cachedIds.has(item.id))
         .map(item => ({ contentId: item.id, engagement: item.engagement! }));
     if (engagementItems.length > 0) {
         try {
