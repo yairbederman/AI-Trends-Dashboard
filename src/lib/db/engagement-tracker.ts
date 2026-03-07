@@ -1,7 +1,7 @@
 import { db } from './index';
 import { engagementSnapshots } from './schema';
 import { EngagementMetrics } from '@/types';
-import { desc, sql } from 'drizzle-orm';
+import { desc, inArray, sql } from 'drizzle-orm';
 
 /**
  * Record engagement snapshots for multiple content items in batch.
@@ -20,7 +20,7 @@ export async function recordEngagementSnapshotsBatch(
 
   try {
     const now = new Date();
-    const windowStart = new Date(Date.now() - 6 * 60 * 60 * 1000);
+    const windowStartISO = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
     const contentIds = items.map(i => i.contentId);
 
     // 1. Batch fetch most recent snapshot per content ID (chunked to avoid huge IN clauses)
@@ -32,7 +32,7 @@ export async function recordEngagementSnapshotsBatch(
         .select()
         .from(engagementSnapshots)
         .where(sql`${engagementSnapshots.contentId} IN (${sql.join(chunk.map(id => sql`${id}`), sql`, `)})
-          AND ${engagementSnapshots.snapshotAt} >= ${windowStart}`)
+          AND ${engagementSnapshots.snapshotAt} >= ${windowStartISO}::timestamptz`)
         .orderBy(desc(engagementSnapshots.snapshotAt));
 
       for (const snap of previousSnapshots) {
@@ -109,7 +109,7 @@ export async function getBulkVelocities(
   if (contentIds.length === 0) return new Map();
 
   try {
-    const windowStart = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const windowStartISO = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const velocityMap = new Map<string, number>();
 
     // Chunk to avoid massive IN clauses that timeout on serverless
@@ -121,7 +121,7 @@ export async function getBulkVelocities(
         sql`SELECT DISTINCT ON (content_id) content_id, velocity_score
             FROM engagement_snapshots
             WHERE content_id IN (${sql.join(chunk.map(id => sql`${id}`), sql`, `)})
-              AND snapshot_at >= ${windowStart}
+              AND snapshot_at >= ${windowStartISO}::timestamptz
             ORDER BY content_id, snapshot_at DESC`
       );
 
@@ -141,15 +141,26 @@ export async function getBulkVelocities(
  * Clean up old snapshots to prevent database bloat
  */
 export async function cleanupOldSnapshots(daysToKeep: number = 30): Promise<number> {
-  const cutoff = new Date(Date.now() - daysToKeep * 24 * 60 * 60 * 1000);
+  const cutoffISO = new Date(Date.now() - daysToKeep * 24 * 60 * 60 * 1000).toISOString();
 
   try {
-    const deleted = await db
-      .delete(engagementSnapshots)
-      .where(sql`${engagementSnapshots.snapshotAt} < ${cutoff}`)
-      .returning({ id: engagementSnapshots.id });
+    // Select IDs first, then delete in chunks — same pattern as cleanOldContent.
+    // Avoids .returning() which materializes all deleted rows and can timeout.
+    const toDelete = await db
+      .select({ id: engagementSnapshots.id })
+      .from(engagementSnapshots)
+      .where(sql`${engagementSnapshots.snapshotAt} < ${cutoffISO}::timestamptz`);
 
-    return deleted.length;
+    if (toDelete.length === 0) return 0;
+
+    const CHUNK = 500;
+    let deleted = 0;
+    for (let i = 0; i < toDelete.length; i += CHUNK) {
+      const chunk = toDelete.slice(i, i + CHUNK).map(r => r.id);
+      await db.delete(engagementSnapshots).where(inArray(engagementSnapshots.id, chunk));
+      deleted += chunk.length;
+    }
+    return deleted;
   } catch (error) {
     console.error('Failed to cleanup old snapshots:', error);
     return 0;

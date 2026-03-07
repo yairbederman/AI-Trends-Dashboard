@@ -482,11 +482,9 @@ export async function cacheContent(items: ContentItem[]): Promise<void> {
     const engagementItems = items
         .filter(item => item.engagement && cachedIds.has(item.id))
         .map(item => ({ contentId: item.id, engagement: item.engagement! }));
-    console.log(`[cacheContent] cachedCount=${cachedCount}/${items.length}, engagementItems=${engagementItems.length}`);
     if (engagementItems.length > 0) {
         try {
             await recordEngagementSnapshotsBatch(engagementItems);
-            console.log(`[cacheContent] Snapshot recording complete for ${engagementItems.length} items`);
         } catch (err) {
             console.error('Background engagement snapshot failed:', err);
         }
@@ -632,6 +630,12 @@ export async function updateSourceHealth(health: SourceHealthMap): Promise<void>
         if (record.consecutiveFailures > 0 || record.lastError) {
             sparse[id] = record;
         }
+    }
+    // Skip DB write entirely when all sources are healthy — avoids
+    // statement timeout from lock contention on the settings row.
+    if (Object.keys(sparse).length === 0) {
+        settingsCache.invalidate('setting:sourceHealth');
+        return;
     }
     await updateSetting('sourceHealth', sparse);
     // Invalidate cache after write so next read gets fresh data
