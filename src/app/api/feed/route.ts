@@ -185,19 +185,17 @@ export async function GET(request: Request) {
         // 3. Use existing items (background refresh will populate new ones)
         const allItems = existingItems;
 
-        // Get velocities for Hot/Rising modes (with 3s timeout to avoid serverless 504)
+        // Get velocities for Hot/Rising modes.
+        // Uses direct await instead of Promise.race to avoid dangling promises
+        // that throw connection errors when the Lambda is recycled.
+        // postgres.js connect_timeout (5s) + route maxDuration (60s) provide timeout protection.
         const t3 = Date.now();
         let velocities = new Map<string, number>();
         if (feedMode === 'hot' || feedMode === 'rising') {
             try {
-                velocities = await Promise.race([
-                    getBulkVelocities(allItems.map(i => i.id)),
-                    new Promise<Map<string, number>>((_, reject) =>
-                        setTimeout(() => reject(new Error('Velocity query timeout')), 3000)
-                    ),
-                ]);
+                velocities = await getBulkVelocities(allItems.map(i => i.id));
             } catch {
-                console.warn('Velocity query timed out, falling back to engagement scoring');
+                console.warn('Velocity query failed, falling back to engagement scoring');
             }
         }
         console.log(`[FEED TIMING] velocities: ${Date.now() - t3}ms`);

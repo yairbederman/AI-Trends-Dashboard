@@ -480,9 +480,11 @@ export async function cacheContent(items: ContentItem[]): Promise<void> {
         .filter(item => item.engagement)
         .map(item => ({ contentId: item.id, engagement: item.engagement! }));
     if (engagementItems.length > 0) {
-        recordEngagementSnapshotsBatch(engagementItems).catch(err =>
-            console.error('Background engagement snapshot failed:', err)
-        );
+        try {
+            await recordEngagementSnapshotsBatch(engagementItems);
+        } catch (err) {
+            console.error('Background engagement snapshot failed:', err);
+        }
     }
 }
 
@@ -491,12 +493,24 @@ export async function cleanOldContent(daysToKeep: number = 30): Promise<number> 
         const cutoff = new Date();
         cutoff.setDate(cutoff.getDate() - daysToKeep);
 
-        const deleted = await db
-            .delete(contentItems)
-            .where(sql`${contentItems.fetchedAt} < ${cutoff}`)
-            .returning({ id: contentItems.id });
+        // Select IDs first, then delete in chunks to avoid statement timeout
+        // on large deletes (the old .returning() approach materialized all
+        // deleted IDs and timed out with 13K+ rows + CASCADE).
+        const toDelete = await db
+            .select({ id: contentItems.id })
+            .from(contentItems)
+            .where(sql`${contentItems.fetchedAt} < ${cutoff}`);
 
-        return deleted.length;
+        if (toDelete.length === 0) return 0;
+
+        const CHUNK = 500;
+        let deleted = 0;
+        for (let i = 0; i < toDelete.length; i += CHUNK) {
+            const chunk = toDelete.slice(i, i + CHUNK).map(r => r.id);
+            await db.delete(contentItems).where(inArray(contentItems.id, chunk));
+            deleted += chunk.length;
+        }
+        return deleted;
     } catch (error) {
         console.error('Failed to clean old content:', error);
         return 0;
