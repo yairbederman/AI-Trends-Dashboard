@@ -621,7 +621,17 @@ export async function getSourceHealth(): Promise<SourceHealthMap> {
 }
 
 export async function updateSourceHealth(health: SourceHealthMap): Promise<void> {
-    await updateSetting('sourceHealth', health);
+    // Only persist sources with non-default state (failures or errors).
+    // Healthy sources (0 failures, no error) are the default on read, so
+    // omitting them shrinks the JSON from ~8KB (42 sources) to a few hundred
+    // bytes — avoiding Supabase statement timeout on cross-region writes.
+    const sparse: SourceHealthMap = {};
+    for (const [id, record] of Object.entries(health)) {
+        if (record.consecutiveFailures > 0 || record.lastError) {
+            sparse[id] = record;
+        }
+    }
+    await updateSetting('sourceHealth', sparse);
     // Invalidate cache after write so next read gets fresh data
     settingsCache.invalidate('setting:sourceHealth');
 }
