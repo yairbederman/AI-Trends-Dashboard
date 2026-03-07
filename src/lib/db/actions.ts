@@ -482,9 +482,11 @@ export async function cacheContent(items: ContentItem[]): Promise<void> {
     const engagementItems = items
         .filter(item => item.engagement && cachedIds.has(item.id))
         .map(item => ({ contentId: item.id, engagement: item.engagement! }));
+    console.log(`[cacheContent] cachedCount=${cachedCount}/${items.length}, engagementItems=${engagementItems.length}`);
     if (engagementItems.length > 0) {
         try {
             await recordEngagementSnapshotsBatch(engagementItems);
+            console.log(`[cacheContent] Snapshot recording complete for ${engagementItems.length} items`);
         } catch (err) {
             console.error('Background engagement snapshot failed:', err);
         }
