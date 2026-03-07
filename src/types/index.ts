@@ -7,7 +7,8 @@ export type SourceCategory =
   | 'news'
   | 'community'
   | 'newsletters'
-  | 'leaderboards';
+  | 'leaderboards'
+  | 'predictions';
 
 export type FetchMethod = 'rss' | 'api' | 'scrape';
 
@@ -137,6 +138,7 @@ export const CATEGORY_LABELS: Record<SourceCategory, string> = {
   'community': 'Community',
   'newsletters': 'Newsletters',
   'leaderboards': 'Leaderboards',
+  'predictions': 'Predictions',
 };
 
 export const TIME_RANGES: Record<TimeRange, string> = {
@@ -155,4 +157,5 @@ export const CATEGORY_COLORS: Record<string, string> = {
   'community': '#f97316',
   'newsletters': '#a855f7',
   'leaderboards': '#ef4444',
+  'predictions': '#14b8a6',
 };

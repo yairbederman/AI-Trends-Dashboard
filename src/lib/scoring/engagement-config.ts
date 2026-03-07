@@ -58,6 +58,7 @@ export const SOURCE_QUALITY_MAP: Record<string, number> = {
     'hbr': SOURCE_QUALITY_TIERS.TIER_2_NEWS,
     'thehackernews': SOURCE_QUALITY_TIERS.TIER_2_NEWS,
     'cyberscoop': SOURCE_QUALITY_TIERS.TIER_2_NEWS,
+    'google-news-ai': SOURCE_QUALITY_TIERS.TIER_2_NEWS,
 
     // ===== TIER 3: Quality Blogs & Newsletters (0.50) =====
     // Expert curation, established dev platforms
@@ -74,6 +75,7 @@ export const SOURCE_QUALITY_MAP: Record<string, number> = {
     'the-rundown-ai': SOURCE_QUALITY_TIERS.TIER_3_QUALITY,
     'one-useful-thing': SOURCE_QUALITY_TIERS.TIER_3_QUALITY,
     'pragmatic-engineer': SOURCE_QUALITY_TIERS.TIER_3_QUALITY,
+    'polymarket': SOURCE_QUALITY_TIERS.TIER_3_QUALITY,
 
     // ===== TIER 4: Unimplemented/Lower Signal (0.25) =====
     // Scrape adapters not implemented, leaderboards (data not content)
@@ -267,6 +269,20 @@ export const ENGAGEMENT_CONFIGS: Record<string, SourceEngagementConfig> = {
         noEngagementBaseline: 0.2,
     },
 
+    polymarket: {
+        sourceType: 'polymarket',
+        metrics: [
+            {
+                name: 'views',
+                weight: 1.0,
+                logBase: 6,         // 10^6 = 1M USDC to max out
+                baseline: 10000,    // $10K volume is notable
+                viral: 1000000,     // $1M volume is exceptional
+            },
+        ],
+        noEngagementBaseline: 0.2,
+    },
+
     rss: {
         sourceType: 'rss',
         metrics: [],                // No engagement metrics from RSS
@@ -283,6 +299,7 @@ export function getSourceEngagementType(sourceId: string): string {
     if (sourceId === 'github-trending') return 'github';
     if (sourceId === 'hackernews') return 'hackernews';
     if (sourceId === 'huggingface') return 'huggingface';
+    if (sourceId === 'polymarket') return 'polymarket';
     // Pattern-based mappings
     if (sourceId.startsWith('reddit-')) return 'reddit';
 

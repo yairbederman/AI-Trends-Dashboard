@@ -14,6 +14,7 @@ const CATEGORY_TTL_MS: Record<SourceCategory, number> = {
     'dev-platforms': 15 * 60 * 1000,   // 15 min - moderate
     'newsletters': 30 * 60 * 1000,     // 30 min - slow-moving
     'leaderboards': 60 * 60 * 1000,    // 60 min - rarely changes
+    'predictions': 30 * 60 * 1000,    // 30 min - markets move slowly
 };
 
 export function getSourceTTL(category: SourceCategory): number {

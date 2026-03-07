@@ -258,6 +258,10 @@ async function setupDatabase() {
             { id: 'lmsys-arena', enabled: true },
             { id: 'open-llm-leaderboard', enabled: true },
             { id: 'artificial-analysis', enabled: true },
+            // Predictions
+            { id: 'polymarket', enabled: true },
+            // News (additional)
+            { id: 'google-news-ai', enabled: true },
         ];
 
         for (const source of sourcesToAdd) {

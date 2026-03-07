@@ -43,6 +43,7 @@ const CATEGORIES: SourceCategory[] = [
     'community',
     'newsletters',
     'leaderboards',
+    'predictions',
 ];
 
 function formatNumber(n: number): string {

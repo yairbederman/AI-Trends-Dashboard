@@ -507,6 +507,20 @@ export const SOURCES: SourceConfig[] = [
         relevanceFilter: true,
         defaultPriority: 4, // Good priority: Cybersecurity journalism, reliable RSS
     },
+    {
+        id: 'google-news-ai',
+        name: 'Google News AI',
+        category: 'news',
+        url: 'https://news.google.com/search?q=artificial+intelligence',
+        feedUrl: 'https://news.google.com/rss/search?q=artificial+intelligence&hl=en&gl=US&ceid=US:en',
+        method: 'rss',
+        enabled: true,
+        requiresKey: false,
+        icon: '📰',
+        logoUrl: faviconUrl('https://news.google.com'),
+        relevanceFilter: true,
+        defaultPriority: 3,
+    },
 
     // =====================
     // COMMUNITY
@@ -675,6 +689,22 @@ export const SOURCES: SourceConfig[] = [
         logoUrl: faviconUrl('https://newsletter.pragmaticengineer.com'),
         relevanceFilter: true,
         defaultPriority: 5, // High priority: Eng leadership + AI impact, highly aligned audience
+    },
+
+    // =====================
+    // PREDICTIONS
+    // =====================
+    {
+        id: 'polymarket',
+        name: 'Polymarket',
+        category: 'predictions',
+        url: 'https://polymarket.com',
+        method: 'api',
+        enabled: true,
+        requiresKey: false,
+        icon: '🔮',
+        logoUrl: faviconUrl('https://polymarket.com'),
+        defaultPriority: 3,
     },
 
     // =====================

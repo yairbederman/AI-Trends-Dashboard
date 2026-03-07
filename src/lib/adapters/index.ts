@@ -5,6 +5,7 @@ import { RedditAdapter } from './reddit';
 import { YouTubeAdapter } from './youtube';
 import { GitHubAdapter } from './github';
 import { HuggingFaceAdapter } from './huggingface';
+import { PolymarketAdapter } from './polymarket';
 import { AnthropicAdapter } from './anthropic';
 import { SourceConfig } from '@/types';
 
@@ -53,6 +54,9 @@ export function createAdapter(source: SourceConfig): SourceAdapter | null {
             if (source.id === 'huggingface') {
                 return new HuggingFaceAdapter(source);
             }
+            if (source.id === 'polymarket') {
+                return new PolymarketAdapter(source);
+            }
             // For other API sources, log and skip for now
             console.log(`API adapter not yet implemented for: ${source.name}`);
             return null;
@@ -76,5 +80,6 @@ export { RedditAdapter } from './reddit';
 export { YouTubeAdapter } from './youtube';
 export { GitHubAdapter } from './github';
 export { HuggingFaceAdapter } from './huggingface';
+export { PolymarketAdapter } from './polymarket';
 export { AnthropicAdapter } from './anthropic';
 export type { SourceAdapter } from './base';

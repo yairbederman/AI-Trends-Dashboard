@@ -237,7 +237,7 @@ export async function POST(request: Request) {
                         { status: 400 }
                     );
                 }
-                const validCategories: SourceCategory[] = ['ai-labs', 'dev-platforms', 'social', 'news', 'community', 'newsletters', 'leaderboards'];
+                const validCategories: SourceCategory[] = ['ai-labs', 'dev-platforms', 'social', 'news', 'community', 'newsletters', 'leaderboards', 'predictions'];
                 if (!validCategories.includes(source.category)) {
                     return NextResponse.json(
                         { error: `Invalid category. Must be one of: ${validCategories.join(', ')}` },

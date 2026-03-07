@@ -17,6 +17,8 @@
 ## Signal History
 <!-- Optional audit trail. Brief one-liners noting what was promoted/cleared and when. -->
 
+- **2026-03-07** — Verification Report template added to DOD Checklist (direct statement): color-coded (🟢/🟡/🔴) gate table with bottom-line rule (SAFE TO COMMIT vs NEEDS ATTENTION) must be presented before offering to commit. Prevents silent gate skipping.
+- **2026-03-07** — Data-level verification rule added to Verification Rule section (direct statement): verification must confirm actual items appear in feed, not just UI structure renders. Root cause: declared Polymarket verification complete when items had wrong `publishedAt` dates and showed 0 items in Predictions tab.
 - **2026-02-22** — KPI design principle promoted (direct statement): KPI cards must answer "where should I spend my reading time?" → project CLAUDE.md > Promoted Rules. Cleared from buffer.
 - **2026-02-22** — Verification scope promoted (immediate, user directive): DOD Verification gate now requires Playwright checks on **every affected page**, not just the primary view → project CLAUDE.md > DOD Checklist.
 - **2026-02-22** — DOD enforcement gap promoted: added DOD Checklist + Plan-Mode Requirement sections to project CLAUDE.md, plus promoted rule. Root cause: prior session skipped 3/3 DOD gates (DB, architecture diagram, Playwright).

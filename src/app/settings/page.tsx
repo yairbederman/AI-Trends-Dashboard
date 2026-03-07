@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Check, X, RefreshCw, Moon, Sun, AlertCircle, Star, Sparkles, Plus, Trash2, ChevronDown, ChevronUp, Bot, Palette, Code2, Users, Newspaper, MessageSquare, Mail, Trophy, Pencil, Loader2, Undo2, Globe } from 'lucide-react';
+import { ArrowLeft, Check, X, RefreshCw, Moon, Sun, AlertCircle, Star, Sparkles, Plus, Trash2, ChevronDown, ChevronUp, Bot, Palette, Code2, Users, Newspaper, MessageSquare, Mail, Trophy, TrendingUp, Pencil, Loader2, Undo2, Globe } from 'lucide-react';
 import Link from 'next/link';
 import { SourceCategory, CATEGORY_LABELS, CustomSourceConfig } from '@/types';
 import { useSettings } from '@/lib/contexts/SettingsContext';
@@ -53,6 +53,7 @@ const CATEGORY_ICONS: Record<string, typeof Bot> = {
     'community': MessageSquare,
     'newsletters': Mail,
     'leaderboards': Trophy,
+    'predictions': TrendingUp,
 };
 
 const PRIORITY_LABELS: Record<number, string> = {

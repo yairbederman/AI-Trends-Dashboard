@@ -31,6 +31,7 @@ const VALID_API_CATEGORIES = [
     'dev-platforms',
     'community',
     'leaderboards',
+    'predictions',
 ] as const;
 type ApiCategory = (typeof VALID_API_CATEGORIES)[number];
 

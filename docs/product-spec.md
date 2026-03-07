@@ -2,7 +2,7 @@
 
 ## What It Is
 
-A real-time AI content aggregation dashboard built with Next.js 16. It pulls from 40+ sources across AI labs, dev platforms, social media, news outlets (including cybersecurity press), communities, newsletters, and leaderboards — scoring and ranking content using multi-algorithm feeds (Hot, Rising, Top). Users can configure custom YouTube channels, subreddits, and add/delete RSS sources. A three-layer caching strategy (memory → database → external APIs) with always-non-blocking refresh keeps the dashboard fast while minimizing external API calls and preventing serverless timeouts.
+A real-time AI content aggregation dashboard built with Next.js 16. It pulls from 40+ sources across AI labs, dev platforms, social media, news outlets (including cybersecurity press), communities, newsletters, leaderboards, and prediction markets — scoring and ranking content using multi-algorithm feeds (Hot, Rising, Top). Users can configure custom YouTube channels, subreddits, and add/delete RSS sources. A three-layer caching strategy (memory → database → external APIs) with always-non-blocking refresh keeps the dashboard fast while minimizing external API calls and preventing serverless timeouts.
 
 ## Who It's For
 
@@ -65,16 +65,19 @@ SWR uses a function-based `refreshInterval`: 30s when the response is empty and 
 | Community | 5 min | Reddit, Hacker News |
 | AI Labs / News | 15 min | OpenAI, Google AI, Anthropic, etc. |
 | Newsletters | 30 min | Import AI, Latent Space, Simon Willison |
+| Predictions | 30 min | Polymarket |
 | Leaderboards | 60 min | LMSYS Arena, Open LLM Leaderboard |
 
 ## Workflows / Features
 
 ### Content Aggregation
-- Fetches from 40+ sources via 7 adapter types (RSS, HackerNews, Reddit, YouTube, GitHub, HuggingFace, Anthropic scrape)
+- Fetches from 40+ sources via 8 adapter types (RSS, HackerNews, Reddit, YouTube, GitHub, HuggingFace, Polymarket, Anthropic scrape)
 - HackerNews adapter uses chunked concurrency (10 parallel), 10s timeouts via AbortController, and `Promise.allSettled` for partial failure tolerance
 - Anthropic adapter uses cheerio DOM parser (not regex) for resilient HTML parsing; warns on 0-article parses; fallback date parsing (ISO 8601) and title extraction from link text
 - Cybersecurity news sources (The Hacker News, CyberScoop) included with `relevanceFilter: true` — AI relevance filter keeps only AI-related articles from general cybersecurity feeds
 - AI-security crossover keywords (`ai security`, `ai vulnerability`, `ai-powered security`) added to relevance filter
+- Polymarket adapter fetches active AI prediction markets (event probabilities, USDC volume as engagement metric) — no API key required
+- Google News AI aggregation via RSS — broad catch-all AI news coverage with relevance filtering, no API key required
 - Shared freshness module (`src/lib/fetching/ensure-fresh.ts`) — used by both feed and discovery endpoints
 - Per-source freshness tracking — only stale sources are refetched
 - Batch upsert operations for performance
@@ -92,7 +95,7 @@ SWR uses a function-based `refreshInterval`: 30s when the response is empty and 
 - Required params: `categories` (comma-separated), `timeRange` (1h/12h/24h/48h/7d)
 - Optional params: `limit` (default 100, max 500), `offset` (default 0), `search` (text filter on title/description/tags)
 - Accepts `social-blogs` as alias for internal `social` category
-- Valid categories: `news`, `newsletters`, `social-blogs`, `ai-labs`, `dev-platforms`, `community`, `leaderboards`
+- Valid categories: `news`, `newsletters`, `social-blogs`, `ai-labs`, `dev-platforms`, `community`, `leaderboards`, `predictions`
 - Returns `meta` (totalItems, returnedItems, offset, limit, timeRange, per-category counts) + `items` array
 - CORS enabled (`Access-Control-Allow-Origin: *`) with `OPTIONS` preflight handler for cross-origin access
 - Rate limited via Vercel Firewall (`@vercel/firewall`) with graceful fallback when rule is unconfigured
@@ -160,6 +163,8 @@ After feed-mode scoring, a normalization pass re-maps scores within each categor
 | Reddit JSON feeds | Content API | No |
 | GitHub Trending | Web scraping | No |
 | HuggingFace API | Content API | No |
+| Polymarket Gamma API | Content API | No |
+| Google News RSS | Content feed | No |
 | 30+ RSS/Atom feeds | Content feeds | No |
 | Vercel Firewall | Rate limiting | No (runs at edge) |
 
@@ -187,7 +192,7 @@ src/
 │   │   └── ...              # ContentCard, TrendCharts, InsightCharts, etc.
 │   └── ui/                  # Reusable UI (shadcn/ui-based)
 ├── lib/
-│   ├── adapters/            # Source adapters (RSS, HN, Reddit, YouTube, GitHub, HF, Anthropic)
+│   ├── adapters/            # Source adapters (RSS, HN, Reddit, YouTube, GitHub, HF, Polymarket, Anthropic)
 │   ├── cache/               # In-memory feed cache
 │   ├── config/              # Source configurations + user-configurable lists (YouTube channels, subreddits)
 │   ├── fetching/            # Shared freshness check + fetch orchestration (ensureSourcesFresh)
