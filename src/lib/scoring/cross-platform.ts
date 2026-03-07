@@ -23,6 +23,14 @@ const DEFAULT_CONFIG: Required<CrossPlatformConfig> = {
     maxAmplification: 1.5,
 };
 
+/** Strip HN prefixes for fairer cross-source title comparison. */
+function normalizeTitleForLinking(title: string, sourceId: string): string {
+    if (sourceId.startsWith('hn') || sourceId === 'hacker-news') {
+        return title.replace(/^(Show|Ask|Tell) HN:\s*/i, '');
+    }
+    return title;
+}
+
 /**
  * Map a sourceId to its platform family.
  * Sources from the same platform family are never linked to each other.
@@ -70,6 +78,11 @@ export function linkAndAmplify(
         links.set(i, new Set());
     }
 
+    // Pre-compute normalized titles for cross-source comparison
+    const normalizedTitles = items.map(item =>
+        normalizeTitleForLinking(item.title, item.sourceId)
+    );
+
     // Compare cross-platform pairs
     for (let i = 0; i < items.length; i++) {
         const familyA = familyOf.get(items[i].sourceId)!;
@@ -78,7 +91,7 @@ export function linkAndAmplify(
             // Only compare items from different platform families
             if (familyA === familyB) continue;
 
-            const sim = hybridSimilarity(items[i].title, items[j].title);
+            const sim = hybridSimilarity(normalizedTitles[i], normalizedTitles[j]);
             if (sim >= similarityThreshold) {
                 links.get(i)!.add(j);
                 links.get(j)!.add(i);
