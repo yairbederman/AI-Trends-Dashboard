@@ -65,6 +65,7 @@ SWR uses a function-based `refreshInterval`: 30s when the response is empty and 
 | Community | 5 min | Reddit, Hacker News |
 | AI Labs / News | 15 min | OpenAI, Google AI, Anthropic, etc. |
 | Newsletters | 30 min | Import AI, Latent Space, Simon Willison |
+| Research | 30 min | arXiv cs.AI, arXiv cs.CL |
 | Predictions | 30 min | Polymarket |
 | Leaderboards | 60 min | LMSYS Arena, Open LLM Leaderboard |
 
@@ -95,7 +96,7 @@ SWR uses a function-based `refreshInterval`: 30s when the response is empty and 
 - Required params: `categories` (comma-separated), `timeRange` (1h/12h/24h/48h/7d)
 - Optional params: `limit` (default 100, max 500), `offset` (default 0), `search` (text filter on title/description/tags)
 - Accepts `social-blogs` as alias for internal `social` category
-- Valid categories: `news`, `newsletters`, `social-blogs`, `ai-labs`, `dev-platforms`, `community`, `leaderboards`, `predictions`
+- Valid categories: `news`, `newsletters`, `social-blogs`, `ai-labs`, `dev-platforms`, `community`, `leaderboards`, `research`, `predictions`
 - Returns `meta` (totalItems, returnedItems, offset, limit, timeRange, per-category counts) + `items` array
 - CORS enabled (`Access-Control-Allow-Origin: *`) with `OPTIONS` preflight handler for cross-origin access
 - Rate limited via Vercel Firewall (`@vercel/firewall`) with graceful fallback when rule is unconfigured

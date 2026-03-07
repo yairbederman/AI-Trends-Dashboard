@@ -43,6 +43,7 @@ const CATEGORIES: SourceCategory[] = [
     'community',
     'newsletters',
     'leaderboards',
+    'research',
     'predictions',
 ];
 

@@ -79,9 +79,9 @@ export class HuggingFaceAdapter extends BaseAdapter {
     }
 
     private async fetchModels(): Promise<ContentItem[]> {
-        // Sort by lastModified to get recently updated/created models
+        // Sort by trending to surface high-signal models; fetch extra to compensate for quality filter
         const response = await fetch(
-            'https://huggingface.co/api/models?sort=lastModified&direction=-1&limit=20',
+            'https://huggingface.co/api/models?sort=trending&direction=-1&limit=30',
             {
                 headers: {
                     Accept: 'application/json',
@@ -95,7 +95,10 @@ export class HuggingFaceAdapter extends BaseAdapter {
             throw new Error(`HuggingFace Models API error: ${response.status} - ${errorText}`);
         }
 
-        const models: HFModel[] = await response.json();
+        const allModels: HFModel[] = await response.json();
+
+        // Quality filter: keep only models with meaningful engagement
+        const models = allModels.filter(m => m.downloads >= 1000 || m.likes >= 10);
 
         return models.map((model) => ({
             id: createContentId(this.source.id, model.id),
@@ -116,9 +119,9 @@ export class HuggingFaceAdapter extends BaseAdapter {
     }
 
     private async fetchSpaces(): Promise<ContentItem[]> {
-        // Sort by lastModified to get recently updated/created spaces
+        // Sort by trending to surface high-signal spaces; fetch extra to compensate for quality filter
         const response = await fetch(
-            'https://huggingface.co/api/spaces?sort=lastModified&direction=-1&limit=20',
+            'https://huggingface.co/api/spaces?sort=trending&direction=-1&limit=30',
             {
                 headers: {
                     Accept: 'application/json',
@@ -132,7 +135,10 @@ export class HuggingFaceAdapter extends BaseAdapter {
             throw new Error(`HuggingFace Spaces API error: ${response.status} - ${errorText}`);
         }
 
-        const spaces: HFSpace[] = await response.json();
+        const allSpaces: HFSpace[] = await response.json();
+
+        // Quality filter: keep only spaces with meaningful engagement
+        const spaces = allSpaces.filter(s => s.likes >= 3);
 
         return spaces.map((space) => ({
             id: createContentId(this.source.id, space.id),

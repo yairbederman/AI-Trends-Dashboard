@@ -253,10 +253,13 @@ export const SOURCES: SourceConfig[] = [
         logoUrl: faviconUrl('https://wandb.ai/fully-connected'),
         defaultPriority: 4, // Good priority: Important ML tool, reliable RSS
     },
+    // =====================
+    // RESEARCH
+    // =====================
     {
         id: 'arxiv-cs-ai',
         name: 'arXiv cs.AI',
-        category: 'dev-platforms',
+        category: 'research',
         url: 'https://arxiv.org/list/cs.AI/recent',
         feedUrl: 'https://rss.arxiv.org/rss/cs.AI',
         method: 'rss',
@@ -269,7 +272,7 @@ export const SOURCES: SourceConfig[] = [
     {
         id: 'arxiv-cs-cl',
         name: 'arXiv cs.CL',
-        category: 'dev-platforms',
+        category: 'research',
         url: 'https://arxiv.org/list/cs.CL/recent',
         feedUrl: 'https://rss.arxiv.org/rss/cs.CL',
         method: 'rss',

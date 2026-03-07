@@ -8,6 +8,7 @@ export type SourceCategory =
   | 'community'
   | 'newsletters'
   | 'leaderboards'
+  | 'research'
   | 'predictions';
 
 export type FetchMethod = 'rss' | 'api' | 'scrape';
@@ -143,6 +144,7 @@ export const CATEGORY_LABELS: Record<SourceCategory, string> = {
   'community': 'Community',
   'newsletters': 'Newsletters',
   'leaderboards': 'Leaderboards',
+  'research': 'Research',
   'predictions': 'Predictions',
 };
 
@@ -162,5 +164,6 @@ export const CATEGORY_COLORS: Record<string, string> = {
   'community': '#f97316',
   'newsletters': '#a855f7',
   'leaderboards': '#ef4444',
+  'research': '#f43f5e',
   'predictions': '#14b8a6',
 };

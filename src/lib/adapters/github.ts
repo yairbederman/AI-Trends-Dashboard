@@ -68,7 +68,7 @@ export class GitHubAdapter extends BaseAdapter {
             // For very short ranges (hours), we still query by day but filter later if needed
             // GitHub API only supports YYYY-MM-DD
             const query = encodeURIComponent(
-                `(AI OR LLM OR "machine learning" OR "deep learning" OR GPT OR transformer) pushed:>${dateStr}`
+                `(AI OR LLM OR "machine learning" OR "deep learning" OR GPT OR transformer) stars:>100 fork:false pushed:>${dateStr}`
             );
             const url = `${this.baseUrl}/search/repositories?q=${query}&sort=stars&order=desc&per_page=25`;
 
