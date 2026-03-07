@@ -148,10 +148,17 @@ export function linkAndAmplify(
             1 + amplificationFactor * platformCount
         );
 
+        // Collect { sourceId, url } for each item in the cluster
+        const clusterLinks = cluster.map(idx => ({
+            sourceId: items[idx].sourceId,
+            url: items[idx].url,
+        }));
+
         for (const idx of cluster) {
             const item = items[idx];
             const otherIds = itemIds.filter(id => id !== item.id);
             const otherSources = [...sourceIds].filter(s => s !== item.sourceId);
+            const otherLinks = clusterLinks.filter(l => l.sourceId !== item.sourceId);
 
             const amplifiedScore = item.trendingScore
                 ? Math.min(100, Math.round(item.trendingScore * amplifier * 10) / 10)
@@ -162,6 +169,7 @@ export function linkAndAmplify(
                 crossRefs: otherIds,
                 crossPlatformCount: platformCount,
                 crossPlatformSources: otherSources,
+                crossPlatformLinks: otherLinks,
                 trendingScore: amplifiedScore ?? item.trendingScore,
             };
         }

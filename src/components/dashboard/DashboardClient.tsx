@@ -14,7 +14,7 @@ import { SourceConstellation } from '@/components/dashboard/SourceConstellation'
 import { ConstellationRefreshWrapper } from '@/components/dashboard/ConstellationRefreshWrapper';
 import { useSettings } from '@/lib/contexts/SettingsContext';
 import { TooltipProvider } from '@/components/ui/Tooltip';
-import { Settings, Sparkles, TrendingUp, AlertTriangle, Activity, Zap, Flame, Gem, Clock } from 'lucide-react';
+import { Settings, Sparkles, TrendingUp, AlertTriangle, Activity, Zap, Flame, Gem, Clock, ExternalLink, Layers } from 'lucide-react';
 import { SOURCES } from '@/lib/config/sources';
 import { CATEGORY_LABELS } from '@/types';
 import { formatDistanceToNow } from 'date-fns';
@@ -260,24 +260,49 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
             }
         }
 
-        let crossSource: { topic: string; catCount: number; article: { title: string; url: string } } | null = null;
+        let crossSource: { topic: string; catCount: number; article: { title: string; url: string }; sourceLinks: Array<{ sourceName: string; url: string; title: string }> } | null = null;
         if (crossSourceTopic) {
-            // Find highest-scored item containing the winning signal
+            // Collect all items matching the winning signal (for source links)
+            const matchingItems: Array<{ sourceName: string; url: string; score: number; title: string }> = [];
             for (const item of sorted) {
                 const titleWords = new Set(item.title.toLowerCase().split(/[^a-z]+/));
                 const allTags = [...(item.tags || []), ...(item.matchedKeywords || [])].map(t => t.toLowerCase().trim());
                 if (titleWords.has(crossSourceTopic) || allTags.includes(crossSourceTopic)) {
-                    crossSource = {
-                        topic: crossSourceTopic,
-                        catCount: crossSourceCatCount,
-                        article: {
-                            title: item.title.length > 50 ? item.title.slice(0, 50) + '...' : item.title,
-                            url: item.url,
-                        },
-                    };
-                    usedUrls.add(item.url);
-                    break;
+                    matchingItems.push({
+                        sourceName: sourceMap[item.sourceId]?.name || item.sourceId,
+                        url: item.url,
+                        score: item.trendingScore || 0,
+                        title: item.title,
+                    });
                 }
+            }
+            if (matchingItems.length > 0) {
+                // Deduplicate by source name (keep highest-scored per source)
+                const bySource = new Map<string, typeof matchingItems[0]>();
+                for (const m of matchingItems) {
+                    const existing = bySource.get(m.sourceName);
+                    if (!existing || m.score > existing.score) {
+                        bySource.set(m.sourceName, m);
+                    }
+                }
+                const uniqueLinks = [...bySource.values()];
+                const best = uniqueLinks[0]; // already sorted by score
+                crossSource = {
+                    topic: crossSourceTopic,
+                    catCount: crossSourceCatCount,
+                    article: {
+                        title: best.sourceName + ': ' + (best.title.length > 50
+                            ? best.title.slice(0, 50) + '...'
+                            : best.title),
+                        url: best.url,
+                    },
+                    sourceLinks: uniqueLinks.map(m => ({
+                        sourceName: m.sourceName,
+                        url: m.url,
+                        title: m.title.length > 40 ? m.title.slice(0, 40) + '...' : m.title,
+                    })),
+                };
+                usedUrls.add(best.url);
             }
         }
 
@@ -629,12 +654,37 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
                             <>
                                 {kpiData && (
                                     <div className="kpi-grid">
-                                        <a href={kpiData.crossSource?.article.url || undefined} target="_blank" rel="noopener noreferrer" className={`kpi-card kpi-trending${kpiData.crossSource ? ' kpi-link' : ''}`}>
+                                        <div className={`kpi-card kpi-trending${kpiData.crossSource ? ' kpi-has-links' : ''}`}>
                                             <div className="kpi-icon"><Zap size={20} aria-hidden="true" /></div>
                                             <span className="kpi-label">Cross-Source Signal</span>
                                             <span className="kpi-value kpi-value-text">{kpiData.crossSource?.topic || 'No cross-source signal'}</span>
                                             <span className="kpi-detail">{kpiData.crossSource ? `${kpiData.crossSource.article.title} · ${kpiData.crossSource.catCount} categories` : 'No topic spans 2+ categories'}</span>
-                                        </a>
+                                            {kpiData.crossSource && kpiData.crossSource.sourceLinks.length > 0 && (
+                                                <div className="kpi-source-links">
+                                                    <span className="kpi-source-links-header">
+                                                        <Layers size={12} />
+                                                        Top mentions ({kpiData.crossSource.sourceLinks.length})
+                                                    </span>
+                                                    {kpiData.crossSource.sourceLinks.map((link, i) => (
+                                                        <a
+                                                            key={i}
+                                                            href={link.url}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="kpi-source-link-row"
+                                                            onClick={(e) => e.stopPropagation()}
+                                                        >
+                                                            <span className="cross-platform-link-dot" />
+                                                            <span className="kpi-source-link-info">
+                                                                <span className="kpi-source-link-source">{link.sourceName}</span>
+                                                                <span className="kpi-source-link-title">{link.title}</span>
+                                                            </span>
+                                                            <ExternalLink size={10} className="kpi-source-link-icon" />
+                                                        </a>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
                                         <a href={kpiData.topRead?.url || undefined} target="_blank" rel="noopener noreferrer" className={`kpi-card kpi-total${kpiData.topRead ? ' kpi-link' : ''}`}>
                                             <div className="kpi-icon"><Flame size={20} aria-hidden="true" /></div>
                                             <span className="kpi-label">Top Read</span>

@@ -251,9 +251,30 @@ export function ContentCard({ item, style, isTouchDevice }: ContentCardProps) {
                                     </span>
                                 )}
                                 {item.crossPlatformCount && item.crossPlatformCount >= 2 && (
-                                    <span className="cross-platform-badge">
-                                        <Layers size={12} />
-                                        {item.crossPlatformCount} platforms
+                                    <span className="cross-platform-hover" onClick={(e) => e.stopPropagation()}>
+                                        <span className="cross-platform-badge">
+                                            <Layers size={12} />
+                                            {item.crossPlatformCount} platforms
+                                        </span>
+                                        {item.crossPlatformLinks && item.crossPlatformLinks.length > 0 && (
+                                            <span className="cross-platform-dropdown">
+                                                <span className="cross-platform-dropdown-title">Also on:</span>
+                                                {item.crossPlatformLinks.map((link, i) => (
+                                                    <a
+                                                        key={i}
+                                                        href={link.url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="cross-platform-link"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    >
+                                                        <span className="cross-platform-link-dot" />
+                                                        <span className="cross-platform-link-name">{formatSourceName(link.sourceId)}</span>
+                                                        <ExternalLink size={10} />
+                                                    </a>
+                                                ))}
+                                            </span>
+                                        )}
                                     </span>
                                 )}
                             </div>
