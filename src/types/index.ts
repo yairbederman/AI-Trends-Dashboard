@@ -80,6 +80,10 @@ export interface ContentItem {
   velocityScore?: number;
   // Keywords that matched for boosting
   matchedKeywords?: string[];
+  // Cross-platform linking
+  crossRefs?: string[];              // IDs of same-story items on other platforms
+  crossPlatformCount?: number;       // Unique platform count (including self)
+  crossPlatformSources?: string[];   // sourceIds of linked platforms (for UI badge)
 }
 
 export interface MetricPoint {

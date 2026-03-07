@@ -386,3 +386,5 @@ export function normalizeCrossCategory(
 
 export { scoreItemsByFeedMode, calculateHotScore, calculateRisingScore, calculateTopScore } from './feed-modes';
 export type { FeedMode } from './feed-modes';
+export { linkAndAmplify } from './cross-platform';
+export type { CrossPlatformConfig } from './cross-platform';

@@ -1,5 +1,6 @@
 import { SourceConfig, ContentItem } from '@/types';
 import { createHash } from 'crypto';
+import { trigramJaccard } from '@/lib/scoring/similarity';
 
 export interface AdapterOptions {
     timeRange?: string;
@@ -179,13 +180,59 @@ export function parseDate(dateString: string | undefined): Date {
 }
 
 /**
- * Deduplicate content items by ID
+ * Deduplicate content items.
+ *
+ * Pass 1: exact ID dedup (O(n), zero cost).
+ * Pass 2 (fuzzy): for items from *different* sources, compare titles via
+ * trigram Jaccard. If >= 0.7, drop the item with lower total engagement.
  */
-export function deduplicateItems(items: ContentItem[]): ContentItem[] {
+export function deduplicateItems(
+    items: ContentItem[],
+    options?: { fuzzyDedup?: boolean }
+): ContentItem[] {
+    const fuzzy = options?.fuzzyDedup ?? true;
+
+    // Pass 1: exact ID dedup
     const seen = new Set<string>();
-    return items.filter((item) => {
+    const unique = items.filter((item) => {
         if (seen.has(item.id)) return false;
         seen.add(item.id);
         return true;
     });
+
+    if (!fuzzy) return unique;
+
+    // Pass 2: fuzzy title dedup across different sources
+    const FUZZY_THRESHOLD = 0.7;
+    const dropped = new Set<number>();
+
+    for (let i = 0; i < unique.length; i++) {
+        if (dropped.has(i)) continue;
+        for (let j = i + 1; j < unique.length; j++) {
+            if (dropped.has(j)) continue;
+            // Only compare items from different sources
+            if (unique[i].sourceId === unique[j].sourceId) continue;
+
+            const similarity = trigramJaccard(unique[i].title, unique[j].title);
+            if (similarity >= FUZZY_THRESHOLD) {
+                // Drop the one with lower total engagement
+                const engA = totalEngagement(unique[i]);
+                const engB = totalEngagement(unique[j]);
+                dropped.add(engA >= engB ? j : i);
+                if (dropped.has(i)) break; // i was dropped, stop comparing
+            }
+        }
+    }
+
+    return unique.filter((_, idx) => !dropped.has(idx));
+}
+
+/** Sum all numeric engagement values for tiebreaking in fuzzy dedup. */
+function totalEngagement(item: ContentItem): number {
+    const e = item.engagement;
+    if (!e) return 0;
+    return (e.upvotes ?? 0) + (e.comments ?? 0) + (e.views ?? 0) +
+        (e.likes ?? 0) + (e.stars ?? 0) + (e.forks ?? 0) +
+        (e.downloads ?? 0) + (e.claps ?? 0) + (e.responses ?? 0) +
+        (e.shares ?? 0) + (e.downvotes ?? 0);
 }

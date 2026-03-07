@@ -46,6 +46,7 @@ flowchart TD
         Hot[Hot Mode<br/>50/30/20]
         Rising[Rising Mode<br/>70/20/10]
         Top[Top Mode<br/>engagement]
+        CrossPlatform[Cross-Platform Linking<br/>hybrid similarity · score amplification]
         Normalize[Cross-Category Normalization<br/>min-max 15–85 · 80/20 blend]
     end
 
@@ -104,8 +105,9 @@ flowchart TD
     Health --> DB
 
     DB --> Scoring
-    Hot --> Normalize
-    Rising --> Normalize
-    Top --> Normalize
+    Hot --> CrossPlatform
+    Rising --> CrossPlatform
+    Top --> CrossPlatform
+    CrossPlatform --> Normalize
     Normalize --> Feed
     Normalize --> Discovery

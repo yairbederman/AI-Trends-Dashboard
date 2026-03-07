@@ -115,8 +115,22 @@ SWR uses a function-based `refreshInterval`: 30s when the response is empty and 
 
 Scoring uses percentile-based ranking, quality ratios, source-specific baselines, and keyword boosting.
 
+### Cross-Platform Deduplication
+Content items from different sources are compared using trigram Jaccard similarity on titles. Items scoring >= 0.7 similarity from different sources are deduplicated — the item with lower total engagement is dropped. This runs during the dedup pass in the adapter layer.
+
+### Cross-Platform Signal Linking & Amplification
+After feed-mode scoring, a cross-platform linking pass identifies same-story items across different platform families (e.g., Reddit, Hacker News, YouTube) using hybrid similarity (max of trigram Jaccard and token Jaccard) at a 0.40 threshold. Linked items receive:
+- `crossRefs`: IDs of same-story items on other platforms
+- `crossPlatformCount`: number of unique platform families covering the story
+- `crossPlatformSources`: sourceIds of linked platforms
+- Score amplification: `trendingScore *= min(1.5, 1 + 0.12 * platformCount)`, capped at 100
+
+Platform family grouping: `reddit-*` → reddit, `hn*`/`hacker-news` → hackernews, `arxiv-*` → arxiv, others by sourceId.
+
+A purple "N platforms" badge appears on content cards for items trending across 2+ platforms. Tooltips show "Trending across: [source names]".
+
 ### Cross-Category Score Normalization
-After feed-mode scoring, a normalization pass re-maps scores within each category to a common 15–85 range using min-max normalization, then blends 80% normalized + 20% original. This compresses inter-category score gaps (e.g., GitHub stars vs. newsletter baselines) while preserving within-category ordering. Categories with fewer than 3 items or identical scores are skipped.
+After feed-mode scoring and cross-platform amplification, a normalization pass re-maps scores within each category to a common 15–85 range using min-max normalization, then blends 80% normalized + 20% original. This compresses inter-category score gaps (e.g., GitHub stars vs. newsletter baselines) while preserving within-category ordering. Categories with fewer than 3 items or identical scores are skipped.
 
 ### Dashboard Views
 - Overview with KPIs (Top Source, Hottest Topic, Biggest Mover, Driving Category)

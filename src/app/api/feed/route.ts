@@ -8,7 +8,7 @@ import {
     getSourceFreshness,
 } from '@/lib/db/actions';
 import { getEffectiveConfig, getEffectiveSourceList } from '@/lib/config/resolve';
-import { scoreItemsByFeedMode, normalizeCrossCategory } from '@/lib/scoring';
+import { scoreItemsByFeedMode, normalizeCrossCategory, linkAndAmplify } from '@/lib/scoring';
 import { getBulkVelocities, cleanupOldSnapshots } from '@/lib/db/engagement-tracker';
 import { SOURCES } from '@/lib/config/sources';
 import { feedCache } from '@/lib/cache/memory-cache';
@@ -203,10 +203,13 @@ export async function GET(request: Request) {
         // Score and sort based on feed mode
         const rawScoredItems = scoreItemsByFeedMode(allItems, velocities, feedMode);
 
+        // Cross-platform linking + amplification (runs before normalization)
+        const linkedItems = linkAndAmplify(rawScoredItems);
+
         // Normalize scores across categories to reduce dev-platforms dominance
         const sourceToCategoryMap: Record<string, string> = {};
         for (const s of SOURCES) { sourceToCategoryMap[s.id] = s.category; }
-        const scoredItems = normalizeCrossCategory(rawScoredItems, sourceToCategoryMap);
+        const scoredItems = normalizeCrossCategory(linkedItems, sourceToCategoryMap);
 
         const response: Record<string, unknown> = {
             success: true,

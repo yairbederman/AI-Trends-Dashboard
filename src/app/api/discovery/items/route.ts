@@ -4,7 +4,7 @@ import { getSourceById } from '@/lib/config/sources';
 import { ContentItem, TimeRange, SourceCategory, SourceConfig } from '@/types';
 import { getCachedContentBySourceIds } from '@/lib/db/actions';
 import { getEffectiveConfig, getEffectiveSourceList } from '@/lib/config/resolve';
-import { scoreAndSortItems } from '@/lib/scoring';
+import { scoreAndSortItems, linkAndAmplify } from '@/lib/scoring';
 import { feedCache } from '@/lib/cache/memory-cache';
 import { ensureSourcesFresh } from '@/lib/fetching/ensure-fresh';
 
@@ -170,10 +170,10 @@ export async function GET(request: Request) {
         const priorities = config.priorities;
         const boostKeywords = config.boostKeywords;
 
-        const scoredItems = scoreAndSortItems(allItems, {
+        const scoredItems = linkAndAmplify(scoreAndSortItems(allItems, {
             priorities,
             boostKeywords,
-        });
+        }));
 
         // Build source lookup map for response mapping
         const sourceMap: Record<string, SourceConfig> = {};

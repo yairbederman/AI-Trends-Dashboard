@@ -5,7 +5,7 @@ import { ContentItem, EngagementMetrics } from '@/types';
 import { formatDistanceToNow } from 'date-fns';
 import {
     ExternalLink, TrendingUp, Flame, MessageCircle, Star, ArrowUp, Zap,
-    Eye, ThumbsUp, GitFork, Download, Hand, Reply, Info
+    Eye, ThumbsUp, GitFork, Download, Hand, Reply, Info, Layers
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/Tooltip';
 
@@ -121,13 +121,23 @@ function CardTooltip({ item }: { item: ContentItem }) {
     if (eng?.downloads && eng.downloads > 0) metrics.push({ icon: Download, label: 'downloads', value: formatNumber(eng.downloads) });
     if (eng?.comments && eng.comments > 0) metrics.push({ icon: MessageCircle, label: 'comments', value: formatNumber(eng.comments) });
 
-    const hasContent = meaningfulDescription || metrics.length > 0 || item.author;
+    const crossPlatformLabel = item.crossPlatformSources && item.crossPlatformSources.length > 0
+        ? item.crossPlatformSources.map(s => formatSourceName(s)).join(', ')
+        : null;
+
+    const hasContent = meaningfulDescription || metrics.length > 0 || item.author || crossPlatformLabel;
     if (!hasContent) return null;
 
     if (meaningfulDescription) {
         const topMetric = metrics[0];
         return (
             <div>
+                {crossPlatformLabel && (
+                    <div className="tooltip-cross-platform">
+                        <Layers size={12} />
+                        <span className="tooltip-cross-platform-text">Trending across: {crossPlatformLabel}</span>
+                    </div>
+                )}
                 <div className="tooltip-description">
                     {meaningfulDescription.length > 150
                         ? meaningfulDescription.slice(0, 150) + '...'
@@ -154,6 +164,12 @@ function CardTooltip({ item }: { item: ContentItem }) {
 
     return (
         <div>
+            {crossPlatformLabel && (
+                <div className="tooltip-cross-platform">
+                    <Layers size={12} />
+                    <span className="tooltip-cross-platform-text">Trending across: {crossPlatformLabel}</span>
+                </div>
+            )}
             {item.author && (
                 <div className="tooltip-description" style={{ borderBottom: 'none', paddingBottom: 0, marginBottom: '0.5rem' }}>
                     by {item.author}
@@ -232,6 +248,12 @@ export function ContentCard({ item, style, isTouchDevice }: ContentCardProps) {
                                     <span className={`score-badge ${scoreInfo?.className || 'score-default'}`}>
                                         {scoreInfo?.label === 'Hot' ? <Flame size={12} /> : <TrendingUp size={12} />}
                                         {item.trendingScore}
+                                    </span>
+                                )}
+                                {item.crossPlatformCount && item.crossPlatformCount >= 2 && (
+                                    <span className="cross-platform-badge">
+                                        <Layers size={12} />
+                                        {item.crossPlatformCount} platforms
                                     </span>
                                 )}
                             </div>
