@@ -34,12 +34,17 @@ flowchart TD
 
     subgraph Adapters["Source Adapters"]
         RSS[RSS Adapter<br/>relevance filter]
-        HN[HackerNews Adapter<br/>chunked · timeout · allSettled]
-        Reddit[Reddit Adapter<br/>custom subreddits]
+        HN[HackerNews Adapter<br/>chunked · timeout · allSettled · og:description]
+        Reddit[Reddit Adapter<br/>custom subreddits · batch-of-4 · 4s timeout]
         YT[YouTube Adapter<br/>custom channels]
         GH[GitHub Adapter]
         HF[HuggingFace Adapter]
         Anth[Anthropic Adapter<br/>cheerio DOM parser · fallback title/date]
+    end
+
+    subgraph Classification["Response Enrichment"]
+        ContentType[Content Type Classifier<br/>rule-based · 7 types]
+        DomainQuality[Domain Quality Map<br/>static · high/med/low/unknown]
     end
 
     subgraph Scoring["Scoring Engine"]
@@ -111,3 +116,5 @@ flowchart TD
     CrossPlatform --> Normalize
     Normalize --> Feed
     Normalize --> Discovery
+    Discovery --> ContentType
+    Discovery --> DomainQuality

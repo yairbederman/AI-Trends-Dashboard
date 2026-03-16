@@ -13,6 +13,17 @@ export type SourceCategory =
 
 export type FetchMethod = 'rss' | 'api' | 'scrape';
 
+export type ContentType =
+  | 'research'
+  | 'announcement'
+  | 'tutorial'
+  | 'roundup'
+  | 'case-study'
+  | 'discussion'
+  | 'opinion';
+
+export type FetchQuality = 'high' | 'medium' | 'low' | 'unknown';
+
 export interface SourceConfig {
   id: string;
   name: string;

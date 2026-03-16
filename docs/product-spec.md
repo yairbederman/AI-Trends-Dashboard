@@ -73,7 +73,9 @@ SWR uses a function-based `refreshInterval`: 30s when the response is empty and 
 
 ### Content Aggregation
 - Fetches from 40+ sources via 8 adapter types (RSS, HackerNews, Reddit, YouTube, GitHub, HuggingFace, Polymarket, Anthropic scrape)
-- HackerNews adapter uses chunked concurrency (10 parallel), 10s timeouts via AbortController, and `Promise.allSettled` for partial failure tolerance
+- HackerNews adapter uses chunked concurrency (10 parallel), 10s timeouts via AbortController, and `Promise.allSettled` for partial failure tolerance; also fetches `og:description` meta tag for richer item summaries
+- Reddit adapter fetches subreddits in parallel batches of 4 with per-subreddit timeouts to prevent one slow subreddit from blocking the entire batch
+- Adapter timeouts are per-source type: `reddit-custom` sources use a 20s timeout; `hackernews` uses 15s; all other sources use 10s
 - Anthropic adapter uses cheerio DOM parser (not regex) for resilient HTML parsing; warns on 0-article parses; fallback date parsing (ISO 8601) and title extraction from link text
 - Cybersecurity news sources (The Hacker News, CyberScoop) included with `relevanceFilter: true` — AI relevance filter keeps only AI-related articles from general cybersecurity feeds
 - AI-security crossover keywords (`ai security`, `ai vulnerability`, `ai-powered security`) added to relevance filter
@@ -98,6 +100,14 @@ SWR uses a function-based `refreshInterval`: 30s when the response is empty and 
 - Accepts `social-blogs` as alias for internal `social` category
 - Valid categories: `news`, `newsletters`, `social-blogs`, `ai-labs`, `dev-platforms`, `community`, `leaderboards`, `research`, `predictions`
 - Returns `meta` (totalItems, returnedItems, offset, limit, timeRange, per-category counts) + `items` array
+- Each item includes the following fields beyond core content fields:
+  - `author` (string | null) — item author, where available from the source
+  - `engagement` (object | null) — engagement metrics object (upvotes, comments, views, etc.), shape varies by source
+  - `crossPlatformCount` (number | null) — number of platform families this story appears on (set during cross-platform linking pass)
+  - `crossPlatformSources` (string[] | null) — sourceIds of linked platform items
+  - `crossPlatformLinks` (array | null) — URLs of linked items, one entry per source
+  - `contentType` (string) — rule-based classification of the item: `research`, `announcement`, `tutorial`, `roundup`, `case-study`, `discussion`, or `opinion`
+  - `fetchQuality` (string) — domain-level quality assessment derived at fetch time: `high`, `medium`, `low`, or `unknown`
 - CORS enabled (`Access-Control-Allow-Origin: *`) with `OPTIONS` preflight handler for cross-origin access
 - Rate limited via Vercel Firewall (`@vercel/firewall`) with graceful fallback when rule is unconfigured
 - HTTP cache headers: `Cache-Control: public, s-maxage=300, stale-while-revalidate=60` for CDN/edge caching

@@ -49,14 +49,22 @@ export async function ensureSourcesFresh(
                 pair.adapter !== null
         );
 
-    // Fetch stale sources in parallel with 10s timeout per adapter
+    // Per-adapter timeout: reddit-custom gets 20s (fetches 12+ subreddits),
+    // hackernews gets 15s (og:description fetches), others get 10s.
+    function getAdapterTimeout(sourceId: string): number {
+        if (sourceId === 'reddit-custom') return 20000;
+        if (sourceId === 'hackernews') return 15000;
+        return 10000;
+    }
+
+    // Fetch stale sources in parallel with per-adapter timeout
     const results = await Promise.allSettled(
         adapterPairs.map(({ source, adapter }) => {
             markSourceFetching(source.id);
             return Promise.race([
                 adapter.fetch({ timeRange }),
                 new Promise<ContentItem[]>((_, reject) =>
-                    setTimeout(() => reject(new Error('Adapter timeout')), 10000)
+                    setTimeout(() => reject(new Error('Adapter timeout')), getAdapterTimeout(source.id))
                 ),
             ]).then(items => {
                 markSourceDone(source.id);
@@ -85,9 +93,19 @@ export async function ensureSourcesFresh(
     // content_items.source_id has a FK reference to sources(id). If a source was
     // added to config but never inserted into the sources table (e.g. migration
     // not applied), the entire insert chunk fails. Creating the rows first avoids this.
+    //
+    // Only mark sources as "fetched" if they returned items. Sources that resolve
+    // with 0 items are left stale so they get retried on the next request — this
+    // prevents silent failure loops where a blocked API returns [] indefinitely.
     const successfulSourceIds = adapterPairs
-        .filter((_, i) => results[i].status === 'fulfilled')
+        .filter((_, i) => results[i].status === 'fulfilled' && results[i].value.length > 0)
         .map(p => p.source.id);
+    const emptySourceIds = adapterPairs
+        .filter((_, i) => results[i].status === 'fulfilled' && results[i].value.length === 0)
+        .map(p => p.source.id);
+    if (emptySourceIds.length > 0) {
+        console.warn(`Sources returned 0 items (not marking fresh): ${emptySourceIds.join(', ')}`);
+    }
     if (successfulSourceIds.length > 0) {
         await updateSourceLastFetched(successfulSourceIds);
     }
@@ -123,13 +141,15 @@ export async function ensureSourcesFresh(
                         lastError: null,
                     };
                 } else if (result.status === 'fulfilled') {
-                    // 0 items returned — successful fetch, just nothing new
+                    // 0 items returned — fetch succeeded but no data came back.
+                    // Treat as a soft failure: increment consecutiveFailures so
+                    // the health indicator surfaces the problem to the user.
                     currentHealth[sourceId] = {
                         lastFetchAt: now,
-                        lastSuccessAt: now,
+                        lastSuccessAt: prev.lastSuccessAt,
                         lastItemCount: 0,
-                        consecutiveFailures: 0,
-                        lastError: null,
+                        consecutiveFailures: prev.consecutiveFailures + 1,
+                        lastError: 'Returned 0 items',
                     };
                 } else {
                     currentHealth[sourceId] = {

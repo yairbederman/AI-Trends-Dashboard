@@ -7,6 +7,8 @@ import { getEffectiveConfig, getEffectiveSourceList } from '@/lib/config/resolve
 import { scoreAndSortItems, linkAndAmplify } from '@/lib/scoring';
 import { feedCache } from '@/lib/cache/memory-cache';
 import { ensureSourcesFresh } from '@/lib/fetching/ensure-fresh';
+import { classifyContentType } from '@/lib/classification/content-type';
+import { getDomainQuality } from '@/lib/config/domain-quality';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -231,17 +233,28 @@ function buildResponse(
 
     const items = paginated.map(item => {
         const cfg = sourceMap[item.sourceId];
+        const category = cfg ? internalCategoryToApi(cfg.category) : 'news';
         return {
             id: item.id,
             title: item.title,
             source: cfg?.name ?? item.sourceId,
             summary: item.description ?? null,
             url: item.url,
-            category: cfg ? internalCategoryToApi(cfg.category) : 'news',
+            category,
             tags: item.tags ?? [],
             trendingScore: item.trendingScore ?? null,
             publishedAt: new Date(item.publishedAt).toISOString(),
             addedAt: new Date(item.fetchedAt).toISOString(),
+            // Enhancement 1: Expose existing pipeline fields
+            author: item.author ?? null,
+            engagement: item.engagement ?? null,
+            crossPlatformCount: item.crossPlatformCount ?? null,
+            crossPlatformSources: item.crossPlatformSources ?? null,
+            crossPlatformLinks: item.crossPlatformLinks ?? null,
+            // Enhancement 2: Content type classification
+            contentType: classifyContentType(item, cfg?.category),
+            // Enhancement 3: Domain fetch quality
+            fetchQuality: getDomainQuality(item.url),
         };
     });
 

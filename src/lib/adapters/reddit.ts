@@ -63,37 +63,50 @@ export class RedditAdapter extends BaseAdapter {
 
         if (subreddits.length === 0) return [];
 
-        const fetchPromises = subreddits.map(async (sub) => {
-            try {
-                return await this.fetchSubreddit(sub.name);
-            } catch (error) {
-                console.warn(`Reddit fetch failed for r/${sub.name}:`, error instanceof Error ? error.message : error);
-                return [];
-            }
-        });
-
-        const results = await Promise.allSettled(fetchPromises);
+        // Fetch in batches of 4 to avoid Reddit rate-limiting
+        const BATCH_SIZE = 4;
         const allItems: ContentItem[] = [];
-        for (const result of results) {
-            if (result.status === 'fulfilled') {
-                allItems.push(...result.value);
+
+        for (let i = 0; i < subreddits.length; i += BATCH_SIZE) {
+            const batch = subreddits.slice(i, i + BATCH_SIZE);
+            const results = await Promise.allSettled(
+                batch.map(async (sub) => {
+                    try {
+                        return await this.fetchSubreddit(sub.name);
+                    } catch (error) {
+                        console.warn(`Reddit fetch failed for r/${sub.name}:`, error instanceof Error ? error.message : error);
+                        return [];
+                    }
+                })
+            );
+            for (const result of results) {
+                if (result.status === 'fulfilled') {
+                    allItems.push(...result.value);
+                }
             }
         }
+
+        console.log(`[Reddit] Total: ${allItems.length} posts from ${subreddits.length} subreddits`);
         return allItems;
     }
 
     private async fetchSubreddit(subreddit: string): Promise<ContentItem[]> {
-        const url = `https://old.reddit.com/r/${subreddit}/hot.json?limit=50&raw_json=1`;
+        const url = `https://www.reddit.com/r/${subreddit}/hot.json?limit=50&raw_json=1`;
+
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 4000);
 
         try {
             const response = await fetch(url, {
                 headers: {
-                    'User-Agent': 'Mozilla/5.0 (compatible; AI-Trends-Dashboard/1.0)',
+                    'User-Agent': 'AI-Trends-Dashboard/1.0 (dashboard; content aggregator)',
                     'Accept': 'application/json',
                 },
-            });
+                signal: controller.signal,
+            }).finally(() => clearTimeout(timer));
 
             if (!response.ok) {
+                console.warn(`[Reddit] r/${subreddit}: HTTP ${response.status}`);
                 throw new Error(`Reddit API error: ${response.status}`);
             }
 
@@ -120,9 +133,10 @@ export class RedditAdapter extends BaseAdapter {
             }));
 
             // Don't filter by time range — cache everything, DB query filters by user's time range.
+            console.log(`[Reddit] r/${subreddit}: ${items.length} posts`);
             return items;
         } catch (error) {
-            console.error(`Failed to fetch Reddit r/${subreddit}:`, error);
+            console.error(`[Reddit] r/${subreddit} FAILED:`, error instanceof Error ? error.message : error);
             return [];
         }
     }
