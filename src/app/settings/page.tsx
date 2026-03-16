@@ -1000,13 +1000,13 @@ export default function SettingsPage() {
                                                     className="api-badge broken"
                                                     title={`Failing: ${source.health.lastError || 'Unknown error'}${source.health.lastSuccessAt ? `\nLast success: ${new Date(source.health.lastSuccessAt).toLocaleDateString()}` : '\nNever succeeded'}`}
                                                 >
-                                                    Failing
+                                                    {source.health.lastError === 'Returned 0 items' ? 'No Data' : 'Failing'}
                                                 </span>
                                             )}
                                             {source.health && source.health.consecutiveFailures >= 1 && source.health.consecutiveFailures < 3 && (
                                                 <span
                                                     className="api-badge needs-key"
-                                                    title={`Unstable: ${source.health.lastError || 'Unknown error'}`}
+                                                    title={`Unstable: ${source.health.lastError || 'Unknown error'}${source.health.lastSuccessAt ? `\nLast data: ${new Date(source.health.lastSuccessAt).toLocaleDateString()}` : ''}`}
                                                 >
                                                     Unstable
                                                 </span>

@@ -12,6 +12,7 @@ import { TimeRangeDropdown } from './TimeRangeDropdown';
 import { FeedModeSelector } from './FeedModeSelector';
 import { SourceConstellation } from '@/components/dashboard/SourceConstellation';
 import { ConstellationRefreshWrapper } from '@/components/dashboard/ConstellationRefreshWrapper';
+import { SourceHealthBanner } from '@/components/dashboard/SourceHealthBanner';
 import { useSettings } from '@/lib/contexts/SettingsContext';
 import { TooltipProvider } from '@/components/ui/Tooltip';
 import { Settings, Sparkles, TrendingUp, AlertTriangle, Activity, Zap, Flame, Gem, Clock, ExternalLink, Layers } from 'lucide-react';
@@ -590,6 +591,7 @@ export function DashboardClient({ initialItems }: DashboardClientProps) {
             </header>
 
             <main id="main-content" className="dashboard-main" role="main" aria-label="AI Trends Content">
+                <SourceHealthBanner />
                 {isStaleRefreshing && data?.refreshingSources && data.refreshingSources.length > 0 && (
                     <ConstellationRefreshWrapper
                         initialSources={data.refreshingSources}

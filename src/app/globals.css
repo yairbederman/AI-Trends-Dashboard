@@ -2937,6 +2937,73 @@ a.kpi-card:not(.kpi-link) {
 }
 
 /* =====================
+   SOURCE HEALTH BANNER
+   ===================== */
+
+.source-health-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 1rem;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: 8px;
+  font-size: 0.8rem;
+  color: var(--text-secondary, #aaa);
+}
+
+.shb-icon {
+  flex-shrink: 0;
+  color: rgba(239, 68, 68, 0.7);
+}
+
+.shb-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shb-names {
+  opacity: 0.7;
+}
+
+.shb-link {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+  color: rgba(239, 68, 68, 0.7);
+  font-size: 0.75rem;
+  text-decoration: none;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+}
+
+.shb-link:hover {
+  opacity: 1;
+}
+
+.shb-dismiss {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: var(--text-tertiary, #666);
+  cursor: pointer;
+  padding: 0.2rem;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  transition: color 0.2s;
+}
+
+.shb-dismiss:hover {
+  color: var(--text-primary, #fff);
+}
+
+/* =====================
    REFRESH PROGRESS
    ===================== */
 

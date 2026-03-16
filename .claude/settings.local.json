@@ -184,7 +184,18 @@
       "WebFetch(domain:www.lazarev.agency)",
       "WebFetch(domain:grafana.com)",
       "Bash(grep mcp-chrome:)",
-      "Bash(powershell.exe:*)"
+      "Bash(powershell.exe:*)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "mcp__claude_ai_Vercel__list_projects",
+      "mcp__claude_ai_Vercel__get_deployment",
+      "Bash(mkdir:*)",
+      "WebFetch(domain:gamma-api.polymarket.com)",
+      "Bash(lsof:*)",
+      "Bash(xargs -r taskkill //PID //F)"
     ]
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "supabase"
+  ]
 }
